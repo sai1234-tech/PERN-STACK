@@ -1,0 +1,89 @@
+import express from "express";
+import {
+    upload,
+    listDocumentTypes,
+    uploadEmployeeDocument,
+    getMyDocuments,
+    getEmployeeDocuments,
+    getDocumentById,
+    downloadDocument,
+    RequestDocument,
+    updateDocumentStatus,
+    deleteDocument
+} from "../controllers/documentController.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
+import { authorizeRoles } from "../middleware/roleMiddleware.js";
+
+const router = express.Router();
+
+// Apply authentication middleware to all document routes
+router.use(verifyToken);
+
+// ==========================================
+// PUBLIC / GENERAL ROUTES
+// ==========================================
+// Get allowed document types list
+router.get("/types", listDocumentTypes);
+
+// ==========================================
+// EMPLOYEE SELF DOCUMENT ROUTES
+// ==========================================
+router.get("/my-documents", authorizeRoles("employee", "manager", "hr", "admin"), getMyDocuments);
+router.get("/me", authorizeRoles("employee", "manager", "hr", "admin"), getMyDocuments);
+router.get("/my", authorizeRoles("employee", "manager", "hr", "admin"), getMyDocuments);
+
+// Employee Upload Document
+router.post(
+    "/upload",
+    authorizeRoles("employee", "manager", "hr", "admin"),
+    upload.any(),
+    uploadEmployeeDocument
+);
+
+
+// ==========================================
+// HR / ADMIN MANAGEMENT ROUTES
+// ==========================================
+// Get documents of a specific employee
+router.get(
+    "/employee/:employeeId",
+    authorizeRoles("hr", "admin"),
+    getEmployeeDocuments
+);
+
+// HR Request Document from employee
+router.post(
+    "/request",
+    authorizeRoles("hr", "admin"),
+    RequestDocument
+);
+
+// Download document file
+router.get(
+    "/:id/download",
+    authorizeRoles("employee", "manager", "hr", "admin"),
+    downloadDocument
+);
+
+// Get single document metadata by ID
+router.get(
+    "/:id",
+    authorizeRoles("employee", "manager", "hr", "admin"),
+    getDocumentById
+);
+
+// HR Verification (Approve / Reject document status)
+router.patch(
+    "/:id/status",
+    authorizeRoles("hr", "admin"),
+    updateDocumentStatus
+);
+
+// Delete document
+router.delete(
+    "/:id",
+    authorizeRoles("employee", "manager", "hr", "admin"),
+    deleteDocument
+);
+
+export default router;

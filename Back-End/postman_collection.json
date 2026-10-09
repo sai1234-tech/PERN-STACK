@@ -1,0 +1,492 @@
+{
+	"info": {
+		"_postman_id": "pern-hrms-collection-id-2026",
+		"name": "PERN HRMS API Collection",
+		"description": "Complete Postman collection for PERN HRMS including Employee Profile, Manager Dashboard, and Exit Clearance modules.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Password@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Employee Self Profile",
+			"item": [
+				{
+					"name": "Get My Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/employee/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"employee",
+								"me"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update My Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"9876543210\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/employee/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"employee",
+								"me"
+							]
+						}
+					}
+				},
+				{
+					"name": "Upload Profile Picture",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "profilePicture",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/employee/me/profile-picture",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"employee",
+								"me",
+								"profile-picture"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Profile Picture",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/employee/me/profile-picture",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"employee",
+								"me",
+								"profile-picture"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Manager Dashboard",
+			"item": [
+				{
+					"name": "Get Team Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/manager/overview",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"manager",
+								"overview"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Team Leaves (Pending)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/manager/team-leaves?status=pending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"manager",
+								"team-leaves"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Approve / Reject Team Leave",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"approved\",\n  \"remarks\": \"Approved by Manager, forwarding to HR\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/manager/team-leaves/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"manager",
+								"team-leaves",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Team Timesheets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/manager/team-timesheets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"manager",
+								"team-timesheets"
+							]
+						}
+					}
+				},
+				{
+					"name": "Approve / Reject Team Timesheet",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"approved\",\n  \"reviewComment\": \"Timesheet verified and approved\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/manager/team-timesheets/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"manager",
+								"team-timesheets",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Active Projects",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/manager/projects",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"manager",
+								"projects"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Exit Clearance",
+			"item": [
+				{
+					"name": "Get My Clearance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clearance/my",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clearance",
+								"my"
+							]
+						}
+					}
+				},
+				{
+					"name": "Initiate Clearance (HR)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"resignationId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clearance/initiate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clearance",
+								"initiate"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Clearances (HR)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clearance/all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clearance",
+								"all"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Clearance Category",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"cleared\",\n  \"comments\": \"All hardware returned in good condition\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clearance/1/category/assets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clearance",
+								"1",
+								"category",
+								"assets"
+							]
+						}
+					}
+				},
+				{
+					"name": "Process Final Settlement",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"details\": \"Full and final settlement processed successfully.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clearance/1/settlement",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clearance",
+								"1",
+								"settlement"
+							]
+						}
+					}
+				},
+				{
+					"name": "Complete Exit & Issue Relieving Letter",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clearance/1/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clearance",
+								"1",
+								"complete"
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

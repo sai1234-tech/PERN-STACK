@@ -124,11 +124,11 @@ function EmployeeLeaves() {
   const typesToRender = useMemo(() => {
     if (balance && balance.length > 0) {
       return balance.map((b) => ({
-        id: b.leaveType?._id || b.leaveType?.code,
+        id: b.leaveType?.id || b.leaveType?._id || b.leaveType?.code,
         code: b.leaveType?.code || "LV",
         name: b.leaveType?.name || "Leave",
-        available: b.available ?? 0,
-        total: b.annualAllocation ?? 0,
+        available: Number(b.available ?? 0),
+        total: Number(b.annualAllocation ?? b.annual_allocation ?? 12),
         accrual: `${b.used || 0} used, ${b.pending || 0} pending`,
       }));
     }
@@ -137,12 +137,13 @@ function EmployeeLeaves() {
         .filter((t) => t.id !== "wfh" && t.code !== "WFH")
         .map((t) => {
           const match = REAL_LEAVE_TYPES.find((d) => d.id === t.id || d.name === t.name);
+          const annualAlloc = Number(t.annualAllocation ?? t.annual_allocation ?? t.total ?? match?.total ?? 12);
           return {
-            id: t._id || t.id,
+            id: t.id || t._id || t.code,
             code: t.code || match?.code || "LV",
             name: t.name || match?.name || "Leave",
-            available: t.available ?? t.annualAllocation ?? 0,
-            total: t.annualAllocation ?? t.total ?? 0,
+            available: Number(t.available ?? annualAlloc),
+            total: annualAlloc,
             accrual: match?.accrual || "Standard policy",
           };
         });

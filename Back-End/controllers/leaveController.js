@@ -79,6 +79,32 @@ const formatLeaveResponse = (leave) => {
     };
 };
 
+// Helper to ensure an employee profile exists for the user
+const ensureEmployeeForUser = async (userId) => {
+    let employee = await findEmployeeByUserId(userId);
+    if (!employee && userId) {
+        const user = await findUserById(userId);
+        if (user) {
+            const nameParts = (user.name || "Employee User").trim().split(" ");
+            const firstName = nameParts[0] || "Employee";
+            const lastName = nameParts.slice(1).join(" ") || "User";
+            const empCode = `EMP${String(user.id).padStart(4, "0")}`;
+            try {
+                employee = await createEmployeeRecord({
+                    userId: user.id,
+                    employeeCode: empCode,
+                    firstName,
+                    lastName,
+                    email: user.email
+                });
+            } catch (e) {
+                employee = await findEmployeeByUserId(userId);
+            }
+        }
+    }
+    return employee;
+};
+
 // =====================================================
 // 1. APPLY LEAVE
 // =====================================================
@@ -103,7 +129,7 @@ export const applyLeave = async (req, res) => {
             });
         }
 
-        let employee = await findEmployeeByUserId(userId);
+        let employee = await ensureEmployeeForUser(userId);
         if (!employee) {
             return res.status(404).json({
                 success: false,
@@ -218,12 +244,13 @@ export const applyLeave = async (req, res) => {
 export const getMyLeaves = async (req, res) => {
     try {
         const userId = req.user?.userId || req.user?.id;
-        const employee = await findEmployeeByUserId(userId);
+        const employee = await ensureEmployeeForUser(userId);
 
         if (!employee) {
-            return res.status(404).json({
-                success: false,
-                message: "Employee profile not found"
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                data: []
             });
         }
 
@@ -252,7 +279,7 @@ export const cancelLeave = async (req, res) => {
     try {
         const leaveId = Number(req.params.leaveId);
         const userId = req.user?.userId || req.user?.id;
-        const employee = await findEmployeeByUserId(userId);
+        const employee = await ensureEmployeeForUser(userId);
 
         if (!employee) {
             return res.status(404).json({ success: false, message: "Employee profile not found" });
@@ -294,36 +321,35 @@ export const cancelLeave = async (req, res) => {
 export const getLeaveBalance = async (req, res) => {
     try {
         const userId = req.user?.userId || req.user?.id;
-        const employee = await findEmployeeByUserId(userId);
-
-        if (!employee) {
-            return res.status(404).json({ success: false, message: "Employee profile not found" });
-        }
+        const employee = await ensureEmployeeForUser(userId);
 
         const year = Number(req.query.year) || new Date().getFullYear();
         const leaveTypes = await findAllLeaveTypes(true);
         const result = [];
 
         for (const type of leaveTypes) {
-            const leaves = await findEmployeeLeavesForYear(employee.id, year, type.id);
+            const leaves = employee ? await findEmployeeLeavesForYear(employee.id, year, type.id) : [];
             let used = 0;
             let pending = 0;
 
             for (const l of leaves) {
                 if (l.status === "Approved") used += Number(l.number_of_days || 0);
-                if (l.status.includes("Pending")) pending += Number(l.number_of_days || 0);
+                if (l.status && l.status.includes("Pending")) pending += Number(l.number_of_days || 0);
             }
 
-            let userAnnualAllocation = Number(type.annual_allocation || 0);
+            let userAnnualAllocation = Number(type.annual_allocation || 12);
             const available = Math.max(userAnnualAllocation - used - pending, 0);
 
             result.push({
                 leaveType: {
                     id: type.id,
                     name: type.name,
-                    code: type.code
+                    code: type.code,
+                    annualAllocation: userAnnualAllocation,
+                    annual_allocation: userAnnualAllocation
                 },
                 annualAllocation: userAnnualAllocation,
+                annual_allocation: userAnnualAllocation,
                 used,
                 pending,
                 available

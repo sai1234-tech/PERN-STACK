@@ -549,7 +549,12 @@ function EmployeeDashboard() {
               <div className="kpi-progress-bar indigo" style={{ width: "75%" }} />
             </div>
             <span className="kpi-subtext">
-              12 Earned • 4 Casual • 2 Sick Remaining
+              {leavesState.balance?.length
+                ? leavesState.balance
+                    .slice(0, 3)
+                    .map((b) => `${b.available} ${b.leaveType?.code || b.leaveType?.name}`)
+                    .join(" • ") + " Remaining"
+                : "15 EL • 12 CL • 12 SL Remaining"}
             </span>
           </div>
 

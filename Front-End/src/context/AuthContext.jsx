@@ -13,6 +13,17 @@ export function AuthProvider({ children }) {
   const saveSession = (response) => {
     const session = response?.data && (response.data.user || response.data.token) ? response.data : response;
     const normalizedUser = { ...session.user, role: normalizeRole(session.user) };
+
+    // Clear previous user's cached storage items
+    try {
+      sessionStorage.clear();
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("hrms_")) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {}
+
     sessionStorage.setItem("hrms_token", session.token);
     sessionStorage.setItem("hrms_user", JSON.stringify(normalizedUser));
 
@@ -25,6 +36,7 @@ export function AuthProvider({ children }) {
 
     setUser(normalizedUser);
     setEmployee(session.employee || null);
+    window.dispatchEvent(new CustomEvent("hrms:data_changed"));
     return { ...session, user: normalizedUser };
   };
 
@@ -93,17 +105,18 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    sessionStorage.removeItem("hrms_token");
-    sessionStorage.removeItem("hrms_user");
-    sessionStorage.removeItem("hrms_employee");
-    sessionStorage.removeItem("hrms_profile_photo");
-    sessionStorage.removeItem("hrms_demo_mode");
-    sessionStorage.removeItem("hrms_selected_employee_id");
-    localStorage.removeItem("hrms_profile_photo");
-    localStorage.removeItem("hrms_selected_employee_id");
+    try {
+      sessionStorage.clear();
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("hrms_")) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {}
 
     setUser(null);
     setEmployee(null);
+    window.dispatchEvent(new CustomEvent("hrms:data_changed"));
   };
 
   useEffect(() => {

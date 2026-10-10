@@ -360,11 +360,24 @@ export function handleDemoApi(endpoint, options = {}) {
     };
   }
 
+  // User-scoped demo storage key resolution
+  const getUserAttKey = () => {
+    try {
+      const uStr = sessionStorage.getItem("hrms_user") || sessionStorage.getItem("hrms_employee");
+      const uObj = uStr ? JSON.parse(uStr) : null;
+      const keyId = uObj?.email || uObj?._id || uObj?.id || "default";
+      return `hrms_demo_attendance_${String(keyId).toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+    } catch (e) {
+      return "hrms_demo_attendance_default";
+    }
+  };
+
   // Interactive Clock In handling
   if (norm.includes("/attendance/check-in")) {
     const today = new Date().toISOString().slice(0, 10);
     const now = new Date();
-    const existingStr = localStorage.getItem("hrms_demo_attendance");
+    const attKey = getUserAttKey();
+    const existingStr = localStorage.getItem(attKey);
     let history = existingStr ? JSON.parse(existingStr) : [];
 
     let todayRecord = history.find((r) => (r.date || "").startsWith(today));
@@ -383,7 +396,7 @@ export function handleDemoApi(endpoint, options = {}) {
       todayRecord.checkIn = now.toISOString();
     }
 
-    localStorage.setItem("hrms_demo_attendance", JSON.stringify(history));
+    localStorage.setItem(attKey, JSON.stringify(history));
     window.dispatchEvent(new CustomEvent("hrms:data_changed"));
 
     return {
@@ -399,7 +412,8 @@ export function handleDemoApi(endpoint, options = {}) {
   if (norm.includes("/attendance/check-out")) {
     const today = new Date().toISOString().slice(0, 10);
     const now = new Date();
-    const existingStr = localStorage.getItem("hrms_demo_attendance");
+    const attKey = getUserAttKey();
+    const existingStr = localStorage.getItem(attKey);
     let history = existingStr ? JSON.parse(existingStr) : [];
 
     let todayRecord = history.find((r) => (r.date || "").startsWith(today));
@@ -412,7 +426,7 @@ export function handleDemoApi(endpoint, options = {}) {
       todayRecord.status = "Completed";
     }
 
-    localStorage.setItem("hrms_demo_attendance", JSON.stringify(history));
+    localStorage.setItem(attKey, JSON.stringify(history));
     window.dispatchEvent(new CustomEvent("hrms:data_changed"));
 
     return {
@@ -427,7 +441,8 @@ export function handleDemoApi(endpoint, options = {}) {
   // Today's attendance query
   if (norm.includes("/attendance/today")) {
     const today = new Date().toISOString().slice(0, 10);
-    const existingStr = localStorage.getItem("hrms_demo_attendance");
+    const attKey = getUserAttKey();
+    const existingStr = localStorage.getItem(attKey);
     const history = existingStr ? JSON.parse(existingStr) : [];
     const todayRecord = history.find((r) => (r.date || "").startsWith(today));
 
@@ -450,17 +465,9 @@ export function handleDemoApi(endpoint, options = {}) {
 
   // History & ledger query
   if (norm.includes("/attendance")) {
-    const existingStr = localStorage.getItem("hrms_demo_attendance");
+    const attKey = getUserAttKey();
+    const existingStr = localStorage.getItem(attKey);
     let history = existingStr ? JSON.parse(existingStr) : [];
-
-    if (history.length === 0) {
-      history = [
-        { _id: "att-hist-1", id: "att-hist-1", date: "2026-09-21", checkIn: "2026-09-21T09:00:00.000Z", checkOut: "2026-09-21T18:00:00.000Z", status: "Present", workingHours: 8.5 },
-        { _id: "att-hist-2", id: "att-hist-2", date: "2026-09-20", checkIn: "2026-09-20T09:12:00.000Z", checkOut: "2026-09-20T18:15:00.000Z", status: "Present", workingHours: 8.2 },
-        { _id: "att-hist-3", id: "att-hist-3", date: "2026-09-19", checkIn: "2026-09-19T08:58:00.000Z", checkOut: "2026-09-19T18:05:00.000Z", status: "Present", workingHours: 8.1 },
-      ];
-      localStorage.setItem("hrms_demo_attendance", JSON.stringify(history));
-    }
 
     return {
       success: true,

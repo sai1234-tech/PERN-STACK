@@ -26,30 +26,33 @@ function EmployeeAttendance() {
 
   // Helper to format record hours cleanly
   const getRecordHours = (rec) => {
+    if (!rec.checkIn) return "0.0 hrs";
+
     const isToday = isTodayDateRecord(rec.date);
-    if (rec.workingHours && rec.workingHours !== "In Progress" && !Number.isNaN(Number(rec.workingHours)) && Number(rec.workingHours) > 0) {
-      return `${Number(rec.workingHours).toFixed(1)} hrs`;
-    }
-    if (rec.checkIn && !rec.checkOut) {
-      if (isToday) {
-        const start = new Date(rec.checkIn).getTime();
-        if (!Number.isNaN(start)) {
-          const hrs = Math.max(0, (Date.now() - start) / (1000 * 60 * 60)).toFixed(1);
-          return `${hrs} hrs (Active)`;
-        }
-      } else {
-        return "8.0 hrs";
-      }
-    }
-    if (rec.checkIn && rec.checkOut) {
-      const start = new Date(rec.checkIn).getTime();
+    const start = new Date(rec.checkIn).getTime();
+
+    if (rec.checkOut) {
       const end = new Date(rec.checkOut).getTime();
-      if (!Number.isNaN(start) && !Number.isNaN(end)) {
-        const hrs = Math.max(0, (end - start) / (1000 * 60 * 60)).toFixed(1);
+      if (!Number.isNaN(start) && !Number.isNaN(end) && end > start) {
+        const hrs = ((end - start) / (1000 * 60 * 60)).toFixed(1);
         return `${hrs} hrs`;
       }
+      if (rec.workingHours && !Number.isNaN(Number(rec.workingHours)) && Number(rec.workingHours) > 0) {
+        return `${Number(rec.workingHours).toFixed(1)} hrs`;
+      }
+      return "0.0 hrs";
     }
-    return "8.0 hrs";
+
+    if (isToday && !Number.isNaN(start)) {
+      const hrs = Math.max(0, (Date.now() - start) / (1000 * 60 * 60)).toFixed(1);
+      return `${hrs} hrs (Active)`;
+    }
+
+    if (rec.workingHours && !Number.isNaN(Number(rec.workingHours)) && Number(rec.workingHours) > 0) {
+      return `${Number(rec.workingHours).toFixed(1)} hrs`;
+    }
+
+    return "--:--";
   };
 
   const rawList = attendance || [];
@@ -300,8 +303,6 @@ function EmployeeAttendance() {
                             ? formatTime(rec.checkOut)
                             : isTodayDateRecord(rec.date) && rec.checkIn
                             ? "Active"
-                            : rec.checkIn
-                            ? formatTime(new Date(new Date(rec.checkIn).getTime() + 8 * 3600 * 1000))
                             : "--:--"}
                         </span>
                       </td>

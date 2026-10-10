@@ -27,9 +27,10 @@ export function useAttendance() {
 
       if (todayResult.status === "fulfilled") {
         const response = todayResult.value;
-        const todayData = response.data || response;
-        const todayRecord = response.attendance || todayData.attendance || todayData || null;
-        setTodayAttendance(Array.isArray(todayRecord) ? todayRecord[0] || null : todayRecord);
+        const todayData = response?.data || response;
+        const todayRecord = response?.attendance || todayData?.attendance || (todayData?.checkIn ? todayData : null);
+        const resolved = Array.isArray(todayRecord) ? todayRecord[0] || null : todayRecord;
+        setTodayAttendance(resolved && (resolved.checkIn || resolved.id) ? resolved : null);
       } else if (todayResult.reason?.message?.toLowerCase().includes("no attendance")) {
         setTodayAttendance(null);
       }
@@ -49,7 +50,11 @@ export function useAttendance() {
   const performAction = async (action) => {
     try {
       setError("");
-      await action();
+      const res = await action();
+      const updatedRecord = res?.data?.attendance || res?.attendance || (res?.data?.checkIn ? res.data : null);
+      if (updatedRecord && typeof updatedRecord === "object" && !Array.isArray(updatedRecord)) {
+        setTodayAttendance(updatedRecord);
+      }
       await loadAttendance(true);
     } catch (err) {
       setError(err.message || "Attendance action failed");

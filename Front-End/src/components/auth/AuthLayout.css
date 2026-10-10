@@ -1,0 +1,22 @@
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.auth-panel {
+  width: min(100%, 28rem);
+}
+
+.auth-header {
+  margin-bottom: 1.5rem;
+}
+
+.auth-header h1 {
+  margin: 0;
+}
+
+.auth-header p {
+  margin: 0.5rem 0 0;
+}

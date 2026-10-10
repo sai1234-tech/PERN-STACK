@@ -1,0 +1,227 @@
+.weekday-datepicker-container {
+  position: relative;
+  width: 100%;
+  font-family: inherit;
+}
+
+.datepicker-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.weekday-datepicker-input {
+  width: 100%;
+  padding: 0.65rem 2.4rem 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.weekday-datepicker-input:hover {
+  border-color: #6366f1;
+}
+
+.weekday-datepicker-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.datepicker-calendar-icon-btn {
+  position: absolute;
+  right: 0.65rem;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+/* Glassmorphic Popover Calendar */
+.weekday-calendar-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 9999;
+  width: 310px;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(99, 102, 241, 0.1);
+  animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.calendar-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.cal-month-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #1e293b;
+}
+
+.cal-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.cal-nav-btn:hover {
+  background: #6366f1;
+  color: #ffffff;
+  border-color: #6366f1;
+}
+
+/* Weekend Notice Banner */
+.calendar-weekend-notice {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #dc2626;
+  text-align: center;
+  margin-bottom: 0.65rem;
+}
+
+/* Weekday Grid Headers */
+.calendar-weekdays-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.cal-weekday-head {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  padding: 0.2rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-weekday-head.weekend-head {
+  color: #ef4444;
+}
+
+.cal-weekday-head .off-tag {
+  font-size: 0.58rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 1px 3px;
+  border-radius: 3px;
+  margin-top: 1px;
+  font-weight: 800;
+}
+
+/* Calendar Days Grid */
+.calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-day-cell {
+  position: relative;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: #f8fafc;
+  color: #1e293b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.cal-day-cell.empty {
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.cal-day-cell:hover:not(.disabled):not(.weekend-disabled) {
+  background: #e0e7ff;
+  color: #4338ca;
+  border-color: #818cf8;
+}
+
+.cal-day-cell.today {
+  border-color: #6366f1;
+  font-weight: 800;
+}
+
+.cal-day-cell.selected {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+/* Visually Disabled Saturdays & Sundays */
+.cal-day-cell.weekend-disabled,
+.cal-day-cell.disabled {
+  background: rgba(241, 245, 249, 0.6) !important;
+  color: #cbd5e1 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  opacity: 0.45;
+  border-color: rgba(226, 232, 240, 0.5) !important;
+}
+
+.cal-day-cell.weekend-disabled .day-number {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.weekend-x-badge {
+  font-size: 0.56rem;
+  font-weight: 800;
+  color: #ef4444;
+  line-height: 1;
+  margin-top: 1px;
+}

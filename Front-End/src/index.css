@@ -1,0 +1,370 @@
+@import 'nprogress/nprogress.css';
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #182230;
+  background: #f1f4f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background: #f1f4f6;
+}
+
+body,
+#root {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #f1f4f6;
+}
+
+body {
+  color: #182230;
+  line-height: 1.45;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(23, 107, 112, .28);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ── Responsive table helper ─────────────────────────────────
+   Wrap any <table> in .table-responsive-box to get horizontal
+   scroll on narrow viewports without breaking the layout.      */
+.table-responsive-box {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scroll on iOS */
+  border-radius: 8px;
+}
+
+/* ── Responsive helpers ────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hide-on-mobile { display: none !important; }
+  .show-on-mobile { display: block !important; }
+}
+
+@media (min-width: 769px) {
+  .show-on-mobile { display: none !important; }
+}
+
+/* ── High-contrast / dark-mode focus ring ─────────────────── */
+@media (prefers-color-scheme: dark) {
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible {
+    outline-color: #60a5fa; /* blue-400 — better contrast in dark backgrounds */
+  }
+}
+
+/* ── Reduced motion: disable all transitions globally ─────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+.loading-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #f1f4f6;
+  color: #176b70;
+  font-weight: 700;
+}
+
+/* Make clicks pass-through */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: linear-gradient(90deg, #176b70, #00d2ff, #176b70);
+  background-size: 200% 100%;
+  animation: nprogress-gradient 2s linear infinite;
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  box-shadow: 0 1px 4px rgba(0, 210, 255, 0.4);
+}
+
+/* Fancy blur effect */
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0px;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px #00d2ff, 0 0 5px #176b70;
+  opacity: 1.0;
+  transform: rotate(3deg) translate(0px, -4px);
+}
+
+/* Prominent Spinner */
+#nprogress .spinner {
+  display: block;
+  position: fixed;
+  z-index: 9999;
+  top: 20px;
+  right: 20px;
+}
+
+#nprogress .spinner-icon {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border: solid 3px transparent;
+  border-top-color: #00d2ff;
+  border-left-color: #176b70;
+  border-radius: 50%;
+  animation: nprogress-spinner 400ms linear infinite;
+}
+
+@keyframes nprogress-gradient {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@keyframes nprogress-spinner {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Global API Loader Overlay */
+#global-api-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(241, 244, 246, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#global-api-loader.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.global-api-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(23, 107, 112, 0.2);
+  border-left-color: #176b70;
+  border-top-color: #00d2ff;
+  border-radius: 50%;
+  animation: global-spinner-anim 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.global-api-text {
+  font-weight: 600;
+  color: #176b70;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  animation: pulse-text 1.5s ease-in-out infinite;
+}
+
+@keyframes global-spinner-anim {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ==========================================================================
+   UNIVERSAL REALISTIC DROPDOWN & SELECT STYLING SYSTEM
+   ========================================================================== */
+
+select,
+.select-input,
+.custom-select,
+.filter-select,
+.form-select,
+.dropdown-select,
+.search-select,
+.modal-select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-color: #ffffff !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2.2' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.85rem center !important;
+  background-size: 1.1rem !important;
+  padding: 0.6rem 2.5rem 0.6rem 1rem !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: #0f172a !important;
+  line-height: 1.45 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.02) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.15s ease !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+}
+
+select:hover,
+.select-input:hover,
+.custom-select:hover,
+.filter-select:hover,
+.form-select:hover,
+.dropdown-select:hover,
+.search-select:hover,
+.modal-select:hover {
+  border-color: #94a3b8 !important;
+  background-color: #f8fafc !important;
+  box-shadow: 0 4px 10px -2px rgba(15, 23, 42, 0.08) !important;
+}
+
+select:focus,
+.select-input:focus,
+.custom-select:focus,
+.filter-select:focus,
+.form-select:focus,
+.dropdown-select:focus,
+.search-select:focus,
+.modal-select:focus {
+  outline: none !important;
+  border-color: #2563eb !important;
+  background-color: #ffffff !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2.4' stroke='%232563eb'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E") !important;
+  box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.18), 0 4px 12px rgba(37, 99, 235, 0.1) !important;
+}
+
+select:disabled,
+.select-input:disabled,
+.custom-select:disabled,
+.filter-select:disabled,
+.form-select:disabled,
+.dropdown-select:disabled,
+.search-select:disabled,
+.modal-select:disabled {
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border-color: #e2e8f0 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+  box-shadow: none !important;
+}
+
+/* Compact Select Modifier */
+select.select-sm,
+.compact-select {
+  padding: 0.4rem 2rem 0.4rem 0.75rem !important;
+  font-size: 0.82rem !important;
+  border-radius: 8px !important;
+  background-position: right 0.65rem center !important;
+  background-size: 0.95rem !important;
+}
+
+/* Option List Styling */
+select option {
+  padding: 0.65rem 1rem !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border: none !important;
+}
+
+select option:checked,
+select option:hover {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
+}
+
+/* Custom Dropdown Menus & Popovers */
+.dropdown-menu,
+.custom-dropdown-menu,
+.search-dropdown-menu,
+.notification-dropdown,
+.select-options-list,
+.popover-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 32px -6px rgba(15, 23, 42, 0.15), 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+  backdrop-filter: blur(12px) !important;
+  overflow: hidden !important;
+  z-index: 1000 !important;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.dropdown-item,
+.custom-dropdown-item,
+.select-option-item {
+  padding: 0.65rem 1.1rem !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.dropdown-item:hover,
+.custom-dropdown-item:hover,
+.select-option-item:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.dropdown-item.active,
+.custom-dropdown-item.active,
+.select-option-item.selected {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+}
+

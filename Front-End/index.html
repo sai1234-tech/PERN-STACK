@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Responsive viewport: allow user zoom up to 5x (accessibility requirement) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <!-- SEO -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content="Secure Human Resource Management System — manage attendance, leaves, timesheets, payroll, and more." />
+    <!-- Theme color for mobile browser chrome -->
+    <meta name="theme-color" content="#176b70" />
+    <!-- Preconnect to Google Fonts for faster font loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <!-- Security headers (CSP via meta as fallback — prefer server-side headers) -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <title>HRMS - Human Resource Management System</title>
+  </head>
+  <body>
+    <!-- Skip to main content for keyboard/screen reader users -->
+    <a class="skip-to-main" href="#main-content" style="
+      position:fixed;top:-100px;left:1rem;
+      background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;
+      font-weight:700;font-size:0.9rem;z-index:99999;text-decoration:none;
+      transition:top 0.2s;
+    "
+    onfocus="this.style.top='1rem'"
+    onblur="this.style.top='-100px'">
+      Skip to main content
+    </a>
+    <div id="root" role="application" aria-label="HRMS Application"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+const money = (value) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(value || 0));
+const employeeName = (record) => `${record.employee?.firstName || record.firstName || ""} ${record.employee?.lastName || record.lastName || ""}`.trim() || record.employee?.name || record.employee?.email || "Employee";
+const employeeId = (record) => record.employee?._id || record.employeeId || record._id;
+const monthlySalary = (record) => Number(record.monthlySalary || record.monthly || record.employee?.monthlySalary || record.employee?.salary || record.employee?.employment?.salary || 0);
+const annualSalary = (record) => Number(record.annualSalary || record.yearlySalary || record.employee?.annualSalary || monthlySalary(record) * 12);
+
+function PayrollTable({ records, onUpdateSalary }) {
+  const displayedRecords = records;
+  return <div className="payroll-table-wrap"><table><thead><tr><th>Employee</th><th>Annual salary</th><th>Monthly salary</th><th>Gross pay</th><th>Deductions</th><th>Net pay</th><th>Status</th><th>Generated</th><th>Action</th></tr></thead><tbody>{displayedRecords.length ? displayedRecords.map((record, index) => { const deductions = Number(record.totalDeductions ?? record.deductionsTotal ?? record.deduction ?? 0); const netPay = Number(record.netSalary ?? record.netPay ?? 0); return <tr key={record._id || record.employee?._id || index}><td><strong>{employeeName(record)}</strong><small>{record.employee?.employeeCode || record.employeeCode || record.employee?.email || "-"}</small></td><td>{money(annualSalary(record))}</td><td><strong>{money(monthlySalary(record))}</strong><small>Gross monthly base</small></td><td>{money(record.grossSalary ?? record.grossPay ?? monthlySalary(record))}</td><td>{money(deductions)}</td><td><strong>{money(netPay)}</strong></td><td><span className={`payroll-status ${String(record.status || "generated").toLowerCase()}`}>{record.status || "Generated"}</span></td><td>{record.generatedAt ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(record.generatedAt)) : "-"}</td><td><button type="button" onClick={() => onUpdateSalary(record, employeeId(record), monthlySalary(record))}>Update salary</button></td></tr>; }) : <tr><td colSpan="9" className="empty-state">No payroll records for this period. Generate payroll to create the register.</td></tr>}</tbody></table></div>;
+}
+
+export default PayrollTable;

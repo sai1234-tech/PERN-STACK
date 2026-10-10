@@ -83,28 +83,38 @@ const initDB = async () => {
 initDB();
 
 // Health Check Route
-app.get("/api/health", (req, res) => {
+const handleHealth = (req, res) => {
     res.status(200).json({ status: "OK", timestamp: new Date() });
-});
+};
+app.get("/api/health", handleHealth);
+app.get("/api/v1/health", handleHealth);
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/attendance", attendanceRoutes);
-app.use("/api/employee", employeeRoutes);
-app.use("/api/employees", employeeRoutes);
-app.use("/api/manager", managerRoutes);
-app.use("/api/clearance", clearanceRoutes);
-app.use("/api/documents", documentRoutes);
-app.use("/api/leaves", leaveRoutes);
-app.use("/api/timesheets", timesheetRoutes);
-app.use("/api/payrolls", payrollRoutes);
-app.use("/api/performance", performanceRoutes);
-app.use("/api/pulse", pulseRoutes);
-app.use("/api/resignations", resignationRoutes);
-app.use("/api/tickets", ticketRoutes);
-app.use("/api/departments", departmentRoutes);
-app.use("/api/holidays", holidayRoutes);
-app.use("/api/events", eventRoutes);
+// Route mapping configuration supporting both singular and plural prefixes under /api and /api/v1
+const routeMappings = [
+    { paths: ["/auth"], handler: authRoutes },
+    { paths: ["/attendance"], handler: attendanceRoutes },
+    { paths: ["/employee", "/employees"], handler: employeeRoutes },
+    { paths: ["/manager"], handler: managerRoutes },
+    { paths: ["/clearance", "/clearances"], handler: clearanceRoutes },
+    { paths: ["/document", "/documents"], handler: documentRoutes },
+    { paths: ["/leave", "/leaves"], handler: leaveRoutes },
+    { paths: ["/timesheet", "/timesheets"], handler: timesheetRoutes },
+    { paths: ["/payroll", "/payrolls"], handler: payrollRoutes },
+    { paths: ["/performance"], handler: performanceRoutes },
+    { paths: ["/pulse"], handler: pulseRoutes },
+    { paths: ["/resignation", "/resignations"], handler: resignationRoutes },
+    { paths: ["/ticket", "/tickets"], handler: ticketRoutes },
+    { paths: ["/department", "/departments"], handler: departmentRoutes },
+    { paths: ["/holiday", "/holidays"], handler: holidayRoutes },
+    { paths: ["/event", "/events"], handler: eventRoutes }
+];
+
+routeMappings.forEach(({ paths, handler }) => {
+    paths.forEach((p) => {
+        app.use(`/api${p}`, handler);
+        app.use(`/api/v1${p}`, handler);
+    });
+});
 
 // Global Error Handler
 app.use(errorHandler);

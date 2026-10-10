@@ -1,0 +1,842 @@
+/* ==========================================================================
+   Employee Timesheets Hub Styles - Quadratic Systems Inc
+   ========================================================================== */
+
+.employee-timesheets-hub {
+  min-height: calc(100vh - 72px);
+  padding: 2.25rem 2.5rem 4rem;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.employee-timesheets-hub > * {
+  max-width: 1360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ==========================================================================
+   Hero Command Banner
+   ========================================================================== */
+
+.time-hero-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  padding: 2.25rem 2.5rem;
+  background: linear-gradient(135deg, #091e20 0%, #0d3438 55%, #134e4a 100%);
+  border-radius: 20px;
+  color: #ffffff;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 30px -5px rgba(13, 52, 56, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.time-hero-banner::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -8%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.time-hero-left {
+  max-width: 680px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-kicker-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem;
+  background: rgba(45, 212, 191, 0.15);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #5eead4;
+  margin-bottom: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.pulsing-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2dd4bf;
+  box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.7);
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(45, 212, 191, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0);
+  }
+}
+
+.time-hero-banner h1 {
+  margin: 0 0 0.4rem;
+  font-size: clamp(26px, 3.2vw, 36px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.time-hero-banner p {
+  margin: 0 0 1rem;
+  color: #ccfbf1;
+  font-size: 0.96rem;
+  line-height: 1.5;
+}
+
+.emp-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.meta-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e6fffa;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.time-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.week-navigator-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+}
+
+.week-date-input {
+  height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color-scheme: dark;
+}
+
+.week-date-input:focus {
+  outline: none;
+  border-color: #5eead4;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* ==========================================================================
+   KPI Cards Grid
+   ========================================================================== */
+
+.time-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.kpi-card-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.35rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08);
+}
+
+.kpi-card-box.emerald { border-top: 3.5px solid #10b981; }
+.kpi-card-box.teal { border-top: 3.5px solid #0d9488; }
+.kpi-card-box.indigo { border-top: 3.5px solid #6366f1; }
+.kpi-card-box.rose { border-top: 3.5px solid #f43f5e; }
+
+.kpi-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.kpi-title-text {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kpi-icon-pod {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 1.15rem;
+}
+
+.kpi-icon-pod.emerald { background: #dcfce7; }
+.kpi-icon-pod.teal { background: #ccfbf1; }
+.kpi-icon-pod.indigo { background: #e0e7ff; }
+.kpi-icon-pod.rose { background: #ffe4e6; }
+
+.kpi-stat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.kpi-big-num {
+  font-size: 1.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.kpi-badge-chip {
+  display: inline-flex;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.kpi-badge-chip.positive {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.kpi-badge-chip.neutral {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.kpi-badge-chip.indigo {
+  background: #e0e7ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+}
+
+.kpi-progress-rail {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.6rem;
+}
+
+.kpi-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.kpi-progress-bar.emerald { background: #10b981; }
+.kpi-progress-bar.teal { background: #0d9488; }
+.kpi-progress-bar.indigo { background: #6366f1; }
+.kpi-progress-bar.rose { background: #f43f5e; }
+
+.kpi-subtext {
+  font-size: 0.76rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Enterprise Weekly Calendar Strip
+   ========================================================================== */
+
+.enterprise-calendar-strip {
+  margin-bottom: 2rem;
+}
+
+/* ==========================================================================
+   Attendance Reconciliation Box
+   ========================================================================== */
+
+.attendance-reconciliation-panel {
+  margin-bottom: 2rem;
+}
+
+.reconciliation-card-container {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reconciliation-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 1.5rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+  border-bottom: 1px solid #334155;
+}
+
+.rec-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rec-icon {
+  font-size: 1.4rem;
+  background: rgba(255, 255, 255, 0.1);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+
+.rec-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+}
+
+.rec-date-subtitle {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  display: block;
+  margin-top: 2px;
+}
+
+.rec-status-badge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-mismatch {
+  background: #ffe4e6;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+.badge-matched {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.badge-pending {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.reconciliation-table-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.rec-grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+}
+
+.rec-grid-row:last-child {
+  border-bottom: none;
+}
+
+.rec-grid-row.border-top {
+  border-top: 2px solid #e2e8f0;
+  background: #fafafa;
+}
+
+.rec-grid-row.highlight-action {
+  background: #f8fafc;
+  padding: 0.9rem 1.5rem;
+}
+
+.rec-label {
+  color: #475569;
+  font-weight: 600;
+}
+
+.rec-value {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rec-value.mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace, sans-serif;
+  letter-spacing: 0.05em;
+  font-size: 0.95rem;
+}
+
+.highlight-clocked {
+  color: #0284c7;
+}
+
+.highlight-timesheet {
+  color: #0d9488;
+}
+
+.text-danger {
+  color: #e11d48;
+}
+
+.text-success {
+  color: #16a34a;
+}
+
+.action-danger {
+  color: #be123c;
+  background: #ffe4e6;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.action-success {
+  color: #15803d;
+  background: #dcfce7;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+/* ==========================================================================
+   Dual-Pane Layout (Timesheet Form + Summary Sidebar)
+   ========================================================================== */
+
+.timesheet-workspace-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1.75rem;
+  margin-bottom: 2rem;
+}
+
+.timesheet-card-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.timesheet-card-panel h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.timesheet-card-panel p {
+  margin: 0 0 1.5rem;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.task-entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-field-group label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.form-field-group input[type="text"],
+.form-field-group input[type="number"],
+.form-field-group input[type="datetime-local"],
+.form-field-group input[type="date"],
+.form-field-group select,
+.form-field-group textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.88rem;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.form-field-group input:focus,
+.form-field-group select:focus,
+.form-field-group textarea:focus {
+  outline: none;
+  border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
+.leave-balance-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.balance-item-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.balance-title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.35rem;
+}
+
+.bulletin-box {
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  color: #0f766e;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Timesheet Ledger Table Panel
+   ========================================================================== */
+
+.timesheet-table-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.timesheet-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.timesheet-table-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.project-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.time-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.hours-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  border-radius: 8px;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.status-chip-badge {
+  display: inline-block;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.status-chip-badge.late {
+  background: #fff1f2;
+  color: #e11d48;
+  border-color: #fecdd3;
+}
+
+.status-chip-badge.present {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+.status-chip-badge.indigo {
+  background: #e0e7ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.time-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.time-inline-btn {
+  height: 32px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.time-inline-btn.edit {
+  background: #f0fdfa;
+  color: #0f766e;
+  border-color: #ccfbf1;
+}
+
+.time-inline-btn.edit:hover {
+  background: #0d9488;
+  color: #ffffff;
+}
+
+.time-inline-btn.submit {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+.time-inline-btn.submit:hover {
+  background: #059669;
+  color: #ffffff;
+}
+
+.time-inline-btn.delete {
+  background: #fff1f2;
+  color: #e11d48;
+  border-color: #fecdd3;
+}
+
+.time-inline-btn.delete:hover {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Table Base Styling
+   ========================================================================== */
+
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.att-records-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.att-records-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.att-records-table td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.86rem;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.att-records-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints - Timesheets Hub
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .time-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .timesheet-workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .employee-timesheets-hub {
+    padding: 1.75rem 1.5rem 3.5rem;
+  }
+
+  .time-hero-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.75rem;
+    gap: 1.5rem;
+  }
+
+  .time-hero-left {
+    max-width: 100%;
+  }
+
+  .time-hero-actions {
+    width: 100%;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .employee-timesheets-hub {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .time-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row-2col {
+    grid-template-columns: 1fr;
+  }
+
+  .week-navigator-box {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .timesheet-card-panel,
+  .timesheet-table-panel {
+    padding: 1.25rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .time-hero-banner {
+    padding: 1.35rem 1.15rem;
+    border-radius: 16px;
+  }
+
+  .timesheet-table-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

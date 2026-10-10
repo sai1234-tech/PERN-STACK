@@ -1,0 +1,973 @@
+/* ==========================================================================
+   HRMS Universal Responsive & Device Optimization Engine - Quadratic Systems Inc
+   Supports: Android, iOS (Safari Safe-Area Insets), Tablets (iPad/Android Tab)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   CSS Custom Properties & Safe Area Boundaries
+   -------------------------------------------------------------------------- */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+/* --------------------------------------------------------------------------
+   Global Box Model & Viewport Boundaries (Zero Unwanted Horizontal Overflow)
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Ensure all media adapts smoothly to parent containers */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Mobile Form Controls (iOS Safari Auto-Zoom Prevention & Touch Targets)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="month"],
+  input[type="time"],
+  input[type="file"],
+  input[type="tel"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents iOS Safari 16px auto-zoom threshold */
+  }
+
+  /* Ergonomic touch targets */
+  button,
+  a.btn,
+  .att-btn,
+  .doc-btn,
+  .hero-btn,
+  .mode-tab,
+  .filter-tab,
+  .acct-tab-btn,
+  .payroll-tab-btn,
+  .doc-filter-btn {
+    min-height: 40px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Universal Touch-Scrollable Table & Ledger Containers
+   -------------------------------------------------------------------------- */
+.table-wrapper,
+.hr-table-wrap,
+.employee-table-wrap,
+.department-list,
+.activity-scroll,
+.table-responsive-container,
+.table-responsive-wrapper,
+.reporting-table-container,
+.org-canvas-viewport,
+.recent-punch-table-wrap,
+.ledger-scroll-container,
+.acct-table-responsive,
+.payroll-table-wrap,
+.matrix-table-card,
+.department-table-wrap,
+.timesheet-grid-scroll,
+.shift-grid-scroll,
+.candidate-pipeline {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}
+
+/* Guarantee readable column spacing in tables when viewed on phones */
+.table-wrapper table,
+.hr-table-wrap table,
+.employee-table-wrap table,
+.reporting-table-container table,
+.org-matrix-table,
+.hr-modern-table,
+.att-records-table,
+.modern-emp-table,
+.timesheet-hr-table,
+.modern-ts-table,
+.ledger-table,
+.modern-doc-table,
+.department-modern-table,
+.acct-data-table,
+.history-modern-table,
+.modern-attendance-table,
+.payroll-table-wrap table {
+  min-width: 620px;
+}
+
+.recent-punch-table {
+  min-width: 440px;
+}
+
+/* --------------------------------------------------------------------------
+   Universal Segmented Tabs (Horizontal Touch-Scroll on Mobile)
+   -------------------------------------------------------------------------- */
+.payroll-tab-pills,
+.doc-filter-pills,
+.acct-tab-pills,
+.view-mode-tabs,
+.segmented-filter-bar,
+.emp-status-tabs,
+.leave-status-tabs {
+  display: flex !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  flex-wrap: nowrap !important;
+  gap: 0.5rem;
+  padding-bottom: 4px;
+}
+
+.payroll-tab-pills::-webkit-scrollbar,
+.doc-filter-pills::-webkit-scrollbar,
+.acct-tab-pills::-webkit-scrollbar,
+.view-mode-tabs::-webkit-scrollbar,
+.segmented-filter-bar::-webkit-scrollbar {
+  display: none !important;
+}
+
+.payroll-tab-btn,
+.doc-filter-btn,
+.acct-tab-btn,
+.mode-tab-btn,
+.filter-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* --------------------------------------------------------------------------
+   Universal Modals, Drawers & Lightboxes across Mobile Devices
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .photo-modal-card,
+  .edit-profile-modal-card,
+  .hd-modal-card,
+  .payroll-modal,
+  .rejection-modal-card,
+  .detail-modal-card,
+  .leave-modal-card,
+  .emp-modal-card,
+  .dept-modal-card,
+  .doc-modal-card,
+  .modal-dialog,
+  .modal-content {
+    width: 100% !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 36px) !important;
+    overflow-y: auto !important;
+    border-radius: 16px !important;
+    margin: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Form actions footer full-width stack */
+  .modal-footer,
+  .edit-modal-footer,
+  .photo-modal-actions,
+  .rejection-modal-footer,
+  .detail-modal-footer,
+  .form-actions-cluster,
+  .acct-form-footer {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    align-items: stretch !important;
+  }
+
+  .modal-footer button,
+  .edit-modal-footer button,
+  .rejection-modal-footer button,
+  .detail-modal-footer button,
+  .form-actions-cluster button,
+  .acct-form-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .photo-modal-btn-cluster {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+
+  .photo-modal-btn-cluster button,
+  .photo-modal-btn-cluster a,
+  .photo-modal-btn-cluster label {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Command Palette Mobile Adaptation
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .command-palette-overlay {
+    padding: 12px !important;
+    padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
+    align-items: flex-start !important;
+  }
+
+  .command-palette-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 32px) !important;
+    border-radius: 14px !important;
+  }
+
+  .cmd-footer {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .cmd-footer-shortcut {
+    display: none !important; /* Hide hardware keyboard hints on touch devices */
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Chatbot Widget Mobile Adaptation
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .chatbot-container {
+    bottom: max(1rem, env(safe-area-inset-bottom, 1rem)) !important;
+    right: 1rem !important;
+  }
+
+  .chatbot-fab {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  .fab-icon {
+    font-size: 1.5rem !important;
+  }
+
+  .chatbot-window {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    z-index: 100000 !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Authentication Pages (Login, Sign Up, Setup)
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .auth-page {
+    padding: 16px 12px max(24px, env(safe-area-inset-bottom, 20px)) !important;
+    min-height: 100dvh !important;
+    align-items: flex-start !important;
+  }
+
+  .auth-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-top: max(10px, env(safe-area-inset-top, 10px)) !important;
+  }
+
+  .auth-brand {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .brand-logo-link {
+    width: 100% !important;
+  }
+
+  .system-status-pill {
+    align-self: flex-start !important;
+  }
+
+  .auth-mode-switcher {
+    width: 100% !important;
+    margin-bottom: 16px !important;
+  }
+
+  .mode-tab {
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+  }
+
+  .auth-card {
+    padding: 22px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .auth-header h1 {
+    font-size: 21px !important;
+  }
+
+  .auth-header p {
+    font-size: 13px !important;
+  }
+
+  .demo-chips-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .demo-chip-card {
+    padding: 10px 12px !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  .employment-pills-group {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .emp-type-pill {
+    flex: 1 1 calc(50% - 6px) !important;
+    min-width: 120px !important;
+  }
+
+  .pwd-checklist-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stepper-steps {
+    gap: 4px !important;
+  }
+
+  .step-title {
+    font-size: 11px !important;
+  }
+
+  .step-actions-footer {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+  }
+
+  .step-actions-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .auth-trust-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: center !important;
+  }
+
+  .trust-divider {
+    display: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Organization Hierarchy & Org Chart Module
+   -------------------------------------------------------------------------- */
+@media (max-width: 992px) {
+  .org-hierarchy-container {
+    padding: 1.5rem 1.25rem 3.5rem !important;
+  }
+
+  .my-reporting-relationship-banner {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1.25rem !important;
+    padding: 1.5rem 1.25rem !important;
+  }
+
+  .reporting-flow-arrow {
+    transform: rotate(90deg) !important;
+    padding: 0.5rem 0 !important;
+  }
+
+  .manager-target-card,
+  .manager-hero-card {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .org-hierarchy-container {
+    padding: 1rem 0.75rem max(2rem, env(safe-area-inset-bottom, 16px)) !important;
+  }
+
+  .header-title-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1rem !important;
+  }
+
+  .page-heading {
+    font-size: 22px !important;
+  }
+
+  .user-profile-summary {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .manager-hero-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .manager-actions-row {
+    width: 100% !important;
+    flex-direction: row !important;
+  }
+
+  .manager-action-chip {
+    flex: 1 !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Helpdesk & Support Tickets Module
+   -------------------------------------------------------------------------- */
+@media (max-width: 992px) {
+  .helpdesk-page {
+    padding: 1.5rem 1.25rem 3.5rem !important;
+  }
+
+  .helpdesk-workspace-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+  }
+
+  .ticket-cards-panel {
+    max-height: 480px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .helpdesk-page {
+    padding: 1rem 0.75rem max(2rem, env(safe-area-inset-bottom, 16px)) !important;
+  }
+
+  .helpdesk-hero-banner {
+    padding: 1.35rem 1.15rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .helpdesk-hero-actions {
+    width: 100% !important;
+  }
+
+  .helpdesk-hero-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .ticket-filter-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .ticket-inspector-actions {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  .ticket-inspector-actions button {
+    width: 100% !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Recruitment & Onboarding Module
+   -------------------------------------------------------------------------- */
+@media (max-width: 992px) {
+  .recruitment-hub {
+    padding: 1.5rem 1.25rem 3.5rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .recruitment-hub {
+    padding: 1rem 0.75rem max(2rem, env(safe-area-inset-bottom, 16px)) !important;
+  }
+
+  .recruitment-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .add-candidate-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .pipeline-stage {
+    flex: 0 0 280px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Admin Governance & Account Management Modules
+   -------------------------------------------------------------------------- */
+@media (max-width: 992px) {
+  .admin-dashboard,
+  .account-management-hub {
+    padding: 1.5rem 1.25rem 3.5rem !important;
+  }
+
+  .admin-stats-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .admin-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-dashboard,
+  .account-management-hub {
+    padding: 1rem 0.75rem max(2rem, env(safe-area-inset-bottom, 16px)) !important;
+  }
+
+  .admin-dashboard-heading,
+  .admin-heading-actions,
+  .acct-hero-banner {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1rem !important;
+  }
+
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .acct-hero-actions {
+    width: 100% !important;
+  }
+
+  .acct-hero-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .acct-toolbar-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .acct-search-box {
+    width: 100% !important;
+  }
+
+  .acct-filter-cluster {
+    width: 100% !important;
+    flex-direction: column !important;
+  }
+
+  .acct-filter-cluster select {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Employee & HR Core Hubs: Responsive Breakpoints Engine
+   -------------------------------------------------------------------------- */
+
+/* Tier 1: Ultra-Wide & 4K Displays (>= 1920px) */
+@media (min-width: 1920px) {
+  .employee-dashboard,
+  .employee-dashboard-hub,
+  .employee-documents-hub,
+  .employee-attendance-hub,
+  .employee-leaves-hub,
+  .employee-timesheets-hub,
+  .employee-payroll-hub,
+  .employee-profile-hub,
+  .hr-dashboard,
+  .employee-management,
+  .department-page,
+  .timesheets-management-page,
+  .account-management-hub {
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .doc-hero-banner h1,
+  .att-hero-banner h1,
+  .timesheet-hero-banner h1,
+  .prof-identity-info h1,
+  .payroll-hero-banner h1,
+  .emp-hero-left h1 {
+    font-size: 2.5rem;
+  }
+}
+
+/* Tier 2: Laptops & Medium Desktops (1024px - 1439px) */
+@media (max-width: 1200px) {
+  .doc-hero-banner,
+  .att-hero-banner,
+  .timesheet-hero-banner,
+  .prof-hero-banner,
+  .payroll-hero-banner,
+  .emp-hero-banner,
+  .acct-hero-banner {
+    padding: 2rem 2.25rem;
+  }
+
+  .doc-kpi-grid,
+  .att-kpi-grid,
+  .timesheet-kpi-grid,
+  .prof-kpi-grid,
+  .payroll-kpi-grid,
+  .emp-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.15rem;
+  }
+}
+
+/* Tier 3: iPad & Tablets (768px - 1023px, Portrait & Landscape) */
+@media (max-width: 992px) {
+  .employee-dashboard,
+  .employee-dashboard-hub,
+  .employee-documents-hub,
+  .employee-attendance-hub,
+  .employee-leaves-hub,
+  .employee-timesheets-hub,
+  .employee-payroll-hub,
+  .employee-profile-hub,
+  .hr-dashboard,
+  .employee-management,
+  .department-page,
+  .timesheets-management-page,
+  .payroll-page {
+    padding: 1.5rem 1.25rem 3.5rem !important;
+  }
+
+  /* Hero Banners Stacking */
+  .doc-hero-banner,
+  .att-hero-banner,
+  .timesheet-hero-banner,
+  .prof-hero-banner,
+  .payroll-hero-banner,
+  .emp-hero-banner,
+  .acct-hero-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1.5rem !important;
+    padding: 1.75rem 1.5rem !important;
+  }
+
+  .doc-hero-left,
+  .att-hero-left,
+  .timesheet-hero-left,
+  .prof-hero-left,
+  .payroll-hero-left,
+  .emp-hero-left,
+  .acct-hero-left {
+    max-width: 100% !important;
+  }
+
+  .att-hero-actions,
+  .timesheet-hero-actions,
+  .prof-hero-actions,
+  .payroll-hero-actions,
+  .emp-hero-actions,
+  .acct-hero-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+  }
+
+  /* Dual Column Splits -> Stacked Vertical */
+  .dashboard-columns-grid,
+  .dashboard-dual-layout,
+  .leave-workspace-grid,
+  .dossier-sections-grid,
+  .timesheet-workspace-grid,
+  .payslip-dual-columns,
+  .department-layout {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  .workday-punch-station {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+    padding: 1.5rem !important;
+  }
+
+  .doc-kpi-grid,
+  .att-kpi-grid,
+  .timesheet-kpi-grid,
+  .prof-kpi-grid,
+  .payroll-kpi-grid,
+  .emp-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Tier 4: Mobile & Phablets (480px - 767px: iPhone / Android) */
+@media (max-width: 768px) {
+  .employee-dashboard,
+  .employee-dashboard-hub,
+  .employee-documents-hub,
+  .employee-attendance-hub,
+  .employee-leaves-hub,
+  .employee-timesheets-hub,
+  .employee-payroll-hub,
+  .employee-profile-hub,
+  .hr-dashboard,
+  .employee-management,
+  .department-page,
+  .timesheets-management-page,
+  .payroll-page {
+    padding: 1.25rem 1rem max(2.5rem, env(safe-area-inset-bottom, 20px)) !important;
+  }
+
+  /* Typography Adjustments */
+  h1 {
+    font-size: clamp(22px, 5.5vw, 28px);
+  }
+
+  .doc-hero-banner h1,
+  .att-hero-banner h1,
+  .timesheet-hero-banner h1,
+  .prof-identity-info h1,
+  .payroll-hero-banner h1,
+  .emp-hero-banner h1,
+  .acct-hero-banner h1 {
+    font-size: clamp(22px, 5.5vw, 28px) !important;
+  }
+
+  /* 1-Column KPI Grids for Crisp Scannability */
+  .doc-kpi-grid,
+  .att-kpi-grid,
+  .timesheet-kpi-grid,
+  .prof-kpi-grid,
+  .payroll-kpi-grid,
+  .emp-kpi-grid,
+  .quick-launchpad-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* Form Grids -> Single Column */
+  .doc-form-grid,
+  .leave-form-grid,
+  .task-log-form-grid,
+  .dossier-fields-grid,
+  .employee-form-grid,
+  .department-form-grid,
+  .acct-inputs-grid,
+  .detail-grid-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.9rem !important;
+  }
+
+  /* Buttons Stacking on Mobile */
+  .hero-buttons-row,
+  .punch-button-cluster,
+  .punch-actions-cluster,
+  .export-buttons-group,
+  .batch-btns-group,
+  .panel-controls-cluster,
+  .directory-controls {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  .hero-buttons-row button,
+  .hero-buttons-row a,
+  .punch-button-cluster button,
+  .punch-actions-cluster button,
+  .export-buttons-group button,
+  .batch-btns-group button,
+  .header-create-button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .digital-stopwatch {
+    font-size: clamp(1.8rem, 9vw, 2.5rem) !important;
+  }
+
+  .payslip-summary-trio {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+}
+
+/* Tier 5: Small Mobile Screens (320px - 479px: iPhone SE, Galaxy Mini) */
+@media (max-width: 480px) {
+  .employee-dashboard,
+  .employee-dashboard-hub,
+  .employee-documents-hub,
+  .employee-attendance-hub,
+  .employee-leaves-hub,
+  .employee-timesheets-hub,
+  .employee-payroll-hub,
+  .employee-profile-hub,
+  .payroll-page,
+  .department-page,
+  .employee-management,
+  .timesheets-management-page {
+    padding: 1rem 0.75rem max(2rem, env(safe-area-inset-bottom, 16px)) !important;
+  }
+
+  .doc-hero-banner,
+  .att-hero-banner,
+  .timesheet-hero-banner,
+  .prof-hero-banner,
+  .payroll-hero-banner,
+  .emp-hero-banner,
+  .acct-hero-banner,
+  .department-heading {
+    padding: 1.25rem 1rem !important;
+    border-radius: 16px !important;
+  }
+
+  .kpi-big-num {
+    font-size: 1.7rem !important;
+  }
+
+  .att-btn,
+  .doc-btn,
+  .touch-btn,
+  .hero-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .prof-action-buttons-row {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+
+  .prof-action-buttons-row button,
+  .prof-action-buttons-row label {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .dossier-section-card,
+  .smart-punch-card,
+  .dash-panel-card,
+  .bulletin-box,
+  .acct-directory-panel,
+  .acct-provision-card {
+    padding: 1.15rem 0.9rem !important;
+  }
+}
+
+/* Tier 6: Extra Compact Mobile Screens (<= 360px: iPhone SE 1st gen, Galaxy Fold outer) */
+@media (max-width: 360px) {
+  .employee-dashboard,
+  .employee-dashboard-hub,
+  .employee-documents-hub,
+  .employee-attendance-hub,
+  .employee-leaves-hub,
+  .employee-timesheets-hub,
+  .employee-payroll-hub,
+  .employee-profile-hub {
+    padding: 0.75rem 0.5rem max(1.75rem, env(safe-area-inset-bottom, 14px)) !important;
+  }
+
+  .doc-hero-banner,
+  .att-hero-banner,
+  .timesheet-hero-banner,
+  .prof-hero-banner,
+  .payroll-hero-banner,
+  .emp-hero-banner,
+  .acct-hero-banner {
+    padding: 1.1rem 0.85rem !important;
+    border-radius: 12px !important;
+  }
+
+  .kpi-big-num {
+    font-size: 1.45rem !important;
+  }
+
+  .kpi-card {
+    padding: 0.9rem 0.75rem !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Accessibility: Reduced Motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

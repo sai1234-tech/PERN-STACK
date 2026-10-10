@@ -229,8 +229,9 @@ export default function EmployeeCalendar() {
   const holidayMap = useMemo(() => {
     const map = new Map();
     (holidays || []).forEach((h) => {
-      const d = new Date(h.date);
-      const key = formatDateKey(d);
+      if (!h || !h.date) return;
+      const key = formatDateKey(h.date);
+      if (!key) return;
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(h);
     });
@@ -241,14 +242,25 @@ export default function EmployeeCalendar() {
   const leaveMap = useMemo(() => {
     const map = new Map();
     (leaves || []).forEach((l) => {
-      if (l.status !== "Approved" && l.status !== "Pending") return;
-      const start = new Date(l.startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(l.endDate);
-      end.setHours(0, 0, 0, 0);
+      if (!l || !l.startDate || !l.endDate) return;
+      const st = String(l.status || "").toLowerCase();
+      if (!st.includes("approved") && !st.includes("pending")) return;
 
-      const cur = new Date(start);
-      while (cur <= end) {
+      const sStr = String(l.startDate).slice(0, 10);
+      const eStr = String(l.endDate).slice(0, 10);
+      
+      const sParts = sStr.split("-");
+      const eParts = eStr.split("-");
+      if (sParts.length !== 3 || eParts.length !== 3) return;
+
+      let cur = new Date(parseInt(sParts[0], 10), parseInt(sParts[1], 10) - 1, parseInt(sParts[2], 10));
+      const end = new Date(parseInt(eParts[0], 10), parseInt(eParts[1], 10) - 1, parseInt(eParts[2], 10));
+
+      if (isNaN(cur.getTime()) || isNaN(end.getTime()) || end < cur) return;
+
+      let maxDays = 60;
+      while (cur <= end && maxDays > 0) {
+        maxDays--;
         const key = formatDateKey(cur);
         if (!map.has(key)) map.set(key, []);
         map.get(key).push(l);
@@ -262,7 +274,8 @@ export default function EmployeeCalendar() {
   const customEventsMap = useMemo(() => {
     const map = new Map();
     (customEvents || []).forEach((item) => {
-      const key = item.date;
+      if (!item || !item.date) return;
+      const key = formatDateKey(item.date);
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(item);
     });
@@ -271,12 +284,11 @@ export default function EmployeeCalendar() {
 
   // Upcoming holidays list
   const upcomingHolidays = useMemo(() => {
-    const todayMidnight = new Date();
-    todayMidnight.setHours(0, 0, 0, 0);
+    const todayKey = formatDateKey(new Date());
     return (holidays || [])
-      .filter((h) => new Date(h.date) >= todayMidnight)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(0, 5);
+      .filter((h) => h && h.date && formatDateKey(h.date) >= todayKey)
+      .sort((a, b) => formatDateKey(a.date).localeCompare(formatDateKey(b.date)))
+      .slice(0, 6);
   }, [holidays]);
 
   const getHolidaysForDate = (dateObj) => holidayMap.get(formatDateKey(dateObj)) || [];

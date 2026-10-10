@@ -41,9 +41,9 @@ function AppSidebar() {
   }, [toggleCollapse]);
 
   const role = normalizeRole(user);
-  const isEmployee = role === "employee" || role === "manager";
+  const isEmployee = role === "employee" || role === "manager" || role === "hr";
   const isManager = role === "manager" || role === "admin";
-  const isHr = role === "hr";
+  const isHr = role === "hr" || role === "admin";
   const isAdmin = role === "admin";
 
   const profile = employee || user || {};

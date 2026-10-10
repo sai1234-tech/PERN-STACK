@@ -1,42 +1,17 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
 import { useAttendance } from "../../hooks/useAttendance";
-import { useEmployee } from "../../hooks/useEmployee";
 import { formatDate, formatTime, getLocalDateString } from "../../utils/date";
 import "../../styles/employee/attendance.css";
 
 function EmployeeAttendance() {
-  const { attendance, todayAttendance, loading, error, reload, clockIn, clockOut } = useAttendance();
-  const { employee } = useEmployee();
+  const { attendance, todayAttendance, loading, error, reload } = useAttendance();
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchDate, setSearchDate] = useState("");
-  const [now, setNow] = useState(Date.now());
 
   const checkedIn = Boolean(todayAttendance?.checkIn) && !todayAttendance?.checkOut;
-  const shiftCompleted = Boolean(todayAttendance?.checkIn && todayAttendance?.checkOut);
-
-  // Live timer for active shift
-  useEffect(() => {
-    if (!checkedIn) return undefined;
-    const timer = window.setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [checkedIn]);
-
-  // Dynamic live logged hours calculation
-  const liveLoggedHours = useMemo(() => {
-    if (!todayAttendance?.checkIn) return "0.0";
-    const checkInTime = new Date(todayAttendance.checkIn).getTime();
-    const checkOutTime = todayAttendance.checkOut ? new Date(todayAttendance.checkOut).getTime() : now;
-    if (Number.isNaN(checkInTime)) return todayAttendance?.workingHours || "0.0";
-
-    const diffMs = Math.max(0, checkOutTime - checkInTime);
-    const totalHours = (diffMs / (1000 * 60 * 60)).toFixed(1);
-    return totalHours;
-  }, [todayAttendance?.checkIn, todayAttendance?.checkOut, todayAttendance?.workingHours, now]);
 
   const isTodayDateRecord = (dateVal) => {
     if (!dateVal) return false;
@@ -59,7 +34,7 @@ function EmployeeAttendance() {
       if (isToday) {
         const start = new Date(rec.checkIn).getTime();
         if (!Number.isNaN(start)) {
-          const hrs = Math.max(0, (now - start) / (1000 * 60 * 60)).toFixed(1);
+          const hrs = Math.max(0, (Date.now() - start) / (1000 * 60 * 60)).toFixed(1);
           return `${hrs} hrs (Active)`;
         }
       } else {
@@ -78,11 +53,7 @@ function EmployeeAttendance() {
   };
 
   const rawList = attendance || [];
-
-  // Strict user attendance records (no cross-user sample fallbacks)
-  const attendanceRecords = useMemo(() => {
-    return rawList;
-  }, [rawList]);
+  const attendanceRecords = useMemo(() => rawList, [rawList]);
 
   // Metrics
   const totalDays = attendanceRecords.length;
@@ -131,8 +102,6 @@ function EmployeeAttendance() {
     document.body.removeChild(link);
   };
 
-
-
   return (
     <>
       <EmployeeHeader />
@@ -169,113 +138,6 @@ function EmployeeAttendance() {
               title="Export records to CSV"
             >
               📥 Export CSV
-            </button>
-          </div>
-        </section>
-
-        {/* =====================================================
-            WORKDAY PUNCH CONSOLE (CLOCK IN / CLOCK OUT)
-        ===================================================== */}
-        <section
-          style={{
-            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #334155 100%)",
-            color: "#ffffff",
-            borderRadius: "18px",
-            padding: "1.75rem 2rem",
-            marginBottom: "1.5rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "1.5rem",
-            boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.25)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <span
-                style={{
-                  background: checkedIn ? "#10b981" : shiftCompleted ? "#3b82f6" : "#64748b",
-                  color: "#ffffff",
-                  padding: "0.35rem 0.85rem",
-                  borderRadius: "99px",
-                  fontSize: "0.82rem",
-                  fontWeight: "800",
-                  letterSpacing: "0.4px",
-                }}
-              >
-                {checkedIn ? "● Workday Active (Clocked In)" : shiftCompleted ? "✓ Shift Completed" : "○ Not Clocked In"}
-              </span>
-              <span style={{ fontSize: "0.85rem", color: "#94a3b8" }}>
-                📍 Hyderabad HQ • Official Corporate IST Shift
-              </span>
-            </div>
-            <h2 style={{ margin: "0.2rem 0 0 0", fontSize: "1.45rem", fontWeight: "800", color: "#ffffff" }}>
-              {checkedIn
-                ? `Clocked In at ${formatTime(todayAttendance.checkIn)}`
-                : shiftCompleted
-                ? `Shift Finished at ${formatTime(todayAttendance.checkOut)}`
-                : "Ready to Clock In"}
-            </h2>
-            <span style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
-              {checkedIn
-                ? `Logged Hours Today: ${liveLoggedHours} hrs (Shift Target: 8.0 hrs)`
-                : shiftCompleted
-                ? `Logged Hours Today: ${todayAttendance?.workingHours || liveLoggedHours} hrs (Shift Target: 8.0 hrs)`
-                : "Standard Shift Window: 09:30 AM – 06:30 PM (IST)"}
-            </span>
-          </div>
-
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={clockIn}
-              disabled={Boolean(todayAttendance?.checkIn)}
-              style={{
-                background: Boolean(todayAttendance?.checkIn)
-                  ? "rgba(255, 255, 255, 0.15)"
-                  : "linear-gradient(135deg, #10b981, #059669)",
-                color: Boolean(todayAttendance?.checkIn) ? "#94a3b8" : "#ffffff",
-                border: "none",
-                borderRadius: "12px",
-                padding: "0.85rem 1.8rem",
-                fontSize: "1rem",
-                fontWeight: "800",
-                cursor: Boolean(todayAttendance?.checkIn) ? "not-allowed" : "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                boxShadow: Boolean(todayAttendance?.checkIn) ? "none" : "0 4px 14px rgba(16, 185, 129, 0.35)",
-                transition: "all 0.2s ease",
-              }}
-            >
-              <span>🕒</span> Clock In
-            </button>
-
-            <button
-              type="button"
-              onClick={clockOut}
-              disabled={!checkedIn}
-              style={{
-                background: !checkedIn
-                  ? "rgba(255, 255, 255, 0.15)"
-                  : "linear-gradient(135deg, #e11d48, #be123c)",
-                color: !checkedIn ? "#94a3b8" : "#ffffff",
-                border: "none",
-                borderRadius: "12px",
-                padding: "0.85rem 1.8rem",
-                fontSize: "1rem",
-                fontWeight: "800",
-                cursor: !checkedIn ? "not-allowed" : "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                boxShadow: !checkedIn ? "none" : "0 4px 14px rgba(225, 29, 72, 0.35)",
-                transition: "all 0.2s ease",
-              }}
-            >
-              <span>⏹️</span> Clock Out
             </button>
           </div>
         </section>
@@ -336,7 +198,7 @@ function EmployeeAttendance() {
             </div>
             <div className="kpi-stat-row">
               <span className="kpi-big-num">
-                {checkedIn ? `${liveLoggedHours}h` : "8.2h"}
+                {checkedIn ? `Active` : "8.2h"}
               </span>
               <span className="kpi-badge-chip indigo">Target: 8.0h</span>
             </div>
@@ -344,21 +206,13 @@ function EmployeeAttendance() {
               <div
                 className="kpi-progress-bar indigo"
                 style={{
-                  width: `${Math.min(100, (Number(checkedIn ? liveLoggedHours : 8.2) / 8.0) * 100)}%`,
+                  width: "100%",
                 }}
               />
             </div>
-            <span className="kpi-subtext">
-              {checkedIn
-                ? Number(liveLoggedHours) >= 8.0
-                  ? `+${(Number(liveLoggedHours) - 8.0).toFixed(1)} hrs overtime surplus`
-                  : `${(8.0 - Number(liveLoggedHours)).toFixed(1)} hrs remaining for shift target`
-                : "+12 mins overtime surplus"}
-            </span>
+            <span className="kpi-subtext">Standard shift target: 8.0 hrs/day</span>
           </div>
         </section>
-
-
 
         {/* =====================================================
             ATTENDANCE LEDGER TABLE & FILTERS

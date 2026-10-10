@@ -77,19 +77,24 @@ export default function EmployeeCalendar() {
     try {
       const [holidayRes, leaveRes, eventRes] = await Promise.allSettled([
         apiRequest("/holidays"),
-        apiRequest("/leaves/my-leaves"),
+        apiRequest("/leaves/my"),
         apiRequest("/events/my"),
       ]);
 
-      if (holidayRes.status === "fulfilled" && holidayRes.value?.success) {
-        setHolidays(holidayRes.value.data || []);
+      if (holidayRes.status === "fulfilled") {
+        const val = holidayRes.value;
+        const list = Array.isArray(val) ? val : (val?.data || val?.holidays || []);
+        setHolidays(list);
       }
-      if (leaveRes.status === "fulfilled" && leaveRes.value?.success) {
-        setLeaves(leaveRes.value.data || []);
+      if (leaveRes.status === "fulfilled") {
+        const val = leaveRes.value;
+        const list = Array.isArray(val) ? val : (val?.data || val?.leaves || []);
+        setLeaves(list);
       }
-      if (eventRes.status === "fulfilled" && eventRes.value?.success) {
-        const fetchedEvents = eventRes.value.data || [];
-        setCustomEvents(fetchedEvents);
+      if (eventRes.status === "fulfilled") {
+        const val = eventRes.value;
+        const list = Array.isArray(val) ? val : (val?.data || val?.events || []);
+        setCustomEvents(list);
       }
     } catch (error) {
       toast.error("Failed to sync calendar data");
@@ -207,7 +212,13 @@ export default function EmployeeCalendar() {
 
   // Helper date key formatter
   function formatDateKey(dateObj) {
+    if (!dateObj) return "";
+    if (typeof dateObj === "string") {
+      const clean = dateObj.trim().slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+    }
     const d = new Date(dateObj);
+    if (isNaN(d.getTime())) return "";
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");

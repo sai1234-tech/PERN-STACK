@@ -8,7 +8,24 @@ import {
 // Get all holidays
 export const getAllHolidays = async (req, res) => {
     try {
-        const holidays = await findAllHolidays();
+        let holidays = await findAllHolidays();
+        if (holidays.length === 0) {
+            const year = new Date().getFullYear();
+            const defaultHolidays = [
+                { title: "New Year's Day", date: `${year}-01-01`, type: "Public Holiday", description: "Official Gazetted Holiday" },
+                { title: "Republic Day", date: `${year}-01-26`, type: "National Holiday", description: "National Flag Hoisting & Celebration" },
+                { title: "Holi / Phagwah", date: `${year}-03-25`, type: "Optional Holiday", description: "Festival of Colors" },
+                { title: "Ambedkar Jayanti", date: `${year}-04-14`, type: "Public Holiday", description: "Gazetted Public Holiday" },
+                { title: "Labour Day", date: `${year}-05-01`, type: "Public Holiday", description: "International Workers Day" },
+                { title: "Independence Day", date: `${year}-08-15`, type: "National Holiday", description: "National Flag Hoisting & Address" },
+                { title: "Gandhi Jayanti", date: `${year}-10-02`, type: "National Holiday", description: "Mahatma Gandhi Birthday" },
+                { title: "Dussehra / Vijayadashami", date: `${year}-10-12`, type: "Public Holiday", description: "Vijayadashami Festival" },
+                { title: "Diwali / Deepavali", date: `${year}-11-01`, type: "Optional Holiday", description: "Festival of Lights" },
+                { title: "Christmas Day", date: `${year}-12-25`, type: "Public Holiday", description: "Christmas Festival" },
+            ];
+            await seedDefaultHolidays(defaultHolidays);
+            holidays = await findAllHolidays();
+        }
         res.status(200).json({ success: true, data: holidays });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

@@ -58,6 +58,13 @@ const KNOWN_ACCOUNTS = {
     designation: "HR Manager",
     role: "hr",
   },
+  "ananyavarma.hr@company.com": {
+    firstName: "Ananya",
+    lastName: "Varma",
+    department: "Human Resources",
+    designation: "HR Lead & Operations Manager",
+    role: "hr",
+  },
   "employee@hrms.com": {
     firstName: "Demo",
     lastName: "Employee",

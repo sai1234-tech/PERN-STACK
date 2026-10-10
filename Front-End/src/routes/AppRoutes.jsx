@@ -48,6 +48,9 @@ const OrganizationHierarchy = lazy(() => import("../pages/organization/Organizat
 /**
  * Protect routes based on authentication and role.
  */
+/**
+ * Protect routes based on authentication and role.
+ */
 function ProtectedRoute({ children, roles = [] }) {
   const { user, loading } = useAuth();
 
@@ -56,10 +59,29 @@ function ProtectedRoute({ children, roles = [] }) {
 
   const userRole = normalizeRole(user);
   if (roles.length > 0 && !roles.includes(userRole)) {
-    return <Navigate to="/unauthorized" replace />;
+    if (userRole === "admin") return <Navigate to="/admin/dashboard" replace />;
+    if (userRole === "hr") return <Navigate to="/hr/dashboard" replace />;
+    if (userRole === "manager") return <Navigate to="/manager/dashboard" replace />;
+    return <Navigate to="/employee/dashboard" replace />;
   }
 
   return children;
+}
+
+/**
+ * Dynamic Root Redirect based on user role
+ */
+function RootRedirect() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <InitialLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  const role = normalizeRole(user);
+  if (role === "admin") return <Navigate to="/admin/dashboard" replace />;
+  if (role === "hr") return <Navigate to="/hr/dashboard" replace />;
+  if (role === "manager") return <Navigate to="/manager/dashboard" replace />;
+  return <Navigate to="/employee/dashboard" replace />;
 }
 
 const ALL_ROLES = ["employee", "manager", "hr", "admin"];
@@ -102,8 +124,9 @@ function AppRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
 
-        {/* PUBLIC ROUTES */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* PUBLIC & ENTRY ROUTES */}
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/dashboard" element={<RootRedirect />} />
         <Route path="/login"      element={<Login />} />
         <Route path="/signup"     element={<Signup />} />
         <Route path="/admin/setup" element={<AdminSetup />} />
@@ -121,10 +144,15 @@ function AppRoutes() {
           {/* ── Employee & Self-Service (All Roles) ── */}
           <Route path="/employee/dashboard"   element={<ProtectedRoute roles={ALL_ROLES}><EmployeeDashboard /></ProtectedRoute>} />
           <Route path="/employee/calendar"    element={<ProtectedRoute roles={ALL_ROLES}><EmployeeCalendar /></ProtectedRoute>} />
+          <Route path="/calendar"             element={<ProtectedRoute roles={ALL_ROLES}><EmployeeCalendar /></ProtectedRoute>} />
           <Route path="/employee/attendance"  element={<ProtectedRoute roles={ALL_ROLES}><EmployeeAttendance /></ProtectedRoute>} />
+          <Route path="/attendance"           element={<ProtectedRoute roles={ALL_ROLES}><EmployeeAttendance /></ProtectedRoute>} />
           <Route path="/employee/leaves"      element={<ProtectedRoute roles={ALL_ROLES}><EmployeeLeaves /></ProtectedRoute>} />
+          <Route path="/leaves"               element={<ProtectedRoute roles={ALL_ROLES}><EmployeeLeaves /></ProtectedRoute>} />
           <Route path="/employee/timesheets"  element={<ProtectedRoute roles={ALL_ROLES}><EmployeeTimesheets /></ProtectedRoute>} />
+          <Route path="/timesheets"           element={<ProtectedRoute roles={ALL_ROLES}><EmployeeTimesheets /></ProtectedRoute>} />
           <Route path="/employee/performance" element={<ProtectedRoute roles={ALL_ROLES}><Performance /></ProtectedRoute>} />
+          <Route path="/performance"          element={<ProtectedRoute roles={ALL_ROLES}><Performance /></ProtectedRoute>} />
           <Route path="/employee/profile"     element={<ProtectedRoute roles={ALL_ROLES}><EmployeeProfile /></ProtectedRoute>} />
           <Route path="/profile"              element={<ProtectedRoute roles={ALL_ROLES}><EmployeeProfile /></ProtectedRoute>} />
           <Route path="/employee/payroll"     element={<ProtectedRoute roles={ALL_ROLES}><EmployeePayroll /></ProtectedRoute>} />
@@ -133,10 +161,11 @@ function AppRoutes() {
           <Route path="/employee/documents"   element={<ProtectedRoute roles={ALL_ROLES}><EmployeeDocuments /></ProtectedRoute>} />
           <Route path="/documents"            element={<ProtectedRoute roles={ALL_ROLES}><EmployeeDocuments /></ProtectedRoute>} />
           <Route path="/employee/resignation" element={<ProtectedRoute roles={ALL_ROLES}><EmployeeResignation /></ProtectedRoute>} />
+          <Route path="/resignation"          element={<ProtectedRoute roles={ALL_ROLES}><EmployeeResignation /></ProtectedRoute>} />
 
           {/* ── Manager Routes ── */}
-          <Route path="/manager/dashboard" element={<ProtectedRoute roles={["manager", "admin"]}><ManagerDashboard /></ProtectedRoute>} />
-          <Route path="/manager/projects"  element={<ProtectedRoute roles={["manager", "admin"]}><ManagerProjects /></ProtectedRoute>} />
+          <Route path="/manager/dashboard"   element={<ProtectedRoute roles={["manager", "admin"]}><ManagerDashboard /></ProtectedRoute>} />
+          <Route path="/manager/projects"    element={<ProtectedRoute roles={["manager", "admin"]}><ManagerProjects /></ProtectedRoute>} />
           <Route path="/manager/performance" element={<ProtectedRoute roles={["manager", "admin"]}><ManagerPerformance /></ProtectedRoute>} />
 
           {/* ── Admin Routes ── */}
@@ -146,6 +175,7 @@ function AppRoutes() {
           {/* ── HR / Admin Governance ── */}
           <Route path="/hr/dashboard"    element={<ProtectedRoute roles={["hr", "admin"]}><HRDashboard /></ProtectedRoute>} />
           <Route path="/hr/departments"  element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
+          <Route path="/departments"     element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
           <Route path="/hr/employees"    element={<ProtectedRoute roles={["hr", "admin"]}><EmployeeManagement /></ProtectedRoute>} />
           <Route path="/hr/timesheets"   element={<ProtectedRoute roles={["hr", "admin"]}><TimesheetManagement /></ProtectedRoute>} />
           <Route path="/hr/recruitment"  element={<ProtectedRoute roles={["hr", "admin"]}><RecruitmentOnboarding /></ProtectedRoute>} />
@@ -153,31 +183,21 @@ function AppRoutes() {
           <Route path="/hr/roster"       element={<ProtectedRoute roles={["hr", "admin"]}><ShiftRoster /></ProtectedRoute>} />
           <Route path="/hr/payroll"      element={<ProtectedRoute roles={["hr", "admin", "manager"]}><PayrollManagement /></ProtectedRoute>} />
           <Route path="/hr/helpdesk"     element={<ProtectedRoute roles={["hr", "admin"]}><Helpdesk /></ProtectedRoute>} />
+          <Route path="/helpdesk"        element={<ProtectedRoute roles={ALL_ROLES}><Helpdesk /></ProtectedRoute>} />
           <Route path="/hr/leaves"       element={<ProtectedRoute roles={["hr", "admin"]}><HRLeaveManagement /></ProtectedRoute>} />
           <Route path="/hr/documents"    element={<ProtectedRoute roles={["hr", "admin"]}><DocumentManagement /></ProtectedRoute>} />
           <Route path="/hr/resignations" element={<ProtectedRoute roles={["hr", "admin"]}><HRResignationManagement /></ProtectedRoute>} />
-          <Route path="/hr/organization"      element={<ProtectedRoute roles={ALL_ROLES}><OrganizationHierarchy /></ProtectedRoute>} />
-          <Route path="/organization"         element={<ProtectedRoute roles={ALL_ROLES}><OrganizationHierarchy /></ProtectedRoute>} />
-          <Route path="/employee/organization" element={<ProtectedRoute roles={ALL_ROLES}><OrganizationHierarchy /></ProtectedRoute>} />
+          <Route path="/hr/performance"  element={<ProtectedRoute roles={["hr", "admin", "manager"]}><ManagerPerformance /></ProtectedRoute>} />
+          <Route path="/hr/organization"       element={<ProtectedRoute roles={ALL_ROLES}><OrganizationHierarchy /></ProtectedRoute>} />
+          <Route path="/organization"          element={<ProtectedRoute roles={ALL_ROLES}><OrganizationHierarchy /></ProtectedRoute>} />
+          <Route path="/employee/organization"  element={<ProtectedRoute roles={ALL_ROLES}><OrganizationHierarchy /></ProtectedRoute>} />
         </Route>
 
         {/* UNAUTHORIZED */}
-        <Route
-          path="/unauthorized"
-          element={
-            <main
-              role="alert"
-              aria-live="assertive"
-              style={{ padding: "30px", textAlign: "center" }}
-            >
-              <h1 style={{ color: "#e11d48" }}>Access Denied</h1>
-              <p style={{ color: "#64748b" }}>You do not have permission to access this page.</p>
-            </main>
-          }
-        />
+        <Route path="/unauthorized" element={<RootRedirect />} />
 
         {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<RootRedirect />} />
 
       </Routes>
     </Suspense>

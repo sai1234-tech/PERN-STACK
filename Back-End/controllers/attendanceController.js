@@ -333,14 +333,9 @@ export const getAllAttendance = async (req, res) => {
 // =====================================================
 export const getMonthlyReport = async (req, res) => {
     try {
-        const { year, month } = req.query;
-
-        if (!year || !month) {
-            return res.status(400).json({
-                success: false,
-                message: "Year and month are required"
-            });
-        }
+        const now = new Date();
+        const year = req.query.year || now.getFullYear();
+        const month = req.query.month || (now.getMonth() + 1);
 
         const numericYear = Number(year);
         const numericMonth = Number(month);
@@ -431,14 +426,9 @@ export const getAttendanceSummary = async (req, res) => {
 // =====================================================
 export const getMonthlySummary = async (req, res) => {
     try {
-        const { year, month } = req.query;
-
-        if (!year || !month) {
-            return res.status(400).json({
-                success: false,
-                message: "Year and month are required"
-            });
-        }
+        const now = new Date();
+        const year = req.query.year || now.getFullYear();
+        const month = req.query.month || (now.getMonth() + 1);
 
         const numericYear = Number(year);
         const numericMonth = Number(month);

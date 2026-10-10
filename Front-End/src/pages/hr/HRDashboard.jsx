@@ -47,8 +47,10 @@ function getInitials(firstName = "", lastName = "", name = "") {
 }
 
 function listFrom(response) {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
   const value =
-    response?.data || response?.records || response?.employees || [];
+    response?.data || response?.records || response?.employees || response?.leaves || response?.attendance || [];
   return Array.isArray(value) ? value : [];
 }
 
@@ -77,9 +79,9 @@ function HRDashboard() {
       setAttendance(listFrom(attendanceResponse));
       setLeaves(listFrom(leaveResponse));
     } catch (requestError) {
-      if (!silent) setError(requestError.message);
+      if (!silent) setError(requestError.message || "Failed to load dashboard data");
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
       setRefreshing(false);
     }
   }, [search]);
@@ -94,13 +96,13 @@ function HRDashboard() {
   const activeEmployees = useMemo(
     () =>
       employees.filter(
-        (employee) => employee.employment?.status !== "Inactive"
+        (employee) => employee?.employment?.status !== "Inactive"
       ),
     [employees]
   );
 
   const pendingLeaves = useMemo(
-    () => leaves.filter((leave) => leave.status === "Pending"),
+    () => leaves.filter((leave) => String(leave?.status || "").toLowerCase().includes("pending")),
     [leaves]
   );
 

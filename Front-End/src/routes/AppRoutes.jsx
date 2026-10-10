@@ -173,7 +173,7 @@ function AppRoutes() {
           <Route path="/admin/accounts"  element={<ProtectedRoute roles={["admin"]}><AccountManagement /></ProtectedRoute>} />
 
           {/* ── HR / Admin Governance ── */}
-          <Route path="/hr/dashboard"    element={<ProtectedRoute roles={["hr", "admin"]}><HRDashboard /></ProtectedRoute>} />
+          <Route path="/hr/dashboard"    element={<ProtectedRoute roles={ALL_ROLES}><HRDashboard /></ProtectedRoute>} />
           <Route path="/hr/departments"  element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
           <Route path="/departments"     element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
           <Route path="/hr/employees"    element={<ProtectedRoute roles={["hr", "admin"]}><EmployeeManagement /></ProtectedRoute>} />

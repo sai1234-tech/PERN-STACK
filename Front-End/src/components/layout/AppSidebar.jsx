@@ -229,6 +229,10 @@ function AppSidebar() {
                 <span className="nav-item-icon">💰</span>
                 {!isCollapsed && <span className="nav-item-label">My Payroll</span>}
               </NavLink>
+              <NavLink to="/employee/calendar" end className="sidebar-nav-link" title="Corporate Holiday Calendar">
+                <span className="nav-item-icon">🗓️</span>
+                {!isCollapsed && <span className="nav-item-label">Holiday Calendar</span>}
+              </NavLink>
               <NavLink to="/employee/dashboard" end className="sidebar-nav-link" title="My Personal Self-Service Dashboard">
                 <span className="nav-item-icon">👤</span>
                 {!isCollapsed && <span className="nav-item-label">My Personal Dashboard</span>}
@@ -317,6 +321,10 @@ function AppSidebar() {
                   <span className="nav-item-icon">⏱️</span>
                   {!isCollapsed && <span className="nav-item-label">My Attendance (Clock In/Out)</span>}
                 </NavLink>
+                <NavLink to="/employee/calendar" end className="sidebar-nav-link" title="Corporate Holiday Calendar">
+                  <span className="nav-item-icon">🗓️</span>
+                  {!isCollapsed && <span className="nav-item-label">Holiday Calendar</span>}
+                </NavLink>
                 <NavLink to="/employee/payroll" end className="sidebar-nav-link" title="My Compensation">
                   <span className="nav-item-icon">💰</span>
                   {!isCollapsed && <span className="nav-item-label">My Payslips</span>}
@@ -377,6 +385,10 @@ function AppSidebar() {
                 <NavLink to="/hr/documents" end className="sidebar-nav-link" title="Compliance Vault">
                   <span className="nav-item-icon">📂</span>
                   {!isCollapsed && <span className="nav-item-label">Documents</span>}
+                </NavLink>
+                <NavLink to="/employee/calendar" end className="sidebar-nav-link" title="Corporate Holiday Calendar">
+                  <span className="nav-item-icon">🗓️</span>
+                  {!isCollapsed && <span className="nav-item-label">Holiday Calendar</span>}
                 </NavLink>
               </div>
 

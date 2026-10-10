@@ -483,6 +483,13 @@ export default function EmployeeCalendar() {
             >
               ⏱️ Shift Timeline
             </button>
+            <button
+              type="button"
+              className={`mode-tab-btn ${viewMode === "holidays" ? "active" : ""}`}
+              onClick={() => setViewMode("holidays")}
+            >
+              🏖️ Holiday List
+            </button>
           </div>
         </section>
 
@@ -586,7 +593,7 @@ export default function EmployeeCalendar() {
                     })}
                   </div>
                 </div>
-              ) : (
+              ) : viewMode === "timeline" ? (
                 /* Interactive Shift Timeline View */
                 <div className="timeline-view-container">
                   <div className="timeline-view-header">
@@ -650,6 +657,65 @@ export default function EmployeeCalendar() {
                     ) : (
                       <div className="no-events-prompt">
                         📅 No custom events scheduled for this date. Click <strong>"➕ Add Event"</strong> or <strong>"🔍 Full Day Planner"</strong> to create one.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Corporate Holiday List View */
+                <div className="holiday-list-view-container">
+                  <div className="timeline-view-header">
+                    <h3>🏖️ Official Corporate Holidays ({year})</h3>
+                    <span className="event-duration-pill">
+                      Total: <strong>{holidays.length} Gazetted & Restricted Holidays</strong>
+                    </span>
+                  </div>
+
+                  <div className="holiday-cards-grid">
+                    {holidays.length > 0 ? (
+                      holidays.map((h, idx) => {
+                        const dateStr = h.date ? String(h.date).slice(0, 10) : "";
+                        let formattedDateStr = dateStr;
+                        let dayOfWeek = "";
+                        if (dateStr) {
+                          const parts = dateStr.split("-");
+                          if (parts.length === 3) {
+                            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                            dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
+                            formattedDateStr = d.toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            });
+                          }
+                        }
+
+                        return (
+                          <div key={h.id || h._id || idx} className="holiday-list-card">
+                            <div className="holiday-card-date-badge">
+                              <span className="h-day">{dayOfWeek || "Holiday"}</span>
+                              <span className="h-date">{formattedDateStr}</span>
+                            </div>
+                            <div className="holiday-card-info">
+                              <h4>{h.title || h.name}</h4>
+                              <p>{h.description || "Official company holiday"}</p>
+                              <div className="holiday-card-tags">
+                                <span className={`holiday-type-pill ${h.type?.toLowerCase() || "gazetted"}`}>
+                                  {h.type || "Gazetted"}
+                                </span>
+                                {h.mandatory ? (
+                                  <span className="mandatory-pill">Mandatory Paid Off</span>
+                                ) : (
+                                  <span className="optional-pill">Optional Holiday</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="no-events-prompt">
+                        🏖️ No holidays found in database.
                       </div>
                     )}
                   </div>

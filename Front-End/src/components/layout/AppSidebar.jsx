@@ -67,20 +67,20 @@ function AppSidebar() {
     profile.jobTitle ||
     (isHr ? "HR Lead" : isAdmin ? "Administrator" : "Full-Stack Engineer");
 
-  const homeRoute = role === "manager"
-    ? "/manager/dashboard"
-    : isHr
-    ? "/hr/dashboard"
-    : isAdmin
+  const homeRoute = isAdmin
     ? "/admin/dashboard"
+    : role === "hr"
+    ? "/hr/dashboard"
+    : role === "manager"
+    ? "/manager/dashboard"
     : "/employee/dashboard";
 
-  const portalBadge = role === "manager"
-    ? "Manager Workspace"
-    : isHr
-    ? "HR Portal"
-    : isAdmin
+  const portalBadge = isAdmin
     ? "Executive Admin"
+    : role === "hr"
+    ? "HR Portal"
+    : role === "manager"
+    ? "Manager Workspace"
     : "Employee Self-Service";
 
   const userPhoto = profile.profilePhoto || localStorage.getItem("hrms_profile_photo") || "";

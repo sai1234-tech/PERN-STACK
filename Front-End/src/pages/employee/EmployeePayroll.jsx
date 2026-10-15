@@ -110,6 +110,20 @@ function EmployeePayrollContent({ user, employee }) {
     reload,
   } = useEmployeePayroll(Number(month), Number(year));
 
+  useEffect(() => {
+    const handleSync = () => reload(true);
+    window.addEventListener("focus", handleSync);
+    window.addEventListener("hrms_data_updated", handleSync);
+    window.addEventListener("hrms:data_changed", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("focus", handleSync);
+      window.removeEventListener("hrms_data_updated", handleSync);
+      window.removeEventListener("hrms:data_changed", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, [reload]);
+
   // =========================================================
   // SALARY PROFILE DERIVATION
   // =========================================================
@@ -134,13 +148,26 @@ function EmployeePayrollContent({ user, employee }) {
     user?.compensation ||
     {};
 
+  const rawSalaryNumber =
+    typeof salaryRecord === "number"
+      ? salaryRecord
+      : typeof salary === "number"
+      ? salary
+      : Number(
+          (typeof salaryRecord === "object" ? salaryRecord?.salary : 0) ||
+          employee?.employment?.salary ||
+          employee?.salary ||
+          user?.salary ||
+          0
+        );
+
   const rawAnnualSalary = Number(
     valueOf(salaryRecord, [
       "annualSalary",
       "annual",
       "yearlySalary",
       "grossAnnualSalary",
-    ]) || 0
+    ]) || (rawSalaryNumber >= 120000 ? rawSalaryNumber : 0)
   );
 
   const rawMonthlySalary = Number(
@@ -150,7 +177,7 @@ function EmployeePayrollContent({ user, employee }) {
       "monthlyBaseSalary",
       "grossSalary",
       "grossPay",
-    ]) || 0
+    ]) || (rawSalaryNumber > 0 && rawSalaryNumber < 120000 ? rawSalaryNumber : 0)
   );
 
   const rawBasic = Number(
@@ -181,6 +208,12 @@ function EmployeePayrollContent({ user, employee }) {
   } else if (rawBasic > 0) {
     finalMonthly = rawBasic;
     finalAnnual = rawBasic * 12;
+  } else if (rawSalaryNumber >= 120000) {
+    finalAnnual = rawSalaryNumber;
+    finalMonthly = Math.round(rawSalaryNumber / 12);
+  } else if (rawSalaryNumber > 0) {
+    finalMonthly = rawSalaryNumber;
+    finalAnnual = rawSalaryNumber * 12;
   } else {
     finalAnnual = 0;
     finalMonthly = 0;
@@ -289,13 +322,13 @@ function EmployeePayrollContent({ user, employee }) {
         valueOf(earnings, ["allowances", "allowance", "hra"]) ||
         0
     ) ||
-    Math.round(displayGrossPay * 0.25);
+    Math.max(0, displayGrossPay - displayBasicSalary);
 
   const displayHra =
     rawHra >= 120000
       ? Math.round(rawHra / 12)
-      : rawHra >= displayGrossPay
-      ? Math.round(displayGrossPay * 0.25)
+      : rawHra > displayGrossPay
+      ? Math.max(0, displayGrossPay - displayBasicSalary)
       : rawHra;
 
   const displaySpecial =

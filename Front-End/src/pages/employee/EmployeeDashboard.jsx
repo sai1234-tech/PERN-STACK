@@ -11,6 +11,7 @@ import { useLeaves } from "../../hooks/useLeaves";
 import { useTimesheets } from "../../hooks/useTimesheets";
 import { useEnterpriseOps } from "../../hooks/useEnterpriseOps";
 import { getMyDocuments, uploadDocument } from "../../services/documentService";
+import { getMySalary, getMyPayslip } from "../../services/payrollService";
 import { apiRequest } from "../../services/apiClient";
 import { formatTime, formatDate, parseLocalDate, formatDuration } from "../../utils/date";
 import { normalizeRole } from "../../utils/auth";
@@ -24,6 +25,7 @@ function EmployeeDashboard() {
   const timesheetState = useTimesheets();
   const { pulseAnswered, submitPulse } = useEnterpriseOps();
 
+  const [payrollSummary, setPayrollSummary] = useState(null);
   const [requestedDocs, setRequestedDocs] = useState([]);
   const [uploadNotice, setUploadNotice] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -34,6 +36,43 @@ function EmployeeDashboard() {
       return [];
     }
   });
+
+  // Fetch live payroll / compensation status
+  useEffect(() => {
+    let mounted = true;
+    const fetchPayroll = async () => {
+      try {
+        const cur = new Date();
+        const m = cur.getMonth() + 1;
+        const y = cur.getFullYear();
+        const [salRes, slipRes] = await Promise.allSettled([
+          getMySalary(m, y),
+          getMyPayslip(m, y),
+        ]);
+        const sal = salRes.status === "fulfilled" ? (salRes.value?.data || salRes.value) : null;
+        const slip = slipRes.status === "fulfilled" ? (slipRes.value?.data || slipRes.value) : null;
+        if (mounted) {
+          setPayrollSummary({ salary: sal, payslip: slip });
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    };
+
+    fetchPayroll();
+    const handleSync = () => fetchPayroll();
+    window.addEventListener("focus", handleSync);
+    window.addEventListener("hrms_data_updated", handleSync);
+    window.addEventListener("hrms:data_changed", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      mounted = false;
+      window.removeEventListener("focus", handleSync);
+      window.removeEventListener("hrms_data_updated", handleSync);
+      window.removeEventListener("hrms:data_changed", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, []);
 
   // Fetch HR document requests for logged in employee
   useEffect(() => {
@@ -363,6 +402,24 @@ function EmployeeDashboard() {
     return fallbackHolidays.filter((h) => h.year === currentYear);
   }, [apiHolidays, currentYear]);
 
+  const dashGross = Number(
+    payrollSummary?.payslip?.grossSalary ??
+    payrollSummary?.salary?.grossSalary ??
+    payrollSummary?.salary?.monthlySalary ??
+    (profile?.employment?.salary ? Math.round(Number(profile.employment.salary) / 12) : 0)
+  );
+  const dashNet = Number(
+    payrollSummary?.payslip?.netSalary ??
+    payrollSummary?.salary?.netSalary ??
+    (dashGross > 0 ? Math.max(0, dashGross - 9000) : 0)
+  );
+  const dashMoney = (val) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(Number(val || 0));
+
   if (employeeState.loading) {
     return <Loader label="Loading your workspace..." />;
   }
@@ -558,6 +615,9 @@ function EmployeeDashboard() {
                 <span>👥</span> Manager Workspace
               </Link>
             )}
+            <Link to="/employee/payroll" className="emp-action-btn secondary" title="View Payslips & Salary">
+              <span>💰</span> My Payroll
+            </Link>
             <Link to="/employee/leaves" className="emp-action-btn secondary">
               <span>🌴</span> Apply Leave
             </Link>
@@ -568,7 +628,7 @@ function EmployeeDashboard() {
         </section>
 
         {/* =====================================================
-            4 KPI METRIC CARDS
+            KPI METRIC CARDS
         ===================================================== */}
         <section className="emp-kpi-grid" aria-label="Employee Overview KPIs">
           {/* Card 1: Shift Status (Simplified In / Out with icons) */}
@@ -665,6 +725,38 @@ function EmployeeDashboard() {
               {timesheetState.hasUnsubmittedToday ? "Today: 1 Pending" : "Today: Submitted"} • {timesheetState.pendingCount} Total Pending
             </span>
           </div>
+
+          {/* Card 5: Compensation & Net Take-Home Pay */}
+          <Link
+            to="/employee/payroll"
+            className="kpi-card-box emerald"
+            style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
+            title="Click to view detailed salary slips and payroll breakdown"
+          >
+            <div className="kpi-card-head">
+              <span className="kpi-title-text">Net Take-Home Pay</span>
+              <div className="kpi-icon-pod emerald">💰</div>
+            </div>
+            <div className="kpi-stat-row">
+              <span className="kpi-big-num">
+                {dashGross > 0 ? dashMoney(dashNet) : "Pending"}
+              </span>
+              <span className={`kpi-badge-chip ${dashGross > 0 ? "positive" : "neutral"}`}>
+                {dashGross > 0 ? "Verified Pay" : "Awaiting Run"}
+              </span>
+            </div>
+            <div className="kpi-progress-rail">
+              <div
+                className="kpi-progress-bar emerald"
+                style={{ width: dashGross > 0 ? "100%" : "0%" }}
+              />
+            </div>
+            <span className="kpi-subtext">
+              {dashGross > 0
+                ? `Gross: ${dashMoney(dashGross)} • Take-Home: ${dashMoney(dashNet)} →`
+                : "View monthly payroll register →"}
+            </span>
+          </Link>
         </section>
 
         {/* =====================================================

@@ -6,6 +6,7 @@ import {
     updateEmployeeRecord,
     findEmployeeById,
     createEmployeeRecord,
+    findEmployeeByCodeOrEmail,
 } from "../repositories/employeeRepository.js";
 import { findUserById } from "../repositories/userRepository.js";
 import {

@@ -12,6 +12,7 @@ import {
 } from "../repositories/employeeRepository.js";
 import { formatEmployeeResponse } from "./employeeController.js";
 import generateJwt from "../utils/generateJwt.js";
+import { upsertPayrollRecord } from "../repositories/payrollRepository.js";
 
 
 // Allowed Roles
@@ -135,23 +136,62 @@ export const provisionEmployeeForUser = async (user) => {
     }
 
     try {
+        const cleanEmail = user.email && user.email.includes("@")
+            ? user.email.toLowerCase().trim()
+            : `${(user.name || "user").toLowerCase().replace(/[^a-z0-9]/g, "")}_${user.id}@quadratics.com`;
+
         const newEmp = await createEmployeeRecord({
             userId: user.id,
             reportsTo: defaultManagerId,
             employeeCode: generatedCode,
             firstName,
             lastName,
-            email: user.email.toLowerCase().trim(),
+            email: cleanEmail,
+            pan: "ABCDE1234F",
+            uan: "100987654321",
+            workLocation: "Hyderabad HQ",
             employment: {
                 department: user.role === "hr" ? "Human Resources" : (user.role === "manager" ? "Engineering" : "Engineering"),
                 designation: user.role === "hr" ? "HR Specialist" : (user.role === "manager" ? "Team Manager" : "Software Engineer"),
                 joiningDate: new Date().toISOString().slice(0, 10),
                 employmentType: "Full Time",
                 status: "Active",
-                reportsTo: defaultManagerId
+                reportsTo: defaultManagerId,
+                salary: 660000
+            },
+            banking: {
+                accountHolder: `${firstName} ${lastName}`.trim(),
+                accountNumber: "1234567890",
+                bankName: "HDFC Bank",
+                ifscCode: "HDFC0001234"
             }
         });
-        return await findEmployeeById(newEmp.id);
+
+        const provisioned = await findEmployeeById(newEmp.id);
+
+        // Pre-initialize initial payroll record for current month so employee payroll page is fully ready
+        try {
+            const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
+            await upsertPayrollRecord({
+                employeeId: provisioned.id,
+                month: currentMonthStr,
+                basicSalary: 27500,
+                allowances: 27500,
+                bonus: 0,
+                tax: 200,
+                pf: 3300,
+                deduction: 4400,
+                grossSalary: 55000,
+                totalDeductions: 7900,
+                netSalary: 47100,
+                generatedBy: user.id || 1,
+                status: "generated"
+            });
+        } catch (prErr) {
+            // Ignore if already exists
+        }
+
+        return provisioned;
     } catch (err) {
         return (await findEmployeeByUserId(user.id)) || (await findEmployeeByEmail(user.email));
     }

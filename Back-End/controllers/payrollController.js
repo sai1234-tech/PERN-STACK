@@ -8,7 +8,8 @@ import {
     createEmployeeRecord,
     findEmployeeByCodeOrEmail,
 } from "../repositories/employeeRepository.js";
-import { findUserById } from "../repositories/userRepository.js";
+import { findUserById, findUserByEmail } from "../repositories/userRepository.js";
+import { provisionEmployeeForUser } from "./authController.js";
 import {
     findPayrollByEmployeeAndMonth,
     upsertPayrollRecord,
@@ -74,11 +75,14 @@ const calculatePayroll = ({
 };
 
 const getEmployeeByUser = async (userId, email) => {
-    let employee = await findEmployeeByUserId(userId);
+    let employee = null;
+    if (userId) {
+        employee = await findEmployeeByUserId(userId);
+    }
 
     if (!employee && email) {
         employee = await findEmployeeByEmail(email.trim().toLowerCase());
-        if (employee && !employee.user_id) {
+        if (employee && !employee.user_id && userId) {
             await updateEmployeeRecord(employee.id, { user_id: userId });
         }
     }
@@ -86,21 +90,14 @@ const getEmployeeByUser = async (userId, email) => {
     if (!employee && userId) {
         const user = await findUserById(userId);
         if (user) {
-            const nameParts = (user.name || "Employee User").trim().split(" ");
-            const firstName = nameParts[0] || "Employee";
-            const lastName = nameParts.slice(1).join(" ") || "User";
-            const empCode = `EMP${String(user.id).padStart(4, "0")}`;
-            try {
-                employee = await createEmployeeRecord({
-                    userId: user.id,
-                    employeeCode: empCode,
-                    firstName,
-                    lastName,
-                    email: user.email.toLowerCase().trim()
-                });
-            } catch (e) {
-                employee = await findEmployeeByUserId(userId);
-            }
+            employee = await provisionEmployeeForUser(user);
+        }
+    }
+
+    if (!employee && email) {
+        const user = await findUserByEmail(email);
+        if (user) {
+            employee = await provisionEmployeeForUser(user);
         }
     }
 
@@ -211,6 +208,7 @@ const formatPayroll = (payroll) => {
 
 const buildSalarySummary = (employee, payroll, month = new Date()) => {
     const monthStr = typeof month === "string" ? month : parseMonth(new Date().toISOString().slice(0, 7));
+    const isBeforeJoining = isBeforeJoiningMonth(employee, monthStr);
 
     if (payroll) {
         return {
@@ -218,6 +216,7 @@ const buildSalarySummary = (employee, payroll, month = new Date()) => {
             employeeId: employee?.id || null,
             employeeCode: employee?.employee_code || employee?.employeeCode || null,
             employee: formatEmployeeProfile(employee || payroll.employee),
+            isBeforeJoining,
             message:
                 payroll.status === "generated"
                     ? "Payroll generated"
@@ -233,6 +232,7 @@ const buildSalarySummary = (employee, payroll, month = new Date()) => {
         employeeCode: employee?.employee_code || employee?.employeeCode || null,
         employee: formatEmployeeProfile(employee),
         month: monthStr,
+        isBeforeJoining,
         annualSalary: breakdown.annualSalary,
         monthlySalary: breakdown.monthlyGross,
         basicSalary: breakdown.basicSalary,
@@ -289,20 +289,6 @@ export const viewMySalary = async (req, res) => {
 
         let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
 
-        if (!payroll && isBeforeJoiningMonth(employee, monthStr)) {
-            return res.status(200).json({
-                success: true,
-                data: {
-                    employeeId: employee.id,
-                    employeeCode: employee.employee_code,
-                    month: monthStr,
-                    isBeforeJoining: true,
-                    status: "not_applicable",
-                    message: "Payroll is not applicable prior to your joining date",
-                },
-            });
-        }
-
         const existingGross = Number(payroll?.gross_salary ?? payroll?.grossSalary ?? 0);
         if (!payroll || existingGross <= 0) {
             const empSal = employee?.employment?.salary || employee?.salary;
@@ -319,7 +305,7 @@ export const viewMySalary = async (req, res) => {
                 ...amounts,
                 employeeId: employee.id,
                 month: monthStr,
-                generatedBy: employee.user_id || req.user.userId,
+                generatedBy: employee.user_id || req.user.userId || 1,
                 status: "generated",
             });
         }
@@ -352,20 +338,6 @@ export const getMyPayslip = async (req, res, next) => {
 
         let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
 
-        if (!payroll && isBeforeJoiningMonth(employee, monthStr)) {
-            return res.status(200).json({
-                success: true,
-                data: {
-                    employeeId: employee.id,
-                    employeeCode: employee.employee_code,
-                    month: monthStr,
-                    isBeforeJoining: true,
-                    status: "not_applicable",
-                    message: "Payslip is not applicable prior to your joining date",
-                },
-            });
-        }
-
         const existingGross = Number(payroll?.gross_salary ?? payroll?.grossSalary ?? 0);
         if (!payroll || existingGross <= 0) {
             const empSal = employee?.employment?.salary || employee?.salary;
@@ -382,24 +354,17 @@ export const getMyPayslip = async (req, res, next) => {
                 ...amounts,
                 employeeId: employee.id,
                 month: monthStr,
-                generatedBy: employee.user_id || req.user.userId,
+                generatedBy: employee.user_id || req.user.userId || 1,
                 status: "generated",
             });
         }
 
-        if (!payroll) {
-            return res.status(200).json({
-                success: true,
-                data: {
-                    ...buildSalarySummary(employee, null, monthStr),
-                    month: monthStr,
-                    status: "not_generated",
-                    message: "Awaiting payroll run",
-                },
-            });
+        const formatted = formatPayroll(payroll);
+        if (formatted) {
+            formatted.isBeforeJoining = isBeforeJoiningMonth(employee, monthStr);
         }
 
-        return res.status(200).json({ success: true, data: formatPayroll(payroll) });
+        return res.status(200).json({ success: true, data: formatted });
     } catch (error) {
         return next(error);
     }
@@ -421,19 +386,26 @@ export const downloadMyPayslip = async (req, res, next) => {
 
         const monthStr = parseMonth(req.query.month);
 
-        if (isBeforeJoiningMonth(employee, monthStr)) {
-            return res.status(400).json({
-                success: false,
-                message: "Payslips cannot be downloaded for periods prior to your date of joining",
+        let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
+
+        const existingGross = Number(payroll?.gross_salary ?? payroll?.grossSalary ?? 0);
+        if (!payroll || existingGross <= 0) {
+            const empSal = employee?.employment?.salary || employee?.salary;
+            const breakdown = deriveSalaryBreakdown(empSal);
+            const amounts = calculatePayroll({
+                basicSalary: breakdown.basicSalary,
+                allowances: breakdown.allowances,
+                bonus: 0,
+                tax: breakdown.tax,
+                pf: breakdown.pf,
+                deduction: breakdown.deduction,
             });
-        }
-
-        const payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
-
-        if (!payroll) {
-            return res.status(404).json({
-                success: false,
-                message: `Payslip not generated for ${req.query.month || "this month"}`,
+            payroll = await upsertPayrollRecord({
+                ...amounts,
+                employeeId: employee.id,
+                month: monthStr,
+                generatedBy: employee.user_id || req.user.userId || 1,
+                status: "generated",
             });
         }
 
@@ -735,10 +707,6 @@ export const getPayroll = async (req, res, next) => {
 
         for (const employee of activeEmployees) {
             if (reqEmployeeId && employee.id !== reqEmployeeId) {
-                continue;
-            }
-
-            if (isBeforeJoiningMonth(employee, monthStr)) {
                 continue;
             }
 

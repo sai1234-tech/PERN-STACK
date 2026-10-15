@@ -127,10 +127,11 @@ function PayrollManagementContent() {
       const gross = basic + allow + bonus;
       const totalDed = tax + pf + ded;
       const net = Math.max(0, gross - totalDed);
+      const targetEmpId = employeeId(editingPayroll);
 
       const payload = {
         id: editingPayroll._id || editingPayroll.id,
-        employeeId: employeeId(editingPayroll),
+        employeeId: targetEmpId,
         month: payrollPeriod(month, year),
         basicSalary: basic,
         allowances: allow,
@@ -142,11 +143,24 @@ function PayrollManagementContent() {
         totalDeductions: totalDed,
         netSalary: net,
         status: payrollForm.status,
-        updateBaseSalary: payrollForm.syncBaseSalary,
+        updateBaseSalary: true,
       };
 
-      await updateRecord(editingPayroll._id || editingPayroll.id || employeeId(editingPayroll), payload);
-      setNotice(`Payroll record updated successfully for ${employeeName(editingPayroll)}.`);
+      await updateRecord(editingPayroll._id || editingPayroll.id || targetEmpId, payload);
+
+      if (targetEmpId && gross > 0) {
+        try {
+          await updateSalary(targetEmpId, {
+            salary: gross,
+            month: payrollPeriod(month, year),
+            effectiveDate: new Date().toISOString(),
+          });
+        } catch (e) {
+          // handled if updateRecord already synced
+        }
+      }
+
+      setNotice(`Payroll record and base salary updated successfully for ${employeeName(editingPayroll)}.`);
       setEditingPayroll(null);
     } catch (requestError) {
       setActionError(requestError.message);

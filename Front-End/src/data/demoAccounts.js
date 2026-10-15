@@ -712,11 +712,21 @@ export function handleDemoApi(endpoint, options = {}) {
       const netSalary = body.netSalary !== undefined ? Number(body.netSalary) : Math.max(0, grossSalary - totalDeductions);
       const status = body.status || "generated";
 
+      const targetEmp = customEmps.find((e) =>
+        String(e._id) === String(empId) ||
+        String(e.id) === String(empId) ||
+        String(e.employeeCode) === String(empId) ||
+        (body.employee?.email && e.email?.toLowerCase() === body.employee.email.toLowerCase())
+      ) || body.employee;
+
       const updatedRecord = {
         _id: `pay-${empId}-${pMonth}`,
         id: `pay-${empId}-${pMonth}`,
         employeeId: empId,
+        employee: targetEmp,
         month: pMonth,
+        annualSalary: grossSalary * 12,
+        monthlySalary: grossSalary,
         basicSalary: basic,
         allowances: allow,
         bonus: bonus,
@@ -745,9 +755,14 @@ export function handleDemoApi(endpoint, options = {}) {
 
       localStorage.setItem("hrms_custom_payroll", JSON.stringify(customPayrolls));
 
-      if (body.updateBaseSalary && grossSalary > 0) {
+      if (grossSalary > 0) {
         customEmps = customEmps.map((e) => {
-          if (String(e._id) === empId || String(e.id) === empId || String(e.employeeCode) === empId) {
+          if (
+            String(e._id) === String(empId) ||
+            String(e.id) === String(empId) ||
+            String(e.employeeCode) === String(empId) ||
+            (body.employee?.email && e.email?.toLowerCase() === body.employee.email.toLowerCase())
+          ) {
             return {
               ...e,
               salary: grossSalary * 12,
@@ -757,8 +772,25 @@ export function handleDemoApi(endpoint, options = {}) {
           return e;
         });
         localStorage.setItem("hrms_custom_employees", JSON.stringify(customEmps));
+
+        // Sync active session employee if it matches this employee
+        try {
+          const storedEmp = JSON.parse(sessionStorage.getItem("hrms_employee") || "null");
+          if (
+            storedEmp &&
+            (String(storedEmp.id) === String(empId) ||
+              String(storedEmp._id) === String(empId) ||
+              String(storedEmp.employeeCode) === String(empId) ||
+              (body.employee?.email && storedEmp.email?.toLowerCase() === body.employee.email.toLowerCase()))
+          ) {
+            storedEmp.salary = grossSalary * 12;
+            if (storedEmp.employment) storedEmp.employment.salary = grossSalary * 12;
+            sessionStorage.setItem("hrms_employee", JSON.stringify(storedEmp));
+          }
+        } catch (e) {}
       }
 
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "payroll" } }));
       window.dispatchEvent(new CustomEvent("hrms:data_changed"));
 
       return {

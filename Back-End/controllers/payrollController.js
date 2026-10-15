@@ -841,16 +841,15 @@ export const updatePayrollRecord = async (req, res, next) => {
             });
         }
 
-        // Synchronize employment salary if needed or requested
+        // Synchronize employment salary whenever payroll record is saved
         if (employeeId && grossSalary > 0) {
-            const emp = await findEmployeeById(employeeId);
+            let emp = await findEmployeeById(employeeId);
+            if (!emp) emp = await findEmployeeByUserId(employeeId);
+            if (!emp) emp = await findEmployeeByCodeOrEmail(String(employeeId));
             if (emp) {
-                const currentSalary = Number(emp.employment?.salary || 0);
-                if (currentSalary <= 0 || req.body.updateBaseSalary) {
-                    const employment = emp.employment || {};
-                    employment.salary = grossSalary * 12;
-                    await updateEmployeeRecord(employeeId, { employment });
-                }
+                const employment = emp.employment || {};
+                employment.salary = grossSalary * 12;
+                await updateEmployeeRecord(emp.id, { employment });
             }
         }
 

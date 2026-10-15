@@ -176,6 +176,34 @@ export function AuthProvider({ children }) {
     restoreSession();
   }, []);
 
+  // Listen for real-time data sync events to update employee state
+  useEffect(() => {
+    const handleSync = async () => {
+      try {
+        const storedEmp = JSON.parse(sessionStorage.getItem("hrms_employee") || "null");
+        if (storedEmp) {
+          setEmployee(storedEmp);
+        }
+        const token = sessionStorage.getItem("hrms_token");
+        if (token && !token.startsWith("demo-token-")) {
+          const res = await getCurrentUser();
+          const session = res?.data?.user ? res.data : res;
+          if (session?.employee) {
+            setEmployee(session.employee);
+            sessionStorage.setItem("hrms_employee", JSON.stringify(session.employee));
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener("hrms_data_updated", handleSync);
+    window.addEventListener("hrms:data_changed", handleSync);
+    return () => {
+      window.removeEventListener("hrms_data_updated", handleSync);
+      window.removeEventListener("hrms:data_changed", handleSync);
+    };
+  }, []);
+
   return (
     <AuthContext.Provider value={{ user, employee, login, signup, logout, loading, updateProfilePhoto }}>
       {children}

@@ -175,8 +175,8 @@ function EmployeePayrollContent({ user, employee }) {
     finalMonthly = rawBasic;
     finalAnnual = rawBasic * 12;
   } else {
-    finalAnnual = 900000;
-    finalMonthly = 75000;
+    finalAnnual = 0;
+    finalMonthly = 0;
   }
 
   // =========================================================
@@ -237,31 +237,38 @@ function EmployeePayrollContent({ user, employee }) {
   // PAYSLIP & EARNINGS BREAKDOWN
   // =========================================================
 
+  const hasSalaryConfigured = finalAnnual > 0 || finalMonthly > 0;
+
   const hasRealPayslip = Boolean(
     payslip &&
-      (payslip.grossSalary ||
-        payslip.grossPay ||
-        payslip.basicSalary ||
-        payslip.netSalary ||
-        payslip.netPay)
+      payslip.status !== "not_applicable" &&
+      (payslip.status === "generated" ||
+        payslip.status === "Generated" ||
+        Number(payslip.grossSalary || 0) > 0 ||
+        Number(payslip.grossPay || 0) > 0 ||
+        Number(payslip.basicSalary || 0) > 0 ||
+        Number(payslip.netSalary || 0) > 0 ||
+        Number(payslip.netPay || 0) > 0)
   );
 
   const earnings = payslip?.earnings || payslip?.income || {};
   const deductions = payslip?.deductions || {};
 
-  const rawGrossPay = Number(
-    valueOf(payslip, ["grossSalary", "grossPay"]) ||
-      earnings.total ||
-      finalMonthly
-  );
+  const rawGrossPay =
+    Number(valueOf(payslip, ["grossSalary", "grossPay"]) || earnings.total || 0) ||
+    finalMonthly ||
+    0;
   const displayGrossPay =
     rawGrossPay >= 120000 ? Math.round(rawGrossPay / 12) : rawGrossPay;
 
-  const rawBasicSalary = Number(
-    valueOf(payslip, ["basicSalary", "basic", "baseSalary"]) ||
-      valueOf(earnings, ["basicSalary", "basic", "baseSalary"]) ||
-      Math.round(displayGrossPay * 0.5)
-  );
+  const rawBasicSalary =
+    Number(
+      valueOf(payslip, ["basicSalary", "basic", "baseSalary"]) ||
+        valueOf(earnings, ["basicSalary", "basic", "baseSalary"]) ||
+        0
+    ) ||
+    Math.round(displayGrossPay * 0.5);
+
   const displayBasicSalary =
     rawBasicSalary >= 120000
       ? Math.round(rawBasicSalary / 12)
@@ -269,11 +276,14 @@ function EmployeePayrollContent({ user, employee }) {
       ? Math.round(displayGrossPay * 0.5)
       : rawBasicSalary;
 
-  const rawHra = Number(
-    valueOf(payslip, ["allowances", "allowance", "totalAllowances", "hra"]) ||
-      valueOf(earnings, ["allowances", "allowance", "hra"]) ||
-      Math.round(displayGrossPay * 0.25)
-  );
+  const rawHra =
+    Number(
+      valueOf(payslip, ["allowances", "allowance", "totalAllowances", "hra"]) ||
+        valueOf(earnings, ["allowances", "allowance", "hra"]) ||
+        0
+    ) ||
+    Math.round(displayGrossPay * 0.25);
+
   const displayHra =
     rawHra >= 120000
       ? Math.round(rawHra / 12)
@@ -281,13 +291,18 @@ function EmployeePayrollContent({ user, employee }) {
       ? Math.round(displayGrossPay * 0.25)
       : rawHra;
 
-  const displaySpecial = Number(
-    valueOf(earnings, ["specialAllowance", "special"]) ||
-      Math.round(displayGrossPay * 0.25)
-  );
+  const displaySpecial =
+    Number(
+      valueOf(earnings, ["specialAllowance", "special"]) ||
+        valueOf(payslip, ["specialAllowance", "special"]) ||
+        0
+    ) ||
+    Math.max(0, displayGrossPay - (displayBasicSalary + displayHra));
 
   const displayConveyance = Number(
-    valueOf(earnings, ["conveyance", "transport"]) || 0
+    valueOf(earnings, ["conveyance", "transport"]) ||
+      valueOf(payslip, ["conveyance", "transport"]) ||
+      0
   );
 
   const displayBonus = Number(
@@ -297,25 +312,31 @@ function EmployeePayrollContent({ user, employee }) {
   );
 
   // Deductions calculation
-  const rawPf = Number(
-    valueOf(payslip, ["pf", "providentFund", "pfDeduction"]) ||
-      valueOf(deductions, ["pf", "providentFund", "pfDeduction"]) ||
-      Math.min(Math.round(displayBasicSalary * 0.12), 3600)
-  );
+  const rawPf =
+    Number(
+      valueOf(payslip, ["pf", "providentFund", "pfDeduction"]) ||
+        valueOf(deductions, ["pf", "providentFund", "pfDeduction"]) ||
+        0
+    ) ||
+    (displayBasicSalary > 0 ? Math.min(Math.round(displayBasicSalary * 0.12), 3600) : 0);
   const displayPf = rawPf >= 120000 ? Math.round(rawPf / 12) : rawPf;
 
-  const rawPt = Number(
-    valueOf(payslip, ["tax", "incomeTax", "taxDeduction", "pt"]) ||
-      valueOf(deductions, ["tax", "pt", "professionalTax"]) ||
-      200
-  );
+  const rawPt =
+    Number(
+      valueOf(payslip, ["tax", "incomeTax", "taxDeduction", "pt"]) ||
+        valueOf(deductions, ["tax", "pt", "professionalTax"]) ||
+        0
+    ) ||
+    (displayGrossPay > 0 ? 200 : 0);
   const displayPt = rawPt >= 120000 ? Math.round(rawPt / 12) : rawPt;
 
-  const rawTds = Number(
-    valueOf(deductions, ["tds", "incomeTax", "taxWithholding"]) ||
-      valueOf(payslip, ["deduction"]) ||
-      Math.max(0, Math.round(displayGrossPay * 0.08))
-  );
+  const rawTds =
+    Number(
+      valueOf(deductions, ["tds", "incomeTax", "taxWithholding"]) ||
+        valueOf(payslip, ["deduction"]) ||
+        0
+    ) ||
+    Math.max(0, Math.round(displayGrossPay * 0.08));
   const displayTds = rawTds >= 120000 ? Math.round(rawTds / 12) : rawTds;
 
   const displayOtherDeductions = Number(
@@ -327,24 +348,40 @@ function EmployeePayrollContent({ user, employee }) {
   const calculatedTotalDeductions =
     displayPf + displayPt + displayTds + displayOtherDeductions;
 
-  const displayTotalDeductions = Number(
-    valueOf(payslip, ["totalDeductions", "deductionsTotal"]) ||
-      deductions.total ||
-      calculatedTotalDeductions
-  );
+  const displayTotalDeductions =
+    Number(
+      valueOf(payslip, ["totalDeductions", "deductionsTotal"]) ||
+        deductions.total ||
+        0
+    ) || calculatedTotalDeductions;
 
-  const rawNetPay = Number(
-    valueOf(payslip, ["netSalary", "netPay", "netAmount"]) ||
-      Math.max(displayGrossPay - displayTotalDeductions, 0)
-  );
+  const rawNetPay =
+    Number(
+      valueOf(payslip, ["netSalary", "netPay", "netAmount"]) || 0
+    ) || Math.max(displayGrossPay - displayTotalDeductions, 0);
+
   const displayNetPay =
     rawNetPay >= 120000
       ? Math.round(rawNetPay / 12)
+      : rawNetPay > 0
+      ? rawNetPay
       : Math.max(displayGrossPay - displayTotalDeductions, 0);
 
-  const displayStatus = hasRealPayslip
-    ? payslip.status || "Verified & Disbursed"
-    : "Verified Corporate Statement";
+  // CTC Component calculations for Architecture Tab
+  const ctcMonthly = finalMonthly;
+  const ctcAnnual = finalAnnual;
+  const ctcBasic = Math.round(ctcMonthly * 0.5);
+  const ctcHra = Math.round(ctcMonthly * 0.25);
+  const ctcSpecial = Math.round(ctcMonthly * 0.25);
+  const ctcConveyance = 0;
+  const ctcPf = ctcMonthly > 0 ? Math.min(Math.round(ctcBasic * 0.12), 3600) : 0;
+
+  const displayStatus =
+    payslip?.status === "generated" || payslip?.status === "Generated"
+      ? "Verified & Disbursed"
+      : hasSalaryConfigured
+      ? "Verified & Active"
+      : "Not Generated";
 
   const displayGeneratedAt = payslip?.generatedAt
     ? new Intl.DateTimeFormat("en-IN", {
@@ -405,6 +442,10 @@ function EmployeePayrollContent({ user, employee }) {
   const handleDownload = async () => {
     if (isPeriodBeforeJoining) {
       setActionError("Payslips cannot be downloaded for periods prior to your date of joining.");
+      return;
+    }
+    if (!hasRealPayslip && !hasSalaryConfigured) {
+      setActionError(`Official payslip has not been generated yet for ${formatPeriod(period)}.`);
       return;
     }
     setDownloading(true);
@@ -499,7 +540,9 @@ function EmployeePayrollContent({ user, employee }) {
               type="button"
               className="hero-btn primary"
               onClick={handleDownload}
-              disabled={downloading}
+              disabled={downloading || (!hasRealPayslip && !hasSalaryConfigured) || isPeriodBeforeJoining}
+              title={!hasRealPayslip && !hasSalaryConfigured ? "Payslip not yet generated for this period" : "Download PDF"}
+              style={(!hasRealPayslip && !hasSalaryConfigured) || isPeriodBeforeJoining ? { opacity: 0.6, cursor: "not-allowed" } : {}}
             >
               📥 {downloading ? "Generating PDF..." : "Download PDF"}
             </button>
@@ -518,16 +561,26 @@ function EmployeePayrollContent({ user, employee }) {
             </div>
             <div className="kpi-stat-row">
               <span className="kpi-big-num">{money(displayNetPay)}</span>
-              <span className="kpi-badge-chip positive">{netPercentage}% of Gross</span>
+              <span className={`kpi-badge-chip ${displayNetPay > 0 ? "positive" : "neutral"}`}>
+                {displayNetPay > 0
+                  ? `${netPercentage}% of Gross`
+                  : hasSalaryConfigured
+                  ? "Scheduled Base"
+                  : "Pending Setup"}
+              </span>
             </div>
             <div className="kpi-progress-rail">
               <div
                 className="kpi-progress-bar emerald"
-                style={{ width: `${netPercentage}%` }}
+                style={{ width: `${displayNetPay > 0 ? netPercentage : 0}%` }}
               />
             </div>
             <span className="kpi-subtext">
-              Direct Deposit to Bank • {formatPeriod(period)}
+              {displayNetPay > 0
+                ? `Direct Deposit to Bank • ${formatPeriod(period)}`
+                : hasSalaryConfigured
+                ? `Scheduled base • Pay cycle ending ${formatPeriod(period)}`
+                : `No compensation package recorded`}
             </span>
           </div>
 
@@ -538,14 +591,20 @@ function EmployeePayrollContent({ user, employee }) {
               <div className="kpi-icon-pod teal">📈</div>
             </div>
             <div className="kpi-stat-row">
-              <span className="kpi-big-num">{money(displayGrossPay)}</span>
-              <span className="kpi-badge-chip neutral">Fixed + Allowances</span>
+              <span className="kpi-big-num">
+                {money(hasRealPayslip ? displayGrossPay : finalMonthly)}
+              </span>
+              <span className="kpi-badge-chip neutral">
+                {hasRealPayslip ? "Fixed + Allowances" : (hasSalaryConfigured ? "Base Structure" : "Not Set")}
+              </span>
             </div>
             <div className="kpi-progress-rail">
-              <div className="kpi-progress-bar teal" style={{ width: "100%" }} />
+              <div className="kpi-progress-bar teal" style={{ width: hasRealPayslip || hasSalaryConfigured ? "100%" : "0%" }} />
             </div>
             <span className="kpi-subtext">
-              Base: {money(displayBasicSalary)} • HRA: {money(displayHra)}
+              {hasRealPayslip
+                ? `Base: ${money(displayBasicSalary)} • HRA: ${money(displayHra)}`
+                : (hasSalaryConfigured ? `Scheduled base: ${money(finalMonthly)} / month` : "Salary not yet configured by HR")}
             </span>
           </div>
 
@@ -557,16 +616,20 @@ function EmployeePayrollContent({ user, employee }) {
             </div>
             <div className="kpi-stat-row">
               <span className="kpi-big-num">{money(displayTotalDeductions)}</span>
-              <span className="kpi-badge-chip deduction">{deductionPercentage}% Total</span>
+              <span className={`kpi-badge-chip ${hasRealPayslip ? "deduction" : "neutral"}`}>
+                {hasRealPayslip ? `${deductionPercentage}% Total` : "0% Total"}
+              </span>
             </div>
             <div className="kpi-progress-rail">
               <div
                 className="kpi-progress-bar rose"
-                style={{ width: `${deductionPercentage}%` }}
+                style={{ width: `${hasRealPayslip ? deductionPercentage : 0}%` }}
               />
             </div>
             <span className="kpi-subtext">
-              PF: {money(displayPf)} • TDS: {money(displayTds)} • PT: {money(displayPt)}
+              {hasRealPayslip
+                ? `PF: ${money(displayPf)} • TDS: ${money(displayTds)} • PT: ${money(displayPt)}`
+                : "Deductions calculated upon monthly payroll generation"}
             </span>
           </div>
 
@@ -578,13 +641,17 @@ function EmployeePayrollContent({ user, employee }) {
             </div>
             <div className="kpi-stat-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
               <span className="kpi-big-num" style={{ fontSize: "1.45rem", wordBreak: "break-word" }}>{money(finalAnnual)}</span>
-              <span className="kpi-badge-chip neutral" style={{ whiteSpace: "nowrap" }}>Full Cost to Co.</span>
+              <span className="kpi-badge-chip neutral" style={{ whiteSpace: "nowrap" }}>
+                {hasSalaryConfigured ? "Full Cost to Co." : "Pending Setup"}
+              </span>
             </div>
             <div className="kpi-progress-rail">
-              <div className="kpi-progress-bar indigo" style={{ width: "100%" }} />
+              <div className="kpi-progress-bar indigo" style={{ width: hasSalaryConfigured ? "100%" : "0%" }} />
             </div>
             <span className="kpi-subtext">
-              Monthly CTC: {money(Math.round(finalAnnual / 12))}
+              {hasSalaryConfigured
+                ? `Monthly CTC: ${money(Math.round(finalAnnual / 12))}`
+                : "Salary structure pending HR assignment"}
             </span>
           </div>
         </section>
@@ -682,427 +749,480 @@ function EmployeePayrollContent({ user, employee }) {
             TAB 1: OFFICIAL PAYSLIP & STATEMENT
         ===================================================== */}
         {activeTab === "payslip" && (
-          <article className="payslip-modern-card" ref={payslipRef}>
-            {/* Corporate Header */}
-            <div className="payslip-corp-header">
-              <div className="corp-brand-block">
-                <h2>🏢 Quadratic Systems Inc</h2>
-                <p>
-                  5A1 Melange Towers, Madhapur, Hyderabad
+          (hasRealPayslip || hasSalaryConfigured) ? (
+            <article className="payslip-modern-card" ref={payslipRef}>
+              {/* Corporate Header */}
+              <div className="payslip-corp-header">
+                <div className="corp-brand-block">
+                  <h2>🏢 Quadratic Systems Inc</h2>
+                  <p>
+                    5A1 Melange Towers, Madhapur, Hyderabad
+                  </p>
+                </div>
+
+                <div className="payslip-period-badge">
+                  <span>OFFICIAL SALARY STATEMENT</span>
+                  <strong>{formatPeriod(period)}</strong>
+                  <div style={{ marginTop: "0.4rem" }}>
+                    <span
+                      className="kpi-badge-chip positive"
+                      style={{ fontSize: "0.72rem" }}
+                    >
+                      ✓ {displayStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employee Metadata Grid */}
+              <div className="payslip-meta-grid">
+                <div className="payslip-meta-item">
+                  <span>Employee Name</span>
+                  <strong>{employeeName}</strong>
+                </div>
+                <div className="payslip-meta-item">
+                  <span>Employee ID</span>
+                  <strong>{employeeCode}</strong>
+                </div>
+                <div className="payslip-meta-item">
+                  <span>Department</span>
+                  <strong>{department}</strong>
+                </div>
+                <div className="payslip-meta-item">
+                  <span>Designation</span>
+                  <strong>{designation}</strong>
+                </div>
+
+                <div className="payslip-meta-item">
+                  <span>Date of Joining</span>
+                  <strong>{dateOfJoining}</strong>
+                </div>
+                <div className="payslip-meta-item">
+                  <span>PAN Number</span>
+                  <strong>{panNumber}</strong>
+                </div>
+                <div className="payslip-meta-item">
+                  <span>UAN / PF Number</span>
+                  <strong>{uanNumber}</strong>
+                </div>
+                <div className="payslip-meta-item">
+                  <span>Bank & Account</span>
+                  <strong>{bankAccount}</strong>
+                </div>
+              </div>
+
+              {/* Earnings & Deductions Tables */}
+              <div className="payslip-ledger-grid">
+                {/* Earnings Column */}
+                <div className="ledger-column">
+                  <h3>
+                    Earnings <span>Gross Additions</span>
+                  </h3>
+                  <table className="ledger-table">
+                    <thead>
+                      <tr>
+                        <th>Pay Component</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Basic Salary</td>
+                        <td>{money(displayBasicSalary)}</td>
+                      </tr>
+                      <tr>
+                        <td>House Rent Allowance (HRA)</td>
+                        <td>{money(displayHra)}</td>
+                      </tr>
+                      <tr>
+                        <td>Special / City Allowance</td>
+                        <td>{money(displaySpecial)}</td>
+                      </tr>
+                      <tr>
+                        <td>Conveyance & Medical Allowance</td>
+                        <td>{money(displayConveyance)}</td>
+                      </tr>
+                      {displayBonus > 0 && (
+                        <tr>
+                          <td>Performance Bonus / Incentive</td>
+                          <td>{money(displayBonus)}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th>Total Gross Earnings (A)</th>
+                        <th>{money(displayGrossPay)}</th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Deductions Column */}
+                <div className="ledger-column">
+                  <h3>
+                    Deductions <span>Withheld & Statutory</span>
+                  </h3>
+                  <table className="ledger-table">
+                    <thead>
+                      <tr>
+                        <th>Deduction Component</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Provident Fund (Employee EPF)</td>
+                        <td className="deduction-text">-{money(displayPf)}</td>
+                      </tr>
+                      <tr>
+                        <td>Professional Tax (PT)</td>
+                        <td className="deduction-text">-{money(displayPt)}</td>
+                      </tr>
+                      <tr>
+                        <td>Tax Deducted at Source (TDS)</td>
+                        <td className="deduction-text">-{money(displayTds)}</td>
+                      </tr>
+                      {displayOtherDeductions > 0 && (
+                        <tr>
+                          <td>Other / Insurance Deductions</td>
+                          <td className="deduction-text">-{money(displayOtherDeductions)}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th>Total Deductions (B)</th>
+                        <th className="deduction-text">-{money(displayTotalDeductions)}</th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Net Pay Highlight Banner */}
+              <div className="payslip-net-banner">
+                <div className="net-stat-card">
+                  <span>Gross Earnings (A)</span>
+                  <strong>{money(displayGrossPay)}</strong>
+                </div>
+
+                <div className="net-stat-card">
+                  <span>Total Deductions (B)</span>
+                  <strong className="deduction-text">-{money(displayTotalDeductions)}</strong>
+                </div>
+
+                <div className="net-stat-card highlight">
+                  <span>Net Disbursed Take-Home Pay (A - B)</span>
+                  <strong>{money(displayNetPay)}</strong>
+                </div>
+              </div>
+
+              {/* In-Words Conversion */}
+              <div className="net-words-row">
+                <strong>Net Amount in Words:</strong> {numberToWordsINR(displayNetPay)}
+              </div>
+
+              {/* Security Stamp & Verification */}
+              <div style={{ padding: "0 2.5rem 1.5rem" }}>
+                <div className="payslip-security-stamp">
+                  <div className="qr-code-box">🛡️</div>
+                  <div className="stamp-text">
+                    <strong>Digitally Verified Corporate Disbursement</strong>
+                    <span>
+                      REF: QSI-PAY-{year}{month}-{employeeCode.replace(/\D/g, "") || "901"} • HASH: 7F8E-2B4A-91C0
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Signatures */}
+              <div className="payslip-signatures-row" style={{ display: "flex", justifyContent: "space-between", marginTop: "4rem" }}>
+                <div className="sign-column" style={{ textAlign: "center", width: "45%" }}>
+                  <div className="digital-signature-box" style={{ padding: "0.5rem", borderBottom: "1px dashed #cbd5e1", marginBottom: "0.5rem", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: "1.8rem", color: "#0f172a", transform: "rotate(-3deg)" }}>
+                      {profile.reportsToName || profile.managerName || "HR Manager"}
+                    </span>
+                    <div style={{ fontSize: "0.6rem", color: "#166534", background: "#dcfce7", padding: "2px 6px", borderRadius: "4px", marginTop: "4px" }}>
+                      ✓ DIGITALLY SIGNED
+                    </div>
+                  </div>
+                  <span style={{ fontWeight: "600", fontSize: "0.9rem" }}>Employer Authorized Signatory</span>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                    Quadratic Systems Inc
+                  </div>
+                </div>
+
+                <div className="sign-column" style={{ textAlign: "center", width: "45%" }}>
+                  <div className="digital-signature-box" style={{ padding: "0.5rem", borderBottom: "1px dashed #cbd5e1", marginBottom: "0.5rem", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                     <span style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: "1.8rem", color: "#0f172a", transform: "rotate(-2deg)" }}>
+                      {employeeName}
+                    </span>
+                    <div style={{ fontSize: "0.6rem", color: "#166534", background: "#dcfce7", padding: "2px 6px", borderRadius: "4px", marginTop: "4px" }}>
+                      ✓ VERIFIED
+                    </div>
+                  </div>
+                  <span style={{ fontWeight: "600", fontSize: "0.9rem" }}>Employee Signature Acknowledgement</span>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                    {employeeName} ({employeeCode})
+                  </div>
+                </div>
+              </div>
+
+              {/* Legal Footer */}
+              <div className="payslip-legal-footer">
+                This document is a computer-generated official payroll record issued by Quadratic Systems Inc in compliance with the Payment of Wages Act. For compensation questions, reach out to payroll@quadraticsystems.com.
+              </div>
+            </article>
+          ) : (
+            <section className="dash-panel-card" style={{ padding: "3.5rem 2rem", margin: "1.5rem 0", background: "var(--card-bg, #ffffff)", borderRadius: "16px", border: "1px dashed var(--border-color, #cbd5e1)", textAlign: "center" }}>
+              <div style={{ maxWidth: "560px", margin: "0 auto" }}>
+                <div style={{ fontSize: "3.2rem", marginBottom: "1rem" }}>📋</div>
+                <h3 style={{ fontSize: "1.35rem", fontWeight: "700", color: "var(--text-primary, #0f172a)", marginBottom: "0.5rem" }}>
+                  {hasSalaryConfigured ? `Payslip Awaiting Generation for ${formatPeriod(period)}` : "No Payroll Record Found"}
+                </h3>
+                <p style={{ fontSize: "0.95rem", color: "var(--text-secondary, #64748b)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                  {hasSalaryConfigured
+                    ? `Your monthly base salary is configured (${money(finalMonthly)}/month), but HR has not yet executed the payroll run for ${formatPeriod(period)}. Your official payslip and disbursement record will be available as soon as the pay cycle is completed.`
+                    : `No compensation package or payroll run has been recorded for your profile. Once HR sets up your salary and processes the pay cycle for ${formatPeriod(period)}, your official payslip will be generated here.`}
                 </p>
-              </div>
-
-              <div className="payslip-period-badge">
-                <span>OFFICIAL SALARY STATEMENT</span>
-                <strong>{formatPeriod(period)}</strong>
-                <div style={{ marginTop: "0.4rem" }}>
-                  <span
-                    className="kpi-badge-chip positive"
-                    style={{ fontSize: "0.72rem" }}
-                  >
-                    ✓ {displayStatus}
-                  </span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "9999px", background: hasSalaryConfigured ? "#fef3c7" : "#f1f5f9", color: hasSalaryConfigured ? "#92400e" : "#475569", fontSize: "0.85rem", fontWeight: "600" }}>
+                  ⏳ Status: {hasSalaryConfigured ? "Awaiting Monthly Payroll Run" : "Pending HR Compensation Setup"}
                 </div>
               </div>
-            </div>
-
-            {/* Employee Metadata Grid */}
-            <div className="payslip-meta-grid">
-              <div className="payslip-meta-item">
-                <span>Employee Name</span>
-                <strong>{employeeName}</strong>
-              </div>
-              <div className="payslip-meta-item">
-                <span>Employee ID</span>
-                <strong>{employeeCode}</strong>
-              </div>
-              <div className="payslip-meta-item">
-                <span>Department</span>
-                <strong>{department}</strong>
-              </div>
-              <div className="payslip-meta-item">
-                <span>Designation</span>
-                <strong>{designation}</strong>
-              </div>
-
-              <div className="payslip-meta-item">
-                <span>Date of Joining</span>
-                <strong>{dateOfJoining}</strong>
-              </div>
-              <div className="payslip-meta-item">
-                <span>PAN Number</span>
-                <strong>{panNumber}</strong>
-              </div>
-              <div className="payslip-meta-item">
-                <span>UAN / PF Number</span>
-                <strong>{uanNumber}</strong>
-              </div>
-              <div className="payslip-meta-item">
-                <span>Bank & Account</span>
-                <strong>{bankAccount}</strong>
-              </div>
-            </div>
-
-            {/* Earnings & Deductions Tables */}
-            <div className="payslip-ledger-grid">
-              {/* Earnings Column */}
-              <div className="ledger-column">
-                <h3>
-                  Earnings <span>Gross Additions</span>
-                </h3>
-                <table className="ledger-table">
-                  <thead>
-                    <tr>
-                      <th>Pay Component</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Basic Salary</td>
-                      <td>{money(displayBasicSalary)}</td>
-                    </tr>
-                    <tr>
-                      <td>House Rent Allowance (HRA)</td>
-                      <td>{money(displayHra)}</td>
-                    </tr>
-                    <tr>
-                      <td>Special / City Allowance</td>
-                      <td>{money(displaySpecial)}</td>
-                    </tr>
-                    <tr>
-                      <td>Conveyance & Medical Allowance</td>
-                      <td>{money(displayConveyance)}</td>
-                    </tr>
-                    {displayBonus > 0 && (
-                      <tr>
-                        <td>Performance Bonus / Incentive</td>
-                        <td>{money(displayBonus)}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <th>Total Gross Earnings (A)</th>
-                      <th>{money(displayGrossPay)}</th>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {/* Deductions Column */}
-              <div className="ledger-column">
-                <h3>
-                  Deductions <span>Withheld & Statutory</span>
-                </h3>
-                <table className="ledger-table">
-                  <thead>
-                    <tr>
-                      <th>Deduction Component</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Provident Fund (Employee EPF)</td>
-                      <td className="deduction-text">-{money(displayPf)}</td>
-                    </tr>
-                    <tr>
-                      <td>Professional Tax (PT)</td>
-                      <td className="deduction-text">-{money(displayPt)}</td>
-                    </tr>
-                    <tr>
-                      <td>Tax Deducted at Source (TDS)</td>
-                      <td className="deduction-text">-{money(displayTds)}</td>
-                    </tr>
-                    {displayOtherDeductions > 0 && (
-                      <tr>
-                        <td>Other / Insurance Deductions</td>
-                        <td className="deduction-text">-{money(displayOtherDeductions)}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <th>Total Deductions (B)</th>
-                      <th className="deduction-text">-{money(displayTotalDeductions)}</th>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-
-            {/* Net Pay Highlight Banner */}
-            <div className="payslip-net-banner">
-              <div className="net-stat-card">
-                <span>Gross Earnings (A)</span>
-                <strong>{money(displayGrossPay)}</strong>
-              </div>
-
-              <div className="net-stat-card">
-                <span>Total Deductions (B)</span>
-                <strong className="deduction-text">-{money(displayTotalDeductions)}</strong>
-              </div>
-
-              <div className="net-stat-card highlight">
-                <span>Net Disbursed Take-Home Pay (A - B)</span>
-                <strong>{money(displayNetPay)}</strong>
-              </div>
-            </div>
-
-            {/* In-Words Conversion */}
-            <div className="net-words-row">
-              <strong>Net Amount in Words:</strong> {numberToWordsINR(displayNetPay)}
-            </div>
-
-            {/* Security Stamp & Verification */}
-            <div style={{ padding: "0 2.5rem 1.5rem" }}>
-              <div className="payslip-security-stamp">
-                <div className="qr-code-box">🛡️</div>
-                <div className="stamp-text">
-                  <strong>Digitally Verified Corporate Disbursement</strong>
-                  <span>
-                    REF: QSI-PAY-{year}{month}-{employeeCode.replace(/\D/g, "") || "901"} • HASH: 7F8E-2B4A-91C0
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Signatures */}
-            <div className="payslip-signatures-row" style={{ display: "flex", justifyContent: "space-between", marginTop: "4rem" }}>
-              <div className="sign-column" style={{ textAlign: "center", width: "45%" }}>
-                <div className="digital-signature-box" style={{ padding: "0.5rem", borderBottom: "1px dashed #cbd5e1", marginBottom: "0.5rem", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: "1.8rem", color: "#0f172a", transform: "rotate(-3deg)" }}>
-                    {profile.reportsToName || profile.managerName || "HR Manager"}
-                  </span>
-                  <div style={{ fontSize: "0.6rem", color: "#166534", background: "#dcfce7", padding: "2px 6px", borderRadius: "4px", marginTop: "4px" }}>
-                    ✓ DIGITALLY SIGNED
-                  </div>
-                </div>
-                <span style={{ fontWeight: "600", fontSize: "0.9rem" }}>Employer Authorized Signatory</span>
-                <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
-                  Quadratic Systems Inc
-                </div>
-              </div>
-
-              <div className="sign-column" style={{ textAlign: "center", width: "45%" }}>
-                <div className="digital-signature-box" style={{ padding: "0.5rem", borderBottom: "1px dashed #cbd5e1", marginBottom: "0.5rem", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                   <span style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: "1.8rem", color: "#0f172a", transform: "rotate(-2deg)" }}>
-                    {employeeName}
-                  </span>
-                  <div style={{ fontSize: "0.6rem", color: "#166534", background: "#dcfce7", padding: "2px 6px", borderRadius: "4px", marginTop: "4px" }}>
-                    ✓ VERIFIED
-                  </div>
-                </div>
-                <span style={{ fontWeight: "600", fontSize: "0.9rem" }}>Employee Signature Acknowledgement</span>
-                <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
-                  {employeeName} ({employeeCode})
-                </div>
-              </div>
-            </div>
-
-            {/* Legal Footer */}
-            <div className="payslip-legal-footer">
-              This document is a computer-generated official payroll record issued by Quadratic Systems Inc in compliance with the Payment of Wages Act. For compensation questions, reach out to payroll@quadraticsystems.com.
-            </div>
-          </article>
+            </section>
+          )
         )}
 
         {/* =====================================================
             TAB 2: CTC ARCHITECTURE & SALARY STRUCTURE
         ===================================================== */}
         {activeTab === "ctc" && (
-          <article className="ctc-structure-card">
-            <div className="ctc-structure-head">
-              <div>
-                <h2>Annual Compensation Architecture (CTC)</h2>
-                <p>
-                  Comprehensive structural breakdown of your full compensation package
-                  including fixed base pay, flexible allowances, and statutory retirement provisions.
+          hasSalaryConfigured ? (
+            <article className="ctc-structure-card">
+              <div className="ctc-structure-head">
+                <div>
+                  <h2>Annual Compensation Architecture (CTC)</h2>
+                  <p>
+                    Comprehensive structural breakdown of your full compensation package
+                    including fixed base pay, flexible allowances, and statutory retirement provisions.
+                  </p>
+                </div>
+
+                <div className="payslip-period-badge">
+                  <span>TOTAL ANNUAL CTC</span>
+                  <strong style={{ fontSize: "1.65rem", color: "#0d9488" }}>
+                    {money(ctcAnnual)}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Visual Rail */}
+              <div className="ctc-visual-rail">
+                <div className="ctc-visual-fill basic" style={{ width: "50%" }} title="Basic Pay: 50%" />
+                <div className="ctc-visual-fill hra" style={{ width: "25%" }} title="HRA: 25%" />
+                <div className="ctc-visual-fill allowances" style={{ width: "15%" }} title="Special Allowances: 15%" />
+                <div className="ctc-visual-fill pf" style={{ width: "10%" }} title="Employer Contributions: 10%" />
+              </div>
+
+              {/* Legend */}
+              <div className="ctc-legend-strip">
+                <div className="ctc-legend-item">
+                  <span className="ctc-legend-dot" style={{ background: "#0d9488" }} />
+                  Fixed Basic Pay (50%)
+                </div>
+                <div className="ctc-legend-item">
+                  <span className="ctc-legend-dot" style={{ background: "#10b981" }} />
+                  House Rent Allowance (25%)
+                </div>
+                <div className="ctc-legend-item">
+                  <span className="ctc-legend-dot" style={{ background: "#6366f1" }} />
+                  Flexible Allowances (15%)
+                </div>
+                <div className="ctc-legend-item">
+                  <span className="ctc-legend-dot" style={{ background: "#f59e0b" }} />
+                  Employer PF & Benefits (10%)
+                </div>
+              </div>
+
+              {/* Breakdown Tiles */}
+              <div className="ctc-breakdown-grid">
+                <div className="ctc-tile-box">
+                  <span>Fixed Basic Salary</span>
+                  <strong>{money(ctcBasic * 12)}</strong>
+                  <small>{money(ctcBasic)} / month</small>
+                </div>
+
+                <div className="ctc-tile-box">
+                  <span>House Rent Allowance (HRA)</span>
+                  <strong>{money(ctcHra * 12)}</strong>
+                  <small>{money(ctcHra)} / month</small>
+                </div>
+
+                <div className="ctc-tile-box">
+                  <span>Special / City Allowance</span>
+                  <strong>{money(ctcSpecial * 12)}</strong>
+                  <small>{money(ctcSpecial)} / month</small>
+                </div>
+
+                <div className="ctc-tile-box">
+                  <span>Conveyance & Travel</span>
+                  <strong>{money(ctcConveyance * 12)}</strong>
+                  <small>{money(ctcConveyance)} / month</small>
+                </div>
+
+                <div className="ctc-tile-box">
+                  <span>Employer PF Contribution</span>
+                  <strong>{money(ctcPf * 12)}</strong>
+                  <small>{money(ctcPf)} / month (Statutory)</small>
+                </div>
+
+                <div className="ctc-tile-box">
+                  <span>Annual Gratuity Provision</span>
+                  <strong>{money(Math.round(ctcBasic * 12 * 0.0481))}</strong>
+                  <small>4.81% of Basic (Accrued Annually)</small>
+                </div>
+              </div>
+
+              <div className="tax-advisory-box" style={{ marginTop: "1.75rem" }}>
+                💡 <strong>Compensation Policy Note:</strong> Compensation reviews occur annually in April. Variable performance bonuses and long-term equity allocations (if applicable) are governed under separate incentive plan documents.
+              </div>
+            </article>
+          ) : (
+            <section className="dash-panel-card" style={{ padding: "3.5rem 2rem", margin: "1.5rem 0", background: "var(--card-bg, #ffffff)", borderRadius: "16px", border: "1px dashed var(--border-color, #cbd5e1)", textAlign: "center" }}>
+              <div style={{ maxWidth: "560px", margin: "0 auto" }}>
+                <div style={{ fontSize: "3.2rem", marginBottom: "1rem" }}>💼</div>
+                <h3 style={{ fontSize: "1.35rem", fontWeight: "700", color: "var(--text-primary, #0f172a)", marginBottom: "0.5rem" }}>
+                  Compensation Architecture Pending
+                </h3>
+                <p style={{ fontSize: "0.95rem", color: "var(--text-secondary, #64748b)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                  Your annualized Cost to Company (CTC) structure, allowances, and statutory benefits breakdown will appear here once assigned by the HR department.
                 </p>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "9999px", background: "#f1f5f9", color: "#475569", fontSize: "0.85rem", fontWeight: "600" }}>
+                  Status: Pending HR Setup
+                </div>
               </div>
-
-              <div className="payslip-period-badge">
-                <span>TOTAL ANNUAL CTC</span>
-                <strong style={{ fontSize: "1.65rem", color: "#0d9488" }}>
-                  {money(finalAnnual)}
-                </strong>
-              </div>
-            </div>
-
-            {/* Visual Rail */}
-            <div className="ctc-visual-rail">
-              <div className="ctc-visual-fill basic" style={{ width: "50%" }} title="Basic Pay: 50%" />
-              <div className="ctc-visual-fill hra" style={{ width: "25%" }} title="HRA: 25%" />
-              <div className="ctc-visual-fill allowances" style={{ width: "15%" }} title="Special Allowances: 15%" />
-              <div className="ctc-visual-fill pf" style={{ width: "10%" }} title="Employer Contributions: 10%" />
-            </div>
-
-            {/* Legend */}
-            <div className="ctc-legend-strip">
-              <div className="ctc-legend-item">
-                <span className="ctc-legend-dot" style={{ background: "#0d9488" }} />
-                Fixed Basic Pay (50%)
-              </div>
-              <div className="ctc-legend-item">
-                <span className="ctc-legend-dot" style={{ background: "#10b981" }} />
-                House Rent Allowance (25%)
-              </div>
-              <div className="ctc-legend-item">
-                <span className="ctc-legend-dot" style={{ background: "#6366f1" }} />
-                Flexible Allowances (15%)
-              </div>
-              <div className="ctc-legend-item">
-                <span className="ctc-legend-dot" style={{ background: "#f59e0b" }} />
-                Employer PF & Benefits (10%)
-              </div>
-            </div>
-
-            {/* Breakdown Tiles */}
-            <div className="ctc-breakdown-grid">
-              <div className="ctc-tile-box">
-                <span>Fixed Basic Salary</span>
-                <strong>{money(displayBasicSalary * 12)}</strong>
-                <small>{money(displayBasicSalary)} / month</small>
-              </div>
-
-              <div className="ctc-tile-box">
-                <span>House Rent Allowance (HRA)</span>
-                <strong>{money(displayHra * 12)}</strong>
-                <small>{money(displayHra)} / month</small>
-              </div>
-
-              <div className="ctc-tile-box">
-                <span>Special / City Allowance</span>
-                <strong>{money(displaySpecial * 12)}</strong>
-                <small>{money(displaySpecial)} / month</small>
-              </div>
-
-              <div className="ctc-tile-box">
-                <span>Conveyance & Travel</span>
-                <strong>{money(displayConveyance * 12)}</strong>
-                <small>{money(displayConveyance)} / month</small>
-              </div>
-
-              <div className="ctc-tile-box">
-                <span>Employer PF Contribution</span>
-                <strong>{money(displayPf * 12)}</strong>
-                <small>{money(displayPf)} / month (Statutory)</small>
-              </div>
-
-              <div className="ctc-tile-box">
-                <span>Annual Gratuity Provision</span>
-                <strong>{money(Math.round(displayBasicSalary * 12 * 0.0481))}</strong>
-                <small>4.81% of Basic (Accrued Annually)</small>
-              </div>
-            </div>
-
-            <div className="tax-advisory-box" style={{ marginTop: "1.75rem" }}>
-              💡 <strong>Compensation Policy Note:</strong> Compensation reviews occur annually in April. Variable performance bonuses and long-term equity allocations (if applicable) are governed under separate incentive plan documents.
-            </div>
-          </article>
+            </section>
+          )
         )}
 
         {/* =====================================================
             TAB 3: TAX WITHHOLDING & YTD ANALYSIS
         ===================================================== */}
         {activeTab === "ytd" && (
-          <article>
-            <div className="tax-hero-card">
-              <div className="tax-hero-title">
-                <h3>Income Tax & Year-to-Date (YTD) Intelligence</h3>
-                <p>
-                  Financial Year 2024-25 projection under the Central Board of Direct Taxes (CBDT) framework.
+          hasSalaryConfigured || hasRealPayslip ? (
+            <article>
+              <div className="tax-hero-card">
+                <div className="tax-hero-title">
+                  <h3>Income Tax & Year-to-Date (YTD) Intelligence</h3>
+                  <p>
+                    Financial Year 2024-25 projection under the Central Board of Direct Taxes (CBDT) framework.
+                  </p>
+                </div>
+                <div className="tax-regime-badge">
+                  ✓ New Tax Regime (Section 115BAC)
+                </div>
+              </div>
+
+              <div className="tax-grid-layout">
+                {/* Column 1: Financial Year YTD Ledger */}
+                <div className="tax-panel">
+                  <h4>
+                    Financial Year YTD Ledger
+                    <span style={{ fontSize: "0.76rem", color: "#64748b", fontWeight: "normal" }}>
+                      Apr 2024 – Present
+                    </span>
+                  </h4>
+
+                  <div className="tax-item-row">
+                    <span>Gross Compensation Earned YTD</span>
+                    <strong>{money(displayGrossPay * 6)}</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>Standard Deduction Applied</span>
+                    <strong className="highlight-green">{money(Math.min(finalAnnual, 75000))}</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>Employee PF Accumulation YTD</span>
+                    <strong>{money(displayPf * 6)}</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>Total Income Tax / TDS Withheld YTD</span>
+                    <strong style={{ color: "#e11d48" }}>{money(displayTds * 6)}</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>Professional Tax Paid YTD</span>
+                    <strong>{money(displayPt * 6)}</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>Estimated Net Taxable Base</span>
+                    <strong className="highlight-green">
+                      {money(Math.max(0, finalAnnual - Math.min(finalAnnual, 75000)))}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Column 2: Tax Slabs & Deductions Guide */}
+                <div className="tax-panel">
+                  <h4>New Regime Tax Slabs (FY 2024-25)</h4>
+
+                  <div className="tax-item-row">
+                    <span>₹0 – ₹3,00,000</span>
+                    <strong>NIL (0%)</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>₹3,00,001 – ₹7,00,000</span>
+                    <strong>5% (Rebate Eligible u/s 87A)</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>₹7,00,001 – ₹10,00,000</span>
+                    <strong>10%</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>₹10,00,001 – ₹12,00,000</span>
+                    <strong>15%</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>₹12,00,001 – ₹15,00,000</span>
+                    <strong>20%</strong>
+                  </div>
+
+                  <div className="tax-item-row">
+                    <span>Above ₹15,00,000</span>
+                    <strong>30%</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="tax-advisory-box">
+                📌 <strong>Tax Declarations & Proof Submission:</strong> Under the New Tax Regime, taxable income up to ₹7,75,000 (after the ₹75,000 standard deduction) incurs zero tax liability via the Section 87A rebate. For regime switches or investment declarations, contact the HR Finance team before the December window closes.
+              </div>
+            </article>
+          ) : (
+            <section className="dash-panel-card" style={{ padding: "3.5rem 2rem", margin: "1.5rem 0", background: "var(--card-bg, #ffffff)", borderRadius: "16px", border: "1px dashed var(--border-color, #cbd5e1)", textAlign: "center" }}>
+              <div style={{ maxWidth: "560px", margin: "0 auto" }}>
+                <div style={{ fontSize: "3.2rem", marginBottom: "1rem" }}>📊</div>
+                <h3 style={{ fontSize: "1.35rem", fontWeight: "700", color: "var(--text-primary, #0f172a)", marginBottom: "0.5rem" }}>
+                  Tax & YTD Ledger Inactive
+                </h3>
+                <p style={{ fontSize: "0.95rem", color: "var(--text-secondary, #64748b)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                  Tax projections under Section 115BAC and Year-to-Date tax withholdings will be automatically computed once your payroll cycles begin.
                 </p>
-              </div>
-              <div className="tax-regime-badge">
-                ✓ New Tax Regime (Section 115BAC)
-              </div>
-            </div>
-
-            <div className="tax-grid-layout">
-              {/* Column 1: Financial Year YTD Ledger */}
-              <div className="tax-panel">
-                <h4>
-                  Financial Year YTD Ledger
-                  <span style={{ fontSize: "0.76rem", color: "#64748b", fontWeight: "normal" }}>
-                    Apr 2024 – Present
-                  </span>
-                </h4>
-
-                <div className="tax-item-row">
-                  <span>Gross Compensation Earned YTD</span>
-                  <strong>{money(displayGrossPay * 6)}</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>Standard Deduction Applied</span>
-                  <strong className="highlight-green">{money(75000)}</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>Employee PF Accumulation YTD</span>
-                  <strong>{money(displayPf * 6)}</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>Total Income Tax / TDS Withheld YTD</span>
-                  <strong style={{ color: "#e11d48" }}>{money(displayTds * 6)}</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>Professional Tax Paid YTD</span>
-                  <strong>{money(displayPt * 6)}</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>Estimated Net Taxable Base</span>
-                  <strong className="highlight-green">
-                    {money(Math.max(0, finalAnnual - 75000))}
-                  </strong>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "9999px", background: "#f1f5f9", color: "#475569", fontSize: "0.85rem", fontWeight: "600" }}>
+                  Awaiting Active Payroll
                 </div>
               </div>
-
-              {/* Column 2: Tax Slabs & Deductions Guide */}
-              <div className="tax-panel">
-                <h4>New Regime Tax Slabs (FY 2024-25)</h4>
-
-                <div className="tax-item-row">
-                  <span>₹0 – ₹3,00,000</span>
-                  <strong>NIL (0%)</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>₹3,00,001 – ₹7,00,000</span>
-                  <strong>5% (Rebate Eligible u/s 87A)</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>₹7,00,001 – ₹10,00,000</span>
-                  <strong>10%</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>₹10,00,001 – ₹12,00,000</span>
-                  <strong>15%</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>₹12,00,001 – ₹15,00,000</span>
-                  <strong>20%</strong>
-                </div>
-
-                <div className="tax-item-row">
-                  <span>Above ₹15,00,000</span>
-                  <strong>30%</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="tax-advisory-box">
-              📌 <strong>Tax Declarations & Proof Submission:</strong> Under the New Tax Regime, taxable income up to ₹7,75,000 (after the ₹75,000 standard deduction) incurs zero tax liability via the Section 87A rebate. For regime switches or investment declarations, contact the HR Finance team before the December window closes.
-            </div>
-          </article>
+            </section>
+          )
         )}
           </>
         )}

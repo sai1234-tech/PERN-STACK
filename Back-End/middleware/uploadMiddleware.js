@@ -1,8 +1,10 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
 
-const uploadDir = path.join(process.cwd(), "uploads", "profile-pictures");
+const backendDir = path.dirname(fileURLToPath(import.meta.url));
+const uploadDir = path.join(backendDir, "..", "uploads", "profile-pictures");
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }

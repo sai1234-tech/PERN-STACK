@@ -9,6 +9,7 @@ import {
   updateEmployeeById,
 } from "../../services/employeeService";
 import { getDepartments } from "../../services/departmentService";
+import { getAllAttendance } from "../../services/hrService";
 import { formatDate } from "../../utils/date";
 import { calculateTenure, formatTenure, getTenureDecimals } from "../../utils/tenureUtils";
 import { useSyncRefresh, broadcastDataChange } from "../../utils/syncManager";
@@ -52,6 +53,7 @@ const emptyForm = {
   dateOfExit: "",
   employmentType: "Full Time",
   status: "Active",
+  salary: "",
   bankName: "",
   accountNumber: "",
   ifsc: "",
@@ -161,6 +163,8 @@ function EmployeeManagement() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [attendance, setAttendance] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Profile Dossier Modal
   const [inspectedEmp, setInspectedEmp] = useState(null);
@@ -169,10 +173,14 @@ function EmployeeManagement() {
     if (!silent) setLoading(true);
     setError("");
     try {
-      const [empRes, deptRes] = await Promise.all([
+      const [empRes, deptRes, attRes] = await Promise.all([
         getAllEmployees(""),
         getDepartments().catch(() => ({ data: [] })),
+        getAllAttendance().catch(() => ({ data: [] })),
       ]);
+
+      const attList = attRes.data || attRes.records || [];
+      setAttendance(Array.isArray(attList) ? attList : []);
 
       const records = empRes.data || empRes.employees || [];
       const rawList = Array.isArray(records) ? records : [];
@@ -268,13 +276,25 @@ function EmployeeManagement() {
     const fullTimeRatio = total > 0 ? Math.round((fullTimeCount / total) * 100) : 100;
     const deptCount = departmentOptions.length;
 
+    // Real-time Shift Attendance calculation
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayRecords = attendance.filter((record) => {
+      const recDate = record.date ? String(record.date).slice(0, 10) : "";
+      const isToday = recDate === todayStr || (record.checkIn && String(record.checkIn).slice(0, 10) === todayStr);
+      return isToday && Boolean(record.checkIn);
+    });
+    const presentToday = todayRecords.length;
+    const onDutyNow = todayRecords.filter((r) => !r.checkOut).length;
+
     return {
       total,
       active,
       fullTimeRatio,
       deptCount,
+      presentToday,
+      onDutyNow,
     };
-  }, [employees, departmentOptions]);
+  }, [employees, departmentOptions, attendance]);
 
   // Filtered employees for directory table
   const visibleEmployees = useMemo(() => {
@@ -325,12 +345,19 @@ function EmployeeManagement() {
     });
   }, [employees, statusFilter, deptFilter, typeFilter, tenureFilter, search]);
 
-  const setField = (event) =>
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  const setField = (event) => {
+    const { name, value } = event.target;
+    let nextVal = value;
+    if (name === "pan" || name === "ifsc") {
+      nextVal = value.toUpperCase();
+    }
+    setForm((current) => ({ ...current, [name]: nextVal }));
+  };
 
   const resetForm = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setShowPassword(false);
   };
 
   const employeeName = (employee) =>
@@ -361,6 +388,7 @@ function EmployeeManagement() {
       phone: (form.phone || "").trim(),
       joiningDate: joinDate,
       reportsTo: form.reportsTo || null,
+      salary: form.salary ? Number(form.salary) * 12 : undefined,
       grantLogin: form.grantLogin,
       loginRole: form.loginRole || "employee",
       loginPassword: form.loginPassword ? form.loginPassword.trim() : undefined,
@@ -378,6 +406,7 @@ function EmployeeManagement() {
         dateOfExit: form.status !== "Active" && form.dateOfExit ? form.dateOfExit : null,
         employmentType: form.employmentType || "Full Time",
         status: form.status || "Active",
+        salary: form.salary ? Number(form.salary) * 12 : undefined,
       },
     };
 
@@ -391,7 +420,20 @@ function EmployeeManagement() {
 
       if (editingId) {
         try {
-          await updateEmployeeById(editingId, payload);
+          const res = await updateEmployeeById(editingId, payload);
+          const updatedRecord = res?.data || res?.employee || res;
+          if (updatedRecord && (updatedRecord._id || updatedRecord.id || updatedRecord.employeeCode)) {
+            setApiEmployees((prev) =>
+              prev.map((e) =>
+                (String(e.id || e._id) === String(editingId) || String(e.employeeCode) === String(canonicalCode))
+                  ? { ...e, ...updatedRecord }
+                  : e
+              )
+            );
+            if (inspectedEmp && (String(inspectedEmp.id || inspectedEmp._id) === String(editingId) || String(inspectedEmp.employeeCode) === String(canonicalCode))) {
+              setInspectedEmp((curr) => ({ ...curr, ...updatedRecord }));
+            }
+          }
           setNotice(`Employee record (${canonicalCode}) updated successfully.`);
         } catch (updateErr) {
           if (String(editingId).startsWith("mock-") || updateErr.message?.includes("not found")) {
@@ -437,7 +479,7 @@ function EmployeeManagement() {
     const reportsToVal =
       typeof employee.reportsTo === "object" && employee.reportsTo !== null
         ? (employee.reportsTo._id || employee.reportsTo.id || employee.reportsTo.employeeCode || "")
-        : (employee.reportsTo || "");
+        : (employee.reportsTo || employee.employment?.reportsTo || "");
 
     setForm({
       employeeCode: employee.employeeCode || "",
@@ -448,6 +490,9 @@ function EmployeeManagement() {
       department: employee.employment?.department || employee.department || "",
       designation: employee.employment?.designation || employee.designation || "",
       reportsTo: reportsToVal,
+      salary: (employee.employment?.salary || employee.salary)
+        ? String(Math.round(Number(employee.employment?.salary || employee.salary) >= 120000 ? Number(employee.employment?.salary || employee.salary) / 12 : Number(employee.employment?.salary || employee.salary)))
+        : "",
       joiningDate: employee.employment?.joiningDate
         ? new Date(employee.employment.joiningDate).toISOString().slice(0, 10)
         : (employee.joiningDate ? new Date(employee.joiningDate).toISOString().slice(0, 10) : ""),
@@ -670,36 +715,42 @@ function EmployeeManagement() {
             </div>
             <div className="kpi-stat-row">
               <strong className="kpi-big-num">{kpis.total}</strong>
-              <span className="kpi-badge-chip neutral">Staff</span>
+              <span className="kpi-badge-chip neutral">{kpis.active} Active</span>
             </div>
             <div className="kpi-progress-rail">
               <div className="kpi-progress-bar teal" style={{ width: "100%" }} />
             </div>
-            <small className="kpi-subtext">Total active personnel on corporate roster</small>
+            <small className="kpi-subtext">
+              {kpis.active} active on payroll · {kpis.total - kpis.active} offboarding/notice
+            </small>
           </div>
 
-          {/* Card 2: Active Personnel */}
+          {/* Card 2: On-Duty Today */}
           <div className="kpi-card-box emerald">
             <div className="kpi-card-head">
-              <span className="kpi-title-text">Active Personnel</span>
-              <div className="kpi-icon-pod emerald">✓</div>
+              <span className="kpi-title-text">On-Duty Today</span>
+              <div className="kpi-icon-pod emerald">⏱️</div>
             </div>
             <div className="kpi-stat-row">
-              <strong className="kpi-big-num">{kpis.active}</strong>
-              <span className="kpi-badge-chip positive">Active Duty</span>
+              <strong className="kpi-big-num">{kpis.presentToday}</strong>
+              <span className={`kpi-badge-chip ${kpis.presentToday > 0 ? "positive" : "neutral"}`}>
+                {kpis.presentToday > 0 ? `${kpis.presentToday} Clocked In` : "0 Clocked In"}
+              </span>
             </div>
             <div className="kpi-progress-rail">
               <div
                 className="kpi-progress-bar emerald"
                 style={{
                   width: `${
-                    kpis.total > 0 ? Math.round((kpis.active / kpis.total) * 100) : 0
+                    kpis.active > 0
+                      ? Math.min(100, Math.round((kpis.presentToday / kpis.active) * 100))
+                      : 0
                   }%`,
                 }}
               />
             </div>
             <small className="kpi-subtext">
-              {kpis.total - kpis.active} inactive or offboarding accounts
+              {kpis.presentToday} of {kpis.active} active staff clocked in today ({kpis.onDutyNow} active shift)
             </small>
           </div>
 
@@ -870,15 +921,22 @@ function EmployeeManagement() {
                   <select
                     id="form-reportsTo"
                     name="reportsTo"
-                    value={form.reportsTo}
+                    value={String(form.reportsTo || "")}
                     onChange={setField}
                   >
                     <option value="">-- No Manager (Root) --</option>
-                    {employees.filter(e => e._id !== editingId && e.id !== editingId).map((emp) => (
-                      <option key={emp._id || emp.id} value={emp._id || emp.id}>
-                        {emp.name || `${emp.firstName} ${emp.lastName}`} ({emp.employeeCode})
-                      </option>
-                    ))}
+                    {employees
+                      .filter(
+                        (e) =>
+                          String(e._id) !== String(editingId) &&
+                          String(e.id) !== String(editingId) &&
+                          String(e.employeeCode) !== String(editingId)
+                      )
+                      .map((emp) => (
+                        <option key={emp._id || emp.id} value={String(emp.id || emp._id)}>
+                          {emp.name || `${emp.firstName} ${emp.lastName}`} ({emp.employeeCode})
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -895,6 +953,25 @@ function EmployeeManagement() {
                     <option>Contract</option>
                     <option>Intern</option>
                   </select>
+                </div>
+
+                <div className="emp-input-field">
+                  <label htmlFor="form-salary">Monthly Gross Salary (₹)</label>
+                  <input
+                    id="form-salary"
+                    name="salary"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 50000"
+                    value={form.salary}
+                    onChange={setField}
+                  />
+                  {form.salary && Number(form.salary) > 0 && (
+                    <small style={{ color: "#64748b", marginTop: "4px", display: "block", fontSize: "0.78rem" }}>
+                      Annual CTC: ₹{(Number(form.salary) * 12).toLocaleString("en-IN")}
+                    </small>
+                  )}
                 </div>
 
                 <div className="emp-input-field">
@@ -926,11 +1003,14 @@ function EmployeeManagement() {
               </div>
 
               {/* Statutory & Banking Details Block */}
-              <div className="emp-statutory-access-block" style={{ marginTop: "1.25rem", padding: "1rem", borderRadius: "10px", background: "rgba(16, 185, 129, 0.04)", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-                <h4 style={{ margin: "0 0 0.75rem 0", color: "#047857", fontSize: "0.9rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  💳 Statutory & Banking Identifiers (HR Managed)
-                </h4>
-                <div className="employee-form-grid">
+              <div className="emp-statutory-access-block">
+                <div className="emp-statutory-header">
+                  <h4 className="emp-statutory-title">
+                    💳 Statutory & Banking Identifiers
+                  </h4>
+                  <span className="emp-statutory-pill">HR Managed</span>
+                </div>
+                <div className="emp-statutory-grid">
                   <div className="emp-input-field">
                     <label htmlFor="form-bank-name">Primary Salary Bank</label>
                     <input
@@ -938,7 +1018,7 @@ function EmployeeManagement() {
                       name="bankName"
                       value={form.bankName}
                       onChange={setField}
-                      placeholder="e.g. HDFC Bank / ICICI Bank"
+                      placeholder="e.g. AXIS Bank / HDFC Bank"
                     />
                   </div>
 
@@ -950,6 +1030,7 @@ function EmployeeManagement() {
                       value={form.accountNumber}
                       onChange={setField}
                       placeholder="e.g. 50100234912384"
+                      className="emp-code-input"
                     />
                   </div>
 
@@ -961,6 +1042,7 @@ function EmployeeManagement() {
                       value={form.ifsc}
                       onChange={setField}
                       placeholder="e.g. HDFC0001234"
+                      className="emp-code-input"
                     />
                   </div>
 
@@ -972,6 +1054,7 @@ function EmployeeManagement() {
                       value={form.pan}
                       onChange={setField}
                       placeholder="e.g. ABCDE1234F"
+                      className="emp-code-input"
                     />
                   </div>
 
@@ -983,15 +1066,16 @@ function EmployeeManagement() {
                       value={form.uan}
                       onChange={setField}
                       placeholder="e.g. 101293847561"
+                      className="emp-code-input"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Portal Login Access Section */}
-              <div className="emp-login-access-block" style={{ marginTop: "1.25rem", padding: "1rem", borderRadius: "10px", background: "rgba(99, 102, 241, 0.05)", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
+              <div className="emp-login-access-block">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "600", cursor: "pointer", color: "#4f46e5", fontSize: "0.9rem" }}>
+                  <label className="grant-login-label">
                     <input
                       type="checkbox"
                       name="grantLogin"
@@ -1002,7 +1086,13 @@ function EmployeeManagement() {
                     🔑 Grant / Manage Portal Login Access
                   </label>
                   {editingId && (
-                    <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem", borderRadius: "12px", background: form.grantLogin ? "#dcfce7" : "#fee2e2", color: form.grantLogin ? "#15803d" : "#b91c1c", fontWeight: 600 }}>
+                    <span
+                      className="emp-login-badge-pill"
+                      style={{
+                        background: form.grantLogin ? "#dcfce7" : "#fee2e2",
+                        color: form.grantLogin ? "#15803d" : "#b91c1c",
+                      }}
+                    >
                       {form.grantLogin ? "Portal Active" : "No Login Linked"}
                     </span>
                   )}
@@ -1029,14 +1119,36 @@ function EmployeeManagement() {
                       <label htmlFor="form-login-password">
                         {editingId ? "Reset Password (Optional)" : "Set Password *"}
                       </label>
-                      <input
-                        id="form-login-password"
-                        name="loginPassword"
-                        type="password"
-                        value={form.loginPassword}
-                        onChange={setField}
-                        placeholder={editingId ? "Leave blank to keep current" : "e.g. Password@123"}
-                      />
+                      <div className="password-input-wrapper">
+                        <input
+                          id="form-login-password"
+                          name="loginPassword"
+                          type={showPassword ? "text" : "password"}
+                          value={form.loginPassword}
+                          onChange={setField}
+                          placeholder={editingId ? "Leave blank to keep current" : "e.g. Password@123"}
+                        />
+                        <button
+                          type="button"
+                          className="btn-password-toggle"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          title={showPassword ? "Hide password" : "Show password"}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? (
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                              <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg>
+                          ) : (
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1180,7 +1292,7 @@ function EmployeeManagement() {
                 <tbody>
                   {visibleEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="8">
+                      <td colSpan="9">
                         <div className="emp-empty-box">
                           <span className="emp-empty-icon">👥</span>
                           <h4>No Employees Found</h4>
@@ -1391,26 +1503,27 @@ function EmployeeManagement() {
                     <span>Reporting Manager</span>
                     <strong>
                       {(() => {
-                        const ref = inspectedEmp.reportsTo || inspectedEmp.managerId;
+                        const ref = inspectedEmp.reportsTo || inspectedEmp.managerId || inspectedEmp.employment?.reportsTo;
                         if (!ref) return "Not assigned";
                         if (typeof ref === "object") {
                           const n = ref.name || `${ref.firstName || ""} ${ref.lastName || ""}`.trim();
                           const c = ref.employeeCode || ref.code;
                           return n && c ? `${n} (${c})` : n || c || "Not assigned";
                         }
-                        if (typeof ref === "string") {
-                          if (/\(EMP\d+\)/i.test(ref)) return ref;
+                        if (typeof ref === "string" || typeof ref === "number") {
+                          const refStr = String(ref);
+                          if (/\(EMP\d+\)/i.test(refStr)) return refStr;
                           const found = employees.find(e =>
-                            (e._id && String(e._id) === ref) ||
-                            (e.id && String(e.id) === ref) ||
-                            (e.employeeCode && String(e.employeeCode).toUpperCase() === ref.toUpperCase())
+                            (e._id && String(e._id) === refStr) ||
+                            (e.id && String(e.id) === refStr) ||
+                            (e.employeeCode && String(e.employeeCode).toUpperCase() === refStr.toUpperCase())
                           );
                           if (found) {
                             const n = found.name || `${found.firstName || ""} ${found.lastName || ""}`.trim();
                             const c = found.employeeCode || "";
                             return c ? `${n} (${c})` : n;
                           }
-                          return ref;
+                          return refStr;
                         }
                         return "Not assigned";
                       })()}

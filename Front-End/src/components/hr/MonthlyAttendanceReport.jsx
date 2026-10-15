@@ -87,7 +87,7 @@ function generateRealisticMonthRecords(employees = [], year, month) {
       `${emp.firstName || ""} ${emp.lastName || ""}`.trim() ||
       emp.user?.name ||
       `Employee ${empIndex + 1}`;
-    const code = emp.employment?.employeeCode || `EMP00${empIndex + 1}`;
+    const code = emp.employeeCode || emp.employment?.employeeCode || `EMP00${empIndex + 1}`;
     const dept = emp.employment?.department || "General";
 
     for (let day = 1; day <= limitDays; day++) {
@@ -198,13 +198,38 @@ function MonthlyAttendanceReport({ allEmployees = [] }) {
 
   // Active records: either backend data or realistic sample dataset
   const records = useMemo(() => {
+    let source = [];
     if (apiRecords.length > 0 && !useSampleData) {
-      return apiRecords;
+      source = apiRecords;
+    } else if (useSampleData) {
+      source = generateRealisticMonthRecords(allEmployees, year, month);
     }
-    if (useSampleData) {
-      return generateRealisticMonthRecords(allEmployees, year, month);
+
+    if (allEmployees.length > 0 && source.length > 0) {
+      return source.map((r) => {
+        const empId = String(r.employee?.id || r.employee?._id || r.employeeId || "");
+        const empCode = String(r.employee?.employeeCode || r.employee?.employeeId || "");
+        const matched = allEmployees.find(
+          (e) =>
+            (empCode && String(e.employeeCode).toLowerCase() === empCode.toLowerCase()) ||
+            (empId && (String(e.id) === empId || String(e._id) === empId || String(e.user?.id) === empId))
+        );
+        if (matched) {
+          return {
+            ...r,
+            employee: {
+              ...r.employee,
+              employeeCode: matched.employeeCode || r.employee?.employeeCode,
+              department: matched.employment?.department || r.employee?.department || "General",
+              designation: matched.employment?.designation || r.employee?.designation || "-",
+              profilePhoto: matched.profilePhoto || r.employee?.profilePhoto || ""
+            }
+          };
+        }
+        return r;
+      });
     }
-    return [];
+    return source;
   }, [apiRecords, useSampleData, allEmployees, year, month]);
 
   // Month navigation handlers

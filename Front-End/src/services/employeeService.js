@@ -172,3 +172,14 @@ export async function uploadProfilePicture(file) {
     throw err;
   }
 }
+
+export async function uploadEmployeeProfilePicture(employeeId, file) {
+  if (!employeeId) throw new Error("Employee ID is required to upload a profile picture.");
+
+  const formData = new FormData();
+  formData.append("profilePicture", file);
+  return apiRequest(`/employee/${encodeURIComponent(employeeId)}/profile-picture`, {
+    method: "POST",
+    body: formData,
+  });
+}

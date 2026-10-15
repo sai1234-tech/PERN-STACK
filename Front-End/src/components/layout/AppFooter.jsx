@@ -5,8 +5,8 @@ import { normalizeRole } from "../../utils/auth";
 import "./AppFooter.css";
 
 function AppFooter() {
-  const { user } = useAuth();
-  const role = normalizeRole(user);
+  const { user, employee } = useAuth();
+  const role = normalizeRole(user, employee);
   const isHrOrAdmin = role === "hr" || role === "admin";
 
   const currentYear = new Date().getFullYear();

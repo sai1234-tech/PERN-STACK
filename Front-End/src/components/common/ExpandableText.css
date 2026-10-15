@@ -1,0 +1,23 @@
+.expandable-text-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.expandable-text-toggle {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.expandable-text-toggle:hover {
+  text-decoration: underline;
+}
+
+[data-theme="dark"] .expandable-text-toggle {
+  color: #93c5fd;
+}

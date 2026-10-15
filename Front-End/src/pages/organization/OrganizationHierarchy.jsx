@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { normalizeRole } from "../../utils/auth";
 import { getAllEmployees } from "../../services/employeeService";
 import { getDepartments } from "../../services/departmentService";
+import { formatPhotoUrl } from "../../utils/photo";
 import { useSyncRefresh } from "../../utils/syncManager";
 import "./OrganizationHierarchy.css";
 
@@ -19,9 +20,27 @@ const DEPARTMENT_COLORS = {
 
 const INITIAL_COLLAPSED_NODES = {};
 
+const resolveEmployeeReference = (employeeMap, reference) => {
+  const candidates =
+    reference && typeof reference === "object"
+      ? [reference.id, reference._id, reference.employeeCode, reference.email]
+      : [reference];
+
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === "") continue;
+    const key = String(candidate);
+    const employee =
+      employeeMap[key] ||
+      employeeMap[key.toUpperCase()] ||
+      employeeMap[key.toLowerCase()];
+    if (employee) return employee;
+  }
+  return null;
+};
+
 function OrganizationHierarchy() {
   const { user, employee } = useAuth();
-  const currentRole = normalizeRole(user);
+  const currentRole = normalizeRole(user, employee);
 
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -56,7 +75,7 @@ function OrganizationHierarchy() {
           const deptName = apiEmp.employment?.department || apiEmp.department || "Engineering";
 
           const formatted = {
-            id: apiEmp._id, // Use strict MongoDB ObjectId
+            id: apiEmp.id ?? apiEmp._id,
             employeeCode: code,
             name: apiEmp.name || `${apiEmp.firstName || ""} ${apiEmp.lastName || ""}`.trim() || "Team Member",
             firstName: apiEmp.firstName || apiEmp.name || "Team",
@@ -69,6 +88,7 @@ function OrganizationHierarchy() {
             status: apiEmp.employment?.status || "Active",
             location: "Corporate Office",
             employmentType: apiEmp.employment?.employmentType || "Full Time",
+            profilePhoto: apiEmp.profilePhoto || apiEmp.profile_photo || "",
             avatarBg: "linear-gradient(135deg, #2563eb, #3b82f6)",
             experience: "2 yrs",
           };
@@ -91,7 +111,7 @@ function OrganizationHierarchy() {
   useSyncRefresh(loadData, { interval: 4000, silent: true });
 
   // Map employee lookups and parent-child tree mapping
-  const { employeeMap, childrenMap, rootEmployee, departmentList } = useMemo(() => {
+  const { employeeMap, childrenMap, rootEmployees, departmentList } = useMemo(() => {
     const map = {};
     const cMap = {};
     const depts = new Set(["All"]);
@@ -107,49 +127,36 @@ function OrganizationHierarchy() {
       if (emp.department) depts.add(emp.department);
     });
 
-    // 2. Identify CEO / Root node
-    let root = employees.find(
+    // Preserve every top-level reporting branch rather than hiding employees
+    // whose manager is not connected to the designated CEO record.
+    const designatedRoot = employees.find(
       (emp) => emp.employeeCode === "EMP001" || (emp.email && emp.email.toLowerCase() === "ceo@quadratics.com")
     );
 
-    if (!root) {
-      root = employees.find((emp) => !emp.reportsTo || String(emp.reportsTo) === String(emp.id)) || employees[0];
-    }
-
-    // 3. Build parent-child relationships
+    // Build parent-child relationships from database IDs, employee codes, or emails.
     employees.forEach((emp) => {
-      if (root && String(emp.id) === String(root.id)) return;
-
-      let parentKey = null;
-      if (emp.reportsTo) {
-        if (typeof emp.reportsTo === "object" && emp.reportsTo !== null) {
-          parentKey = emp.reportsTo._id || emp.reportsTo.id || emp.reportsTo.employeeCode || emp.reportsTo.email;
-        } else {
-          parentKey = String(emp.reportsTo);
-        }
-      }
-
-      let parentEmp = parentKey
-        ? map[String(parentKey)] || map[String(parentKey).toUpperCase()] || map[String(parentKey).toLowerCase()]
-        : null;
-
-      // Fallback: If parent not specified or invalid, link to CEO root
-      if (!parentEmp || String(parentEmp.id) === String(emp.id)) {
-        parentEmp = root;
-      }
+      const parentEmp = resolveEmployeeReference(map, emp.reportsTo);
+      if (!parentEmp || String(parentEmp.id) === String(emp.id)) return;
 
       if (parentEmp && cMap[String(parentEmp.id)]) {
-        // Prevent duplicate insertion
         if (!cMap[String(parentEmp.id)].some((c) => String(c.id) === String(emp.id))) {
           cMap[String(parentEmp.id)].push(emp);
         }
       }
     });
 
+    const rootEmployees = employees.filter((emp) => {
+      const parent = resolveEmployeeReference(map, emp.reportsTo);
+      return !parent || String(parent.id) === String(emp.id);
+    });
+    if (designatedRoot) {
+      rootEmployees.sort((a, b) => (a.id === designatedRoot.id ? -1 : b.id === designatedRoot.id ? 1 : 0));
+    }
+
     return {
       employeeMap: map,
       childrenMap: cMap,
-      rootEmployee: root || employees[0],
+      rootEmployees,
       departmentList: Array.from(depts),
     };
   }, [employees]);
@@ -184,6 +191,7 @@ function OrganizationHierarchy() {
         reportsTo: null,
         email: user.email || "current.user@quadratics.com",
         phone: user.phone || "+91 98201 55432",
+        profilePhoto: employee?.profilePhoto || user.profilePhoto || "",
         status: "Active",
         location: "Corporate Office",
         employmentType: "Full Time",
@@ -198,17 +206,19 @@ function OrganizationHierarchy() {
   // Determine who the current user reports to
   const myManager = useMemo(() => {
     if (!myEmployeeRecord || !myEmployeeRecord.reportsTo) return null;
-    return employeeMap[myEmployeeRecord.reportsTo] || null;
+    return resolveEmployeeReference(employeeMap, myEmployeeRecord.reportsTo);
   }, [myEmployeeRecord, employeeMap]);
 
   // Colleagues / peers who report to the same manager
   const myColleagues = useMemo(() => {
     if (!myEmployeeRecord || !myEmployeeRecord.reportsTo) return [];
-    const peers = (childrenMap[myEmployeeRecord.reportsTo] || []).filter(
+    const manager = resolveEmployeeReference(employeeMap, myEmployeeRecord.reportsTo);
+    if (!manager) return [];
+    const peers = (childrenMap[manager.id] || []).filter(
       (p) => p.id !== myEmployeeRecord.id && p.email?.toLowerCase() !== user?.email?.toLowerCase()
     );
     return peers;
-  }, [myEmployeeRecord, childrenMap, user]);
+  }, [myEmployeeRecord, childrenMap, employeeMap, user]);
 
   // Direct reports who report directly to the current user (if user is a manager/lead)
   const myDirectReports = useMemo(() => {
@@ -336,7 +346,20 @@ function OrganizationHierarchy() {
           {/* Card Top Banner with Status Indicator */}
           <div className="node-card-top">
             <div className="node-avatar" style={{ background: emp.avatarBg || "#1e3a8a" }}>
-              <span>{initials}</span>
+              {emp.profilePhoto && (
+                <img
+                  className="org-profile-photo"
+                  src={formatPhotoUrl(emp.profilePhoto)}
+                  alt=""
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                    if (event.currentTarget.nextElementSibling) {
+                      event.currentTarget.nextElementSibling.style.display = "flex";
+                    }
+                  }}
+                />
+              )}
+              <span style={{ display: emp.profilePhoto ? "none" : "flex" }}>{initials}</span>
               <span className="node-online-dot" title="Active in Organization" />
             </div>
 
@@ -478,7 +501,25 @@ function OrganizationHierarchy() {
             <div className="relationship-hero-left">
               <div className="user-profile-summary">
                 <div className="user-avatar-tag">
-                  <span className="avatar-letter">{myEmployeeRecord.name[0]}</span>
+                  {myEmployeeRecord.profilePhoto && (
+                    <img
+                      className="org-profile-photo"
+                      src={formatPhotoUrl(myEmployeeRecord.profilePhoto)}
+                      alt=""
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                        if (event.currentTarget.nextElementSibling) {
+                          event.currentTarget.nextElementSibling.style.display = "flex";
+                        }
+                      }}
+                    />
+                  )}
+                  <span
+                    className="avatar-letter"
+                    style={{ display: myEmployeeRecord.profilePhoto ? "none" : "flex" }}
+                  >
+                    {myEmployeeRecord.name[0]}
+                  </span>
                   <span className="user-badge-chip">YOU</span>
                 </div>
                 <div className="user-text-meta">
@@ -515,7 +556,22 @@ function OrganizationHierarchy() {
                     className="manager-avatar-hero"
                     style={{ background: myManager.avatarBg || "#1e3a8a" }}
                   >
-                    <span>{myManager.name[0]}</span>
+                    {myManager.profilePhoto && (
+                      <img
+                        className="org-profile-photo"
+                        src={formatPhotoUrl(myManager.profilePhoto)}
+                        alt=""
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                          if (event.currentTarget.nextElementSibling) {
+                            event.currentTarget.nextElementSibling.style.display = "flex";
+                          }
+                        }}
+                      />
+                    )}
+                    <span style={{ display: myManager.profilePhoto ? "none" : "flex" }}>
+                      {myManager.name[0]}
+                    </span>
                   </div>
                   <div className="manager-details">
                     <h4 className="manager-name-display">{myManager.name}</h4>
@@ -701,8 +757,8 @@ function OrganizationHierarchy() {
                 className="org-tree-wrapper"
                 style={{ transform: `scale(${zoomLevel})`, transformOrigin: "top center" }}
               >
-                {rootEmployee ? (
-                  renderTreeNode(rootEmployee, 0)
+                {rootEmployees.length > 0 ? (
+                  rootEmployees.map((rootEmployee) => renderTreeNode(rootEmployee, 0))
                 ) : (
                   <div className="empty-org-state">
                     <p>No organizational records available to plot.</p>
@@ -769,7 +825,22 @@ function OrganizationHierarchy() {
                       className="manager-card-avatar"
                       style={{ background: myManager.avatarBg || "#1e3a8a" }}
                     >
-                      {myManager.name[0]}
+                      {myManager.profilePhoto && (
+                        <img
+                          className="org-profile-photo"
+                          src={formatPhotoUrl(myManager.profilePhoto)}
+                          alt=""
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                            if (event.currentTarget.nextElementSibling) {
+                              event.currentTarget.nextElementSibling.style.display = "flex";
+                            }
+                          }}
+                        />
+                      )}
+                      <span style={{ display: myManager.profilePhoto ? "none" : "flex" }}>
+                        {myManager.name[0]}
+                      </span>
                     </div>
                     <div className="manager-card-text">
                       <span className="lead-badge">👑 Team Lead</span>
@@ -833,7 +904,22 @@ function OrganizationHierarchy() {
                           className="member-avatar-box"
                           style={{ background: myEmployeeRecord.avatarBg || "#2563eb" }}
                         >
-                          {myEmployeeRecord.name[0]}
+                          {myEmployeeRecord.profilePhoto && (
+                            <img
+                              className="org-profile-photo"
+                              src={formatPhotoUrl(myEmployeeRecord.profilePhoto)}
+                              alt=""
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                                if (event.currentTarget.nextElementSibling) {
+                                  event.currentTarget.nextElementSibling.style.display = "flex";
+                                }
+                              }}
+                            />
+                          )}
+                          <span style={{ display: myEmployeeRecord.profilePhoto ? "none" : "flex" }}>
+                            {myEmployeeRecord.name[0]}
+                          </span>
                           <span className="member-status-dot" />
                         </div>
                         <div className="member-meta-column">
@@ -946,7 +1032,22 @@ function OrganizationHierarchy() {
                             className="member-avatar-box"
                             style={{ background: sub.avatarBg || "#0284c7" }}
                           >
-                            {sub.name[0]}
+                            {sub.profilePhoto && (
+                              <img
+                                className="org-profile-photo"
+                                src={formatPhotoUrl(sub.profilePhoto)}
+                                alt=""
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                  if (event.currentTarget.nextElementSibling) {
+                                    event.currentTarget.nextElementSibling.style.display = "flex";
+                                  }
+                                }}
+                              />
+                            )}
+                            <span style={{ display: sub.profilePhoto ? "none" : "flex" }}>
+                              {sub.name[0]}
+                            </span>
                             <span className="member-status-dot" />
                           </div>
                           <div className="member-meta-column">
@@ -1023,7 +1124,7 @@ function OrganizationHierarchy() {
 
                     <div className="dept-members-list">
                       {members.map((member) => {
-                        const manager = employeeMap[member.reportsTo];
+                        const manager = resolveEmployeeReference(employeeMap, member.reportsTo);
                         return (
                           <div
                             className="pod-member-row"
@@ -1034,7 +1135,22 @@ function OrganizationHierarchy() {
                               className="member-avatar-sm"
                               style={{ background: member.avatarBg || "#1e3a8a" }}
                             >
-                              {member.name[0]}
+                              {member.profilePhoto && (
+                                <img
+                                  className="org-profile-photo"
+                                  src={formatPhotoUrl(member.profilePhoto)}
+                                  alt=""
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                    if (event.currentTarget.nextElementSibling) {
+                                      event.currentTarget.nextElementSibling.style.display = "flex";
+                                    }
+                                  }}
+                                />
+                              )}
+                              <span style={{ display: member.profilePhoto ? "none" : "flex" }}>
+                                {member.name[0]}
+                              </span>
                             </div>
                             <div className="member-row-info">
                               <strong>{member.name}</strong>
@@ -1075,7 +1191,7 @@ function OrganizationHierarchy() {
                 </thead>
                 <tbody>
                   {tableFilteredEmployees.map((emp) => {
-                    const manager = employeeMap[emp.reportsTo];
+                    const manager = resolveEmployeeReference(employeeMap, emp.reportsTo);
                     const directCount = (childrenMap[emp.id] || []).length;
                     const deptStyle = DEPARTMENT_COLORS[emp.department] || {
                       bg: "#f8fafc",
@@ -1093,7 +1209,22 @@ function OrganizationHierarchy() {
                               className="user-initials-chip"
                               style={{ background: emp.avatarBg || "#1e3a8a" }}
                             >
-                              {emp.name[0]}
+                              {emp.profilePhoto && (
+                                <img
+                                  className="org-profile-photo"
+                                  src={formatPhotoUrl(emp.profilePhoto)}
+                                  alt=""
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                    if (event.currentTarget.nextElementSibling) {
+                                      event.currentTarget.nextElementSibling.style.display = "flex";
+                                    }
+                                  }}
+                                />
+                              )}
+                              <span style={{ display: emp.profilePhoto ? "none" : "flex" }}>
+                                {emp.name[0]}
+                              </span>
                             </div>
                             <strong>{emp.name}</strong>
                           </div>
@@ -1196,17 +1327,19 @@ function OrganizationHierarchy() {
                   <div className="reporting-chain-card">
                     <div className="chain-item">
                       <span className="chain-label">Direct Reporting Manager:</span>
-                      {employeeMap[inspectedEmp.reportsTo] ? (
+                      {resolveEmployeeReference(employeeMap, inspectedEmp.reportsTo) ? (
                         <div
                           className="manager-click-box"
-                          onClick={() => setInspectedEmp(employeeMap[inspectedEmp.reportsTo])}
+                          onClick={() =>
+                            setInspectedEmp(resolveEmployeeReference(employeeMap, inspectedEmp.reportsTo))
+                          }
                         >
                           <div className="manager-avatar-mini">
-                            {employeeMap[inspectedEmp.reportsTo].name[0]}
+                            {resolveEmployeeReference(employeeMap, inspectedEmp.reportsTo).name[0]}
                           </div>
                           <div>
-                            <strong>{employeeMap[inspectedEmp.reportsTo].name}</strong>
-                            <p>{employeeMap[inspectedEmp.reportsTo].designation}</p>
+                            <strong>{resolveEmployeeReference(employeeMap, inspectedEmp.reportsTo).name}</strong>
+                            <p>{resolveEmployeeReference(employeeMap, inspectedEmp.reportsTo).designation}</p>
                           </div>
                         </div>
                       ) : (

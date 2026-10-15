@@ -17,7 +17,7 @@ function normalizeWeek(response) {
   const localDate = new Date();
   const todayDateStr = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const todaysTimesheet = entries.find(e => (e.date || "").substring(0, 10) === todayDateStr);
-  const hasUnsubmittedToday = !todaysTimesheet || ["draft", "rejected"].includes(todaysTimesheet.status);
+  const hasUnsubmittedToday = Boolean(todaysTimesheet && ["draft", "rejected"].includes(todaysTimesheet.status));
 
   // EOD threshold (e.g., 5:00 PM local)
   const eodHour = 17;

@@ -926,6 +926,16 @@
   transform: translateY(0);
 }
 
+.doc-request-fulfilled-note {
+  color: #047857;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .doc-request-fulfilled-note {
+  color: #6ee7b7;
+}
+
 /* Status Chip Badges inside documents hub */
 .status-chip-badge {
   display: inline-flex;

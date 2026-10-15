@@ -5,28 +5,20 @@ import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
 import { useLeaves } from "../../hooks/useLeaves";
 import { useEmployee } from "../../hooks/useEmployee";
-import { formatDate } from "../../utils/date";
+import { formatDate, parseLocalDate } from "../../utils/date";
 import WeekdayDatePicker from "../../components/common/WeekdayDatePicker";
 import "../../styles/employee/leaves.css";
 
 function isWeekend(dateStr) {
   if (!dateStr) return false;
-  const str = String(dateStr).slice(0, 10);
-  const parts = str.split("-");
-  if (parts.length !== 3) return false;
-  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-  const day = d.getDay();
+  const day = parseLocalDate(dateStr).getDay();
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
 
 function calculateDays(start, end) {
   if (!start || !end) return 0;
-  const sParts = String(start).slice(0, 10).split("-");
-  const eParts = String(end).slice(0, 10).split("-");
-  if (sParts.length !== 3 || eParts.length !== 3) return 0;
-
-  let current = new Date(parseInt(sParts[0], 10), parseInt(sParts[1], 10) - 1, parseInt(sParts[2], 10));
-  const endDate = new Date(parseInt(eParts[0], 10), parseInt(eParts[1], 10) - 1, parseInt(eParts[2], 10));
+  let current = parseLocalDate(start);
+  const endDate = parseLocalDate(end);
 
   if (isNaN(current.getTime()) || isNaN(endDate.getTime()) || endDate < current) return 0;
 
@@ -80,6 +72,40 @@ function EmployeeLeaves() {
   } = useLeaves();
   const { employee } = useEmployee();
 
+  const reportingManagerName = useMemo(() => {
+    if (employee?.reportsTo?.name) return employee.reportsTo.name;
+    if (typeof employee?.reportsTo === "string" && employee.reportsTo) return employee.reportsTo;
+    if (employee?.reportingManager) return employee.reportingManager;
+    return "Vikas Guru";
+  }, [employee]);
+
+  const managerInitials = useMemo(() => {
+    return reportingManagerName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join("") || "VG";
+  }, [reportingManagerName]);
+
+  const hrPartnerName = useMemo(() => {
+    if (employee?.assignedHr?.name) return employee.assignedHr.name;
+    if (employee?.hrPartner?.name) return employee.hrPartner.name;
+    if (employee?.employment?.hrPartnerName) return employee.employment.hrPartnerName;
+    if (employee?.hrPartnerName) return employee.hrPartnerName;
+    if (typeof employee?.hrPartner === "string" && employee.hrPartner) return employee.hrPartner;
+    return "Lakshmi Ragula";
+  }, [employee]);
+
+  const hrInitials = useMemo(() => {
+    return hrPartnerName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join("") || "LR";
+  }, [hrPartnerName]);
+
   const [searchParams] = useSearchParams();
   const isWfhInitial = searchParams.get("tab") === "wfh" || searchParams.get("type") === "wfh";
   const [requestMode, setRequestMode] = useState(isWfhInitial ? "wfh" : "leave");
@@ -123,18 +149,51 @@ function EmployeeLeaves() {
   // Leave types list (dynamically mapped from backend isolated user balance)
   const typesToRender = useMemo(() => {
     if (balance && balance.length > 0) {
-      return balance.map((b) => ({
-        id: b.leaveType?.id || b.leaveType?._id || b.leaveType?.code,
-        code: b.leaveType?.code || "LV",
-        name: b.leaveType?.name || "Leave",
-        available: Number(b.available ?? 0),
-        total: Number(b.annualAllocation ?? b.annual_allocation ?? 12),
-        accrual: `${b.used || 0} used, ${b.pending || 0} pending`,
-      }));
+      return balance
+        .filter((b) => {
+          const code = (b.leaveType?.code || "").toUpperCase();
+          const name = (b.leaveType?.name || "").toLowerCase();
+          const isSpecial = b.isSpecial || b.leaveType?.isSpecial;
+          return (
+            !isSpecial &&
+            code !== "WFH" &&
+            code !== "ML" &&
+            code !== "MAT" &&
+            !name.includes("work from home") &&
+            !name.includes("maternity") &&
+            !name.includes("paternity")
+          );
+        })
+        .map((b) => {
+          const alloc = Number(b.annualAllocation ?? b.annual_allocation ?? b.total ?? b.leaveType?.annualAllocation ?? b.leaveType?.annual_allocation ?? 12);
+          const used = Number(b.used || 0);
+          const pending = Number(b.pending || 0);
+          const avail = Number(b.available !== undefined && b.available !== null ? b.available : (b.remaining !== undefined && b.remaining !== null ? b.remaining : Math.max(0, alloc - used - pending)));
+          return {
+            id: b.leaveType?.id || b.leaveType?._id || b.leaveType?.code,
+            code: b.leaveType?.code || "LV",
+            name: b.leaveType?.name || "Leave",
+            available: avail,
+            total: alloc,
+            accrual: `${used} used, ${pending} pending`,
+          };
+        });
     }
     if (leaveTypes && leaveTypes.length > 0) {
       return leaveTypes
-        .filter((t) => t.id !== "wfh" && t.code !== "WFH")
+        .filter((t) => {
+          const code = (t.code || "").toUpperCase();
+          const name = (t.name || "").toLowerCase();
+          return (
+            t.id !== "wfh" &&
+            code !== "WFH" &&
+            code !== "ML" &&
+            code !== "MAT" &&
+            !name.includes("work from home") &&
+            !name.includes("maternity") &&
+            !name.includes("paternity")
+          );
+        })
         .map((t) => {
           const match = REAL_LEAVE_TYPES.find((d) => d.id === t.id || d.name === t.name);
           const annualAlloc = Number(t.annualAllocation ?? t.annual_allocation ?? t.total ?? match?.total ?? 12);
@@ -203,8 +262,34 @@ function EmployeeLeaves() {
     return WFH_SESSION_TYPES.find((s) => s.id === wfhForm.sessionType) || WFH_SESSION_TYPES[0];
   }, [wfhForm.sessionType]);
 
+  // Current calendar month details (Dynamic)
+  const currentMonthDate = useMemo(() => new Date(), []);
+  const currentMonthName = currentMonthDate.toLocaleString("en-US", { month: "short" });
+  const currentYearNum = currentMonthDate.getFullYear();
+  const currentMonthYearBadge = `${currentMonthName} ${currentYearNum}`;
+  const currentMonthPrefix = `${currentYearNum}-${String(currentMonthDate.getMonth() + 1).padStart(2, "0")}`;
+
+  // Dynamically calculate WFH days utilized in the current calendar month
+  const currentMonthWfhUsed = useMemo(() => {
+    return localLeaves
+      .filter((l) => {
+        if (!l.isWfh && !String(l.type || "").toLowerCase().includes("home") && !String(l.type || "").toLowerCase().includes("wfh")) {
+          return false;
+        }
+        if (["rejected", "cancelled"].includes((l.status || "").toLowerCase())) {
+          return false;
+        }
+        const dateToCheck = l.startDate || l.appliedAt || "";
+        return dateToCheck.startsWith(currentMonthPrefix);
+      })
+      .reduce((sum, l) => sum + (Number(l.duration) || 1), 0);
+  }, [localLeaves, currentMonthPrefix]);
+
+  const wfhMonthlyQuota = 4;
+  const wfhMonthlyAvailable = Math.max(0, wfhMonthlyQuota - currentMonthWfhUsed);
+  const wfhUsagePercent = Math.min(100, Math.round((wfhMonthlyAvailable / wfhMonthlyQuota) * 100));
+
   const wfhQuotaCost = wfhForm.sessionType === "full" ? wfhRawDays : 0.5 * (wfhRawDays || 1);
-  const wfhMonthlyAvailable = 3; // 4 Monthly grant - 1 already consumed
   const wfhBalanceAfter = wfhMonthlyAvailable - wfhQuotaCost;
   const isWfhNegativeBalance = Boolean(
     wfhForm.startDate && wfhForm.endDate && wfhQuotaCost > 0 && wfhBalanceAfter < 0
@@ -450,9 +535,11 @@ function EmployeeLeaves() {
   };
 
   // KPI calculations
-  const approvedCount = localLeaves.filter((l) => l.status?.toLowerCase() === "approved").length;
-  const pendingCount = localLeaves.filter((l) => l.status?.toLowerCase() === "pending").length;
+  const approvedCount = localLeaves.filter((l) => (l.status || "").toLowerCase() === "approved").length;
+  const pendingCount = localLeaves.filter((l) => (l.status || "").toLowerCase() === "pending").length;
   const remainingBalance = typesToRender.reduce((sum, t) => sum + (Number(t.available) || 0), 0);
+  const totalAllocation = typesToRender.reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+  const remainingPercent = totalAllocation > 0 ? Math.min(100, Math.round((remainingBalance / totalAllocation) * 100)) : 100;
 
   return (
     <>
@@ -475,10 +562,13 @@ function EmployeeLeaves() {
             </p>
 
             <div className="emp-meta-pills">
-              <span className="meta-pill-tag">🌴 Leave Quota: 24 Days/yr</span>
-              <span className="meta-pill-tag">🏠 WFH Quota: 4 Days/mo</span>
+              <span className="meta-pill-tag">🌴 Leave Quota: {totalAllocation || 42} Days/yr</span>
+              <span className="meta-pill-tag">🏠 WFH Quota: {wfhMonthlyQuota} Days/mo ({currentMonthYearBadge})</span>
               <span className="meta-pill-tag">📍 Hyderabad HQ (Melange Towers)</span>
-              <span className="meta-pill-tag">✓ Manager: Kavita Rao (Director)</span>
+              <span className="meta-pill-tag">👔 Manager: {reportingManagerName}</span>
+              <span className="meta-pill-tag" style={{ background: "#f0fdf4", color: "#166534", borderColor: "#bbf7d0", fontWeight: 700 }}>
+                🏢 HR Partner: {hrPartnerName}
+              </span>
             </div>
           </div>
         </section>
@@ -497,9 +587,11 @@ function EmployeeLeaves() {
               <span className="kpi-badge-chip positive">Active</span>
             </div>
             <div className="kpi-progress-rail">
-              <div className="kpi-progress-bar emerald" style={{ width: "75%" }} />
+              <div className="kpi-progress-bar emerald" style={{ width: `${remainingPercent}%` }} />
             </div>
-            <span className="kpi-subtext">75% of annual allowance remaining</span>
+            <span className="kpi-subtext">
+              {remainingBalance} of {totalAllocation} annual days available ({remainingPercent}%)
+            </span>
           </div>
 
           <div className="kpi-card-box teal">
@@ -509,12 +601,14 @@ function EmployeeLeaves() {
             </div>
             <div className="kpi-stat-row">
               <span className="kpi-big-num">{wfhMonthlyAvailable} Days</span>
-              <span className="kpi-badge-chip neutral">Sep 2026</span>
+              <span className="kpi-badge-chip neutral">{currentMonthYearBadge}</span>
             </div>
             <div className="kpi-progress-rail">
-              <div className="kpi-progress-bar teal" style={{ width: "75%" }} />
+              <div className="kpi-progress-bar teal" style={{ width: `${wfhUsagePercent}%` }} />
             </div>
-            <span className="kpi-subtext">1 of 4 remote days utilized this month</span>
+            <span className="kpi-subtext">
+              {currentMonthWfhUsed} of {wfhMonthlyQuota} remote days utilized this month
+            </span>
           </div>
 
           <div className="kpi-card-box indigo">
@@ -529,7 +623,9 @@ function EmployeeLeaves() {
             <div className="kpi-progress-rail">
               <div className="kpi-progress-bar indigo" style={{ width: `${Math.min(100, approvedCount * 25)}%` }} />
             </div>
-            <span className="kpi-subtext">Verified by reporting manager</span>
+            <span className="kpi-subtext">
+              {approvedCount > 0 ? `${approvedCount} verified by reporting manager` : "Verified by reporting manager"}
+            </span>
           </div>
 
           <div className="kpi-card-box rose">
@@ -539,12 +635,16 @@ function EmployeeLeaves() {
             </div>
             <div className="kpi-stat-row">
               <span className="kpi-big-num">{pendingCount} Active</span>
-              <span className="kpi-badge-chip rose">In Review</span>
+              <span className={`kpi-badge-chip ${pendingCount > 0 ? "rose" : "neutral"}`}>
+                {pendingCount > 0 ? "In Review" : "All Clear"}
+              </span>
             </div>
             <div className="kpi-progress-rail">
               <div className="kpi-progress-bar rose" style={{ width: `${pendingCount ? 50 : 0}%` }} />
             </div>
-            <span className="kpi-subtext">Can be updated or cancelled below</span>
+            <span className="kpi-subtext">
+              {pendingCount > 0 ? "Can be updated or cancelled below" : "No pending applications awaiting review"}
+            </span>
           </div>
         </section>
 
@@ -720,10 +820,67 @@ function EmployeeLeaves() {
                   />
                 </div>
 
+                {/* 2-Step Enterprise Approval Chain */}
+                <div
+                  style={{
+                    margin: "1.25rem 0",
+                    padding: "0.9rem 1rem",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.6rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#475569" }}>
+                      2-Step Approval Hierarchy
+                    </span>
+                    <span style={{ fontSize: "0.74rem", background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
+                      ✓ Verified Chain
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "0.75rem", marginTop: "0.2rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "#ffffff", padding: "0.55rem 0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#6366f1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}>
+                        {managerInitials}
+                      </div>
+                      <div style={{ minWidth: 0, overflow: "hidden" }}>
+                        <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{reportingManagerName}</div>
+                        <div style={{ fontSize: "0.71rem", color: "#64748b" }}>Step 1: Reporting Manager</div>
+                      </div>
+                    </div>
+
+                    <span style={{ fontSize: "1.1rem", color: "#94a3b8", fontWeight: 700 }}>➔</span>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "#ecfdf5", padding: "0.55rem 0.75rem", borderRadius: "8px", border: "1px solid #a7f3d0" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#059669", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}>
+                        {hrInitials}
+                      </div>
+                      <div style={{ minWidth: 0, overflow: "hidden" }}>
+                        <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#065f46", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{hrPartnerName}</div>
+                        <div style={{ fontSize: "0.71rem", color: "#047857" }}>Step 2: HR Partner (Final Approval)</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                    * Leave will be endorsed first by manager <strong>{reportingManagerName}</strong>, and final approval is executed strictly by assigned HR partner <strong>{hrPartnerName}</strong>.
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   className={`submit-leave-btn ${isLeaveNegativeBalance ? "disabled-deficit" : ""}`}
-                  disabled={submitting || isLeaveNegativeBalance || !leaveForm.leaveType || leaveDurationDays === 0 || (employee?.employment?.status !== "Active" && employee?.employment?.status !== "Notice Period")}
+                  disabled={
+                    submitting ||
+                    isLeaveNegativeBalance ||
+                    !leaveForm.leaveType ||
+                    leaveDurationDays === 0 ||
+                    Boolean(employee?.employment?.status && !["Active", "active", "Notice Period", "notice period"].includes(employee.employment.status))
+                  }
                 >
                   {submitting
                     ? "Submitting..."
@@ -880,18 +1037,55 @@ function EmployeeLeaves() {
                   </label>
                 </div>
 
-                {/* 7. Reporting Manager routing */}
-                <div className="wfh-manager-pill">
-                  <div className="wfh-manager-left">
-                    <div className="wfh-manager-avatar">KR</div>
-                    <div>
-                      <strong style={{ display: "block", color: "#0f172a" }}>Kavita Rao</strong>
-                      <span style={{ fontSize: "0.74rem", color: "#64748b" }}>Director of Engineering • Reporting Manager</span>
+                {/* 7. 2-Step Approval Routing */}
+                <div
+                  style={{
+                    margin: "1.25rem 0",
+                    padding: "0.9rem 1rem",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.6rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#475569" }}>
+                      2-Step WFH Approval Hierarchy
+                    </span>
+                    <span style={{ fontSize: "0.74rem", background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
+                      ✓ Direct Routing
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "0.75rem", marginTop: "0.2rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "#ffffff", padding: "0.55rem 0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#6366f1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}>
+                        {managerInitials}
+                      </div>
+                      <div style={{ minWidth: 0, overflow: "hidden" }}>
+                        <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{reportingManagerName}</div>
+                        <div style={{ fontSize: "0.71rem", color: "#64748b" }}>Step 1: Reporting Manager</div>
+                      </div>
+                    </div>
+
+                    <span style={{ fontSize: "1.1rem", color: "#94a3b8", fontWeight: 700 }}>➔</span>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "#ecfdf5", padding: "0.55rem 0.75rem", borderRadius: "8px", border: "1px solid #a7f3d0" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#059669", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}>
+                        {hrInitials}
+                      </div>
+                      <div style={{ minWidth: 0, overflow: "hidden" }}>
+                        <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#065f46", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{hrPartnerName}</div>
+                        <div style={{ fontSize: "0.71rem", color: "#047857" }}>Step 2: HR Partner (Final Approval)</div>
+                      </div>
                     </div>
                   </div>
-                  <span style={{ fontSize: "0.76rem", color: "#059669", fontWeight: 700 }}>
-                    ✓ Auto-routed for review
-                  </span>
+
+                  <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                    * Remote work shift request is routed first to manager <strong>{reportingManagerName}</strong>, and final approval is executed strictly by assigned HR partner <strong>{hrPartnerName}</strong>.
+                  </div>
                 </div>
 
                 {/* Confirm Button */}
@@ -906,7 +1100,7 @@ function EmployeeLeaves() {
                     !wfhForm.broadbandChecked ||
                     !wfhForm.teamsChecked ||
                     wfhQuotaCost === 0 ||
-                    (employee?.employment?.status !== "Active" && employee?.employment?.status !== "Notice Period")
+                    Boolean(employee?.employment?.status && !["Active", "active", "Notice Period", "notice period"].includes(employee.employment.status))
                   }
                 >
                   {submitting
@@ -947,14 +1141,14 @@ function EmployeeLeaves() {
               <div>
                 <div className="balance-item-card">
                   <div className="balance-head-row">
-                    <span className="balance-title">Monthly Remote Quota</span>
-                    <span className="balance-fraction">{wfhMonthlyAvailable} / 4 Days</span>
+                    <span className="balance-title">Monthly Remote Quota ({currentMonthYearBadge})</span>
+                    <span className="balance-fraction">{wfhMonthlyAvailable} / {wfhMonthlyQuota} Days</span>
                   </div>
                   <div className="balance-rail">
-                    <div className="balance-fill" style={{ width: "75%", background: "#0284c7" }} />
+                    <div className="balance-fill" style={{ width: `${wfhUsagePercent}%`, background: "#0284c7" }} />
                   </div>
                   <small style={{ color: "#64748b", fontSize: "0.74rem" }}>
-                    Refreshes on the 1st of every month. Unused days do not carry forward.
+                    Refreshes on the 1st of every month ({currentMonthWfhUsed} used this month). Unused days do not carry forward.
                   </small>
                 </div>
 
@@ -1021,23 +1215,44 @@ function EmployeeLeaves() {
               <table className="att-records-table">
                 <thead>
                   <tr>
-                    <th>Type / Category</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Duration</th>
-                    <th>Reason / Agenda</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th style={{ width: "16%", minWidth: "140px" }}>Type / Category</th>
+                    <th style={{ width: "12%", minWidth: "115px" }}>Start Date</th>
+                    <th style={{ width: "12%", minWidth: "115px" }}>End Date</th>
+                    <th style={{ width: "9%", minWidth: "90px", textAlign: "center" }}>Duration</th>
+                    <th style={{ width: "27%", minWidth: "220px" }}>Reason / Agenda</th>
+                    <th style={{ width: "14%", minWidth: "160px" }}>Status</th>
+                    <th style={{ width: "10%", minWidth: "160px", textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {localLeaves
-                    .filter((item) => {
+                  {(() => {
+                    const filteredLeaves = localLeaves.filter((item) => {
                       if (historyFilter === "wfh") return Boolean(item.isWfh);
                       if (historyFilter === "leaves") return !item.isWfh;
                       return true;
-                    })
-                    .map((item, idx) => {
+                    });
+
+                    if (filteredLeaves.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: "center", padding: "3rem 1rem" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                              <span style={{ fontSize: "2rem" }}>🌴</span>
+                              <strong style={{ fontSize: "1rem", color: "#1e293b" }}>No Leave Applications Found</strong>
+                              <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
+                                {historyFilter === "wfh"
+                                  ? "You have not submitted any remote work (WFH) requests yet."
+                                  : historyFilter === "leaves"
+                                  ? "You have not applied for any leaves yet. Use the form above to apply."
+                                  : "You have not applied for any leaves or remote work yet."}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredLeaves.map((item, idx) => {
                       const days = item.duration || calculateDays(item.startDate, item.endDate);
                       const isPending = ["pending", "pending manager", "pending hr", "pending_manager", "pending_hr"].includes(
                         String(item.status || "").toLowerCase()
@@ -1045,7 +1260,7 @@ function EmployeeLeaves() {
 
                       return (
                         <tr key={item.id || item._id || idx}>
-                          <td>
+                          <td style={{ whiteSpace: "nowrap" }}>
                             <strong>
                               {item.isWfh ? "🏠 " : "🌴 "}
                               {item.type}
@@ -1056,63 +1271,71 @@ function EmployeeLeaves() {
                               </span>
                             )}
                           </td>
-                          <td>{formatDate(item.startDate)}</td>
-                          <td>{formatDate(item.endDate)}</td>
-                          <td>
+                          <td style={{ whiteSpace: "nowrap" }}>{formatDate(item.startDate)}</td>
+                          <td style={{ whiteSpace: "nowrap" }}>{formatDate(item.endDate)}</td>
+                          <td style={{ textAlign: "center", whiteSpace: "nowrap" }}>
                             <span className="hours-pill">
                               {days} {days === 1 ? "Day" : "Days"}
                             </span>
                           </td>
-                          <td
-                            style={{
-                              maxWidth: "260px",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            title={item.deliverables || item.reason}
-                          >
-                            {item.deliverables || item.reason || "Personal work"}
-                          </td>
                           <td>
+                            <div
+                              style={{
+                                maxHeight: "2.8em",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                wordBreak: "break-word",
+                                color: "#334155",
+                                fontSize: "0.84rem",
+                                lineHeight: 1.4,
+                              }}
+                              title={item.deliverables || item.reason}
+                            >
+                              {item.deliverables || item.reason || "Personal work"}
+                            </div>
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
                             {(() => {
                               const norm = String(item.status || "").toLowerCase();
                               if (norm === "pending manager" || norm === "pending_manager" || norm === "pending") {
                                 return (
-                                  <span className="status-chip-badge late" title="Step 1 of 2: Awaiting Manager Approval">
-                                    🟡 Pending Manager (Step 1/2)
+                                  <span className="leave-status-badge pending-manager" title={`Step 1 of 2: Awaiting Manager Approval from ${reportingManagerName}`}>
+                                    🟡 Pending Manager: {reportingManagerName} (Step 1/2)
                                   </span>
                                 );
                               }
                               if (norm === "pending hr" || norm === "pending_hr") {
                                 return (
-                                  <span className="status-chip-badge" style={{ background: "#e0f2fe", color: "#0369a1", border: "1px solid #bae6fd" }} title="Step 2 of 2: Manager Approved! Awaiting HR Final Approval">
-                                    🔵 Pending HR (Step 2/2)
+                                  <span className="leave-status-badge pending-hr" title={`Step 2 of 2: Manager Approved! Awaiting Final HR Approval from ${hrPartnerName}`}>
+                                    🔵 Pending HR: {hrPartnerName} (Step 2/2)
                                   </span>
                                 );
                               }
                               if (norm === "approved") {
                                 return (
-                                  <span className="status-chip-badge present" title="Leave Final Approved by HR">
-                                    🟢 Approved (Final)
+                                  <span className="leave-status-badge approved" title={`Leave Final Approved by HR (${hrPartnerName})`}>
+                                    🟢 Approved (Final by {hrPartnerName})
                                   </span>
                                 );
                               }
                               if (norm === "rejected") {
                                 return (
-                                  <span className="status-chip-badge rose" title="Leave Rejected">
+                                  <span className="leave-status-badge rejected" title="Leave Rejected">
                                     🔴 Rejected
                                   </span>
                                 );
                               }
                               return (
-                                <span className="status-chip-badge late">
+                                <span className="leave-status-badge default">
                                   {item.status || "Pending"}
                                 </span>
                               );
                             })()}
                           </td>
-                          <td>
+                          <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                             {isPending ? (
                               <div className="leave-action-group">
                                 <button
@@ -1140,7 +1363,8 @@ function EmployeeLeaves() {
                           </td>
                         </tr>
                       );
-                    })}
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>

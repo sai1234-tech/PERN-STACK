@@ -56,15 +56,18 @@ export async function getLeaveTypes() {
   }
 }
 
-export async function approveLeave(leaveId) {
+export async function approveLeave(leaveId, options = {}) {
+  const query = options?.override ? "?override=true" : "";
   try {
-    const res = await apiRequest(`/leaves/${leaveId}/approve`, {
-      method: "PATCH"
+    const res = await apiRequest(`/leaves/${leaveId}/approve${query}`, {
+      method: "PATCH",
+      body: JSON.stringify(options)
     });
     return res;
   } catch (err) {
-    return await apiRequest(`/leaves/${leaveId}/approve`, {
-      method: "PUT"
+    return await apiRequest(`/leaves/${leaveId}/approve${query}`, {
+      method: "PUT",
+      body: JSON.stringify(options)
     });
   }
 }

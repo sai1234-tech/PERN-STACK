@@ -231,3 +231,58 @@ export const findAllPayrollsByMonth = async (month, employeeId = null) => {
     const { rows } = await pool.query(queryText, values);
     return rows.map(formatPayrollRecord);
 };
+
+export const findPayrollById = async (id) => {
+    const queryText = `
+        SELECT 
+            p.*,
+            e.employee_code, e.first_name, e.last_name, e.email, e.phone,
+            e.employment->>'department' as department,
+            e.employment->>'designation' as designation,
+            e.employment->>'joiningDate' as joining_date,
+            e.employment->>'employmentType' as employment_type,
+            e.employment->>'status' as employment_status
+        FROM payrolls p
+        LEFT JOIN employees e ON p.employee_id = e.id
+        WHERE p.id = $1;
+    `;
+    const { rows } = await pool.query(queryText, [id]);
+    return rows[0] ? formatPayrollRecord(rows[0]) : null;
+};
+
+export const updatePayrollRecordById = async (id, data) => {
+    const queryText = `
+        UPDATE payrolls
+        SET 
+            basic_salary = COALESCE($1, basic_salary),
+            allowances = COALESCE($2, allowances),
+            bonus = COALESCE($3, bonus),
+            tax = COALESCE($4, tax),
+            pf = COALESCE($5, pf),
+            deduction = COALESCE($6, deduction),
+            gross_salary = COALESCE($7, gross_salary),
+            total_deductions = COALESCE($8, total_deductions),
+            net_salary = COALESCE($9, net_salary),
+            status = COALESCE($10, status),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $11
+        RETURNING *;
+    `;
+    const values = [
+        data.basicSalary !== undefined ? data.basicSalary : null,
+        data.allowances !== undefined ? data.allowances : null,
+        data.bonus !== undefined ? data.bonus : null,
+        data.tax !== undefined ? data.tax : null,
+        data.pf !== undefined ? data.pf : null,
+        data.deduction !== undefined ? data.deduction : null,
+        data.grossSalary !== undefined ? data.grossSalary : null,
+        data.totalDeductions !== undefined ? data.totalDeductions : null,
+        data.netSalary !== undefined ? data.netSalary : null,
+        data.status !== undefined ? data.status : null,
+        id
+    ];
+    const { rows } = await pool.query(queryText, values);
+    if (!rows[0]) return null;
+    return findPayrollById(id);
+};
+

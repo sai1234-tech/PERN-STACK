@@ -5,7 +5,7 @@ import AuthLayout from "../../components/auth/AuthLayout";
 import InputField from "../../components/auth/InputField";
 
 import { useAuth } from "../../context/AuthContext";
-import { normalizeRole } from "../../utils/auth";
+import { normalizeRole, getDefaultDashboard } from "../../utils/auth";
 import { validateEmail, validatePassword } from "../../utils/validation";
 
 const DEMO_ROLES = [
@@ -136,16 +136,7 @@ function Login() {
         localStorage.removeItem("hrms_remember_email");
       }
 
-      const role = normalizeRole(response.user);
-      if (role === "admin") {
-        navigate("/admin/dashboard");
-      } else if (role === "hr") {
-        navigate("/hr/dashboard");
-      } else if (role === "manager") {
-        navigate("/manager/dashboard");
-      } else {
-        navigate("/employee/dashboard");
-      }
+      navigate(getDefaultDashboard(response.user, response.employee));
     } catch (error) {
       setServerError(error.message || "Login failed");
       triggerShake();
@@ -161,11 +152,7 @@ function Login() {
   };
 
   if (user) {
-    const role = normalizeRole(user);
-    if (role === "admin") return <Navigate to="/admin/dashboard" replace />;
-    if (role === "hr") return <Navigate to="/hr/dashboard" replace />;
-    if (role === "manager") return <Navigate to="/manager/dashboard" replace />;
-    return <Navigate to="/employee/dashboard" replace />;
+    return <Navigate to={getDefaultDashboard(user)} replace />;
   }
 
   const isEmailValid = form.email && !errors.email && form.email.includes("@") && form.email.includes(".");

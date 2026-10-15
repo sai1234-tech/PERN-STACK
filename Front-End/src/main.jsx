@@ -6,6 +6,7 @@ import App from "./App";
 import "./index.css";
 import "./pages/auth/Auth.css";
 import "./styles/responsive.css";
+import "./styles/dark-theme.css";
 
 ReactDOM.createRoot(
   document.getElementById("root")

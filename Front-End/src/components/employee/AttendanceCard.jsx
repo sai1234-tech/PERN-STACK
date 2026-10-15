@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react";
-
-function formatDuration(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return [hours, minutes, seconds]
-    .map((unit) => String(unit).padStart(2, "0"))
-    .join(":");
-}
+import { formatDuration } from "../../utils/date";
 
 function AttendanceCard({ attendance, onClockIn, onClockOut }) {
   const checkedIn = Boolean(attendance?.checkIn) && !attendance?.checkOut;
@@ -49,7 +40,7 @@ function AttendanceCard({ attendance, onClockIn, onClockOut }) {
     return () => window.clearInterval(timer);
   }, [attendance?.checkIn, attendance?.checkOut]);
 
-  return <section className="attendance-card panel"><div className="attendance-card-content"><span className="card-label">Today's attendance</span><h2 className={`attendance-status-heading ${attendance?.checkOut ? "attendance-completed" : ""}`}>{displayStatus}</h2><p className={attendance?.checkOut ? "attendance-complete-message" : ""}>{checkedIn ? "Your workday is in progress." : attendance?.checkOut ? "Your workday is complete." : "Start your workday when you are ready."}</p><div className="timer-display" aria-live="polite"><strong className="work-timer">{formatDuration(elapsedSeconds)}</strong><span className="timer-caption">Working time</span></div></div><div className="card-actions"><button type="button" className="primary-button" onClick={onClockIn} disabled={Boolean(attendance?.checkIn)}>Clock in</button><button type="button" className="secondary-button" onClick={onClockOut} disabled={!checkedIn}>Clock out</button></div></section>;
+  return <section className="attendance-card panel"><div className="attendance-card-content"><span className="card-label">Today's attendance</span><h2 className={`attendance-status-heading ${attendance?.checkOut ? "attendance-completed" : ""}`}>{displayStatus}</h2><p className={attendance?.checkOut ? "attendance-complete-message" : ""}>{checkedIn ? "Your workday is in progress." : attendance?.checkOut ? "Your workday is complete." : "Start your workday when you are ready."}</p><div className="timer-display" aria-live="polite"><strong className="work-timer">{formatDuration(elapsedSeconds)}</strong><span className="timer-caption">Working time</span></div></div><div className="card-actions"><button type="button" className="primary-button" onClick={onClockIn} disabled={checkedIn}>{attendance?.checkOut ? "Resume shift" : "Clock in"}</button><button type="button" className="secondary-button" onClick={onClockOut} disabled={!checkedIn}>Clock out</button></div></section>;
 }
 
 export default AttendanceCard;

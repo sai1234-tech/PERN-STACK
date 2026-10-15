@@ -5,14 +5,15 @@
 .employee-header {
   position: sticky;
   top: 0;
-  z-index: 1100;
+  z-index: 1300;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   height: 64px;
   padding: 0 1.5rem;
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffff;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid #e2e8f0;
@@ -20,6 +21,11 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
+}
+
+[data-theme="dark"] .employee-header {
+  background: #0f172a;
+  border-bottom-color: #334155;
 }
 
 /* ==========================================================================
@@ -134,18 +140,53 @@
 .employee-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.5rem;
   position: relative;
   flex-shrink: 0;
   margin-left: auto;
   white-space: nowrap;
 }
 
+.header-theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.header-theme-toggle:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+[data-theme="dark"] .header-theme-toggle {
+  border-color: #334155;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .header-theme-toggle:hover {
+  background: #334155;
+  border-color: #475569;
+}
+
 .header-clock-capsule {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
+  justify-content: center;
+  gap: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  box-sizing: border-box;
   background: #f0fdfa;
   border: 1px solid #ccfbf1;
   border-radius: 999px;
@@ -153,10 +194,37 @@
   font-weight: 700;
   color: #0f766e;
   white-space: nowrap;
+  cursor: default;
+  overflow: hidden;
+  transition: width 0.18s ease, gap 0.18s ease, padding 0.18s ease;
+}
+
+.header-clock-capsule:hover,
+.header-clock-capsule:focus-visible {
+  justify-content: flex-start;
+  gap: 0.35rem;
+  width: auto;
+  padding: 0.35rem 0.75rem;
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+.clock-time {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.18s ease, opacity 0.12s ease;
+}
+
+.header-clock-capsule:hover .clock-time,
+.header-clock-capsule:focus-visible .clock-time {
+  max-width: 110px;
+  opacity: 1;
 }
 
 .clock-icon {
   font-size: 0.85rem;
+  flex: 0 0 auto;
 }
 
 /* Notifications Button & Dropdown */
@@ -480,4 +548,3 @@
     height: 28px;
   }
 }
-

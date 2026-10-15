@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { clockIn, clockOut, getAttendance, getTodayAttendance } from "../services/attendanceService";
-import { useSyncRefresh } from "../utils/syncManager";
+import { broadcastDataChange, useSyncRefresh } from "../utils/syncManager";
 
 export function useAttendance() {
   const [attendance, setAttendance] = useState([]);
@@ -45,7 +45,7 @@ export function useAttendance() {
     loadAttendance();
   }, [loadAttendance]);
 
-  useSyncRefresh(loadAttendance, { interval: 30000, silent: true });
+  useSyncRefresh(loadAttendance, { interval: 4000, silent: true });
 
   const performAction = async (action) => {
     try {
@@ -55,6 +55,7 @@ export function useAttendance() {
       if (updatedRecord && typeof updatedRecord === "object" && !Array.isArray(updatedRecord)) {
         setTodayAttendance(updatedRecord);
       }
+      broadcastDataChange("attendance");
       await loadAttendance(true);
     } catch (err) {
       setError(err.message || "Attendance action failed");

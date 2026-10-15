@@ -247,8 +247,19 @@
   flex-shrink: 0;
 }
 
+.org-profile-photo {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 .user-badge-chip {
   position: absolute;
+  z-index: 2;
   bottom: -6px;
   background: #f59e0b;
   color: #000000;
@@ -402,6 +413,8 @@
 }
 
 .manager-avatar-hero {
+  position: relative;
+  overflow: hidden;
   width: 48px;
   height: 48px;
   border-radius: 14px;
@@ -881,6 +894,7 @@
 
 .node-online-dot {
   position: absolute;
+  z-index: 2;
   bottom: -2px;
   right: -2px;
   width: 10px;
@@ -1205,6 +1219,8 @@
 }
 
 .manager-card-avatar {
+  position: relative;
+  overflow: hidden;
   width: 56px;
   height: 56px;
   border-radius: 16px;
@@ -1396,6 +1412,7 @@
 
 .member-status-dot {
   position: absolute;
+  z-index: 2;
   bottom: -2px;
   right: -2px;
   width: 10px;
@@ -1640,6 +1657,8 @@
 }
 
 .member-avatar-sm {
+  position: relative;
+  overflow: hidden;
   width: 36px;
   height: 36px;
   border-radius: 10px;
@@ -1791,6 +1810,8 @@
 }
 
 .user-initials-chip {
+  position: relative;
+  overflow: hidden;
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -2457,4 +2478,3 @@
     height: 40px;
   }
 }
-

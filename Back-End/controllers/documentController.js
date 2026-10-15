@@ -161,42 +161,50 @@ export const uploadEmployeeDocument = async (req, res, next) => {
         let createdDocument;
         const reqDocId = req.body.documentId || req.body.requestId;
 
-        if (reqDocId && !isNaN(reqDocId)) {
-            const existing = await findDocumentById(Number(reqDocId));
-            if (existing) {
-                await updateDocumentRecord(existing.id, {
-                    document_type: documentType,
-                    original_name: uploadedFile.originalname,
-                    file_name: uploadedFile.filename,
-                    file_path: uploadedFile.path,
-                    file_url: fileUrl,
-                    mime_type: uploadedFile.mimetype,
-                    size: uploadedFile.size,
-                    status: "pending",
-                    uploaded_by: userId,
-                    expiry_date: expiryDate
+        let requestedDocument = null;
+        if (reqDocId) {
+            const numericRequestId = Number(reqDocId);
+            if (!Number.isInteger(numericRequestId) || numericRequestId <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid document request ID"
                 });
-                createdDocument = await findDocumentById(existing.id);
+            }
+
+            requestedDocument = await findDocumentById(numericRequestId);
+            if (!requestedDocument || requestedDocument.employee_id !== employeeExists.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Document request not found for this employee"
+                });
+            }
+            if (!["requested", "rejected"].includes(requestedDocument.status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "This document request has already been fulfilled"
+                });
             }
         }
 
-        if (!createdDocument) {
-            const newDoc = await createDocumentRecord({
-                employeeId: employeeExists.id,
-                uploadedBy: userId,
-                documentType,
-                documentName: req.body.documentName || uploadedFile.originalname,
-                originalName: uploadedFile.originalname,
-                fileName: uploadedFile.filename,
-                filePath: uploadedFile.path,
-                fileUrl,
-                mimeType: uploadedFile.mimetype,
-                size: uploadedFile.size,
-                expiryDate,
-                isRequired: req.body.isRequired === "true" || req.body.isRequired === true,
-                status: "pending"
-            });
-            createdDocument = await findDocumentById(newDoc.id);
+        const newDoc = await createDocumentRecord({
+            employeeId: employeeExists.id,
+            uploadedBy: userId,
+            documentType,
+            documentName: req.body.documentName || uploadedFile.originalname,
+            originalName: uploadedFile.originalname,
+            fileName: uploadedFile.filename,
+            filePath: uploadedFile.path,
+            fileUrl,
+            mimeType: uploadedFile.mimetype,
+            size: uploadedFile.size,
+            expiryDate,
+            isRequired: req.body.isRequired === "true" || req.body.isRequired === true,
+            status: "pending"
+        });
+        createdDocument = await findDocumentById(newDoc.id);
+
+        if (requestedDocument) {
+            await updateDocumentRecord(requestedDocument.id, { status: "fulfilled" });
         }
 
 

@@ -1,6 +1,7 @@
 import NProgress from "nprogress";
 import { broadcastDataChange, isBackgroundSync } from "../utils/syncManager";
 import { handleDemoApi } from "../data/demoAccounts";
+import { getAuthToken } from "../utils/auth";
 
 // Configure NProgress with spinner enabled for a more effective loading indication
 NProgress.configure({ showSpinner: true, minimum: 0.1, speed: 400 });
@@ -11,6 +12,7 @@ const API_BASE_URL = (
 ).replace(/\/+$/, "");
 
 let activeRequests = 0;
+let loaderFailsafeTimer = null;
 
 function toggleGlobalLoader(isLoading) {
   if (isLoading) {
@@ -32,42 +34,59 @@ function toggleGlobalLoader(isLoading) {
       document.body.appendChild(overlay);
     }
     overlay.classList.add("visible");
+
+    // Failsafe: Clear loader after 3.5s maximum to prevent infinite stuck screens
+    if (loaderFailsafeTimer) clearTimeout(loaderFailsafeTimer);
+    loaderFailsafeTimer = setTimeout(() => {
+      activeRequests = 0;
+      if (overlay) overlay.classList.remove("visible");
+    }, 3500);
   } else if (overlay) {
+    if (loaderFailsafeTimer) clearTimeout(loaderFailsafeTimer);
     overlay.classList.remove("visible");
   }
 }
 
+function resolveEndpoint(endpoint) {
+  const normalized = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  return {
+    normalized,
+    url: `${API_BASE_URL}${normalized}`,
+  };
+}
+
+function buildHeaders(customHeaders = {}, isFormData = false) {
+  const token = getAuthToken();
+  return {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...customHeaders,
+  };
+}
+
 export async function apiRequest(endpoint, options = {}) {
-  const token = sessionStorage.getItem("hrms_token");
+  const token = getAuthToken();
   const isDemo =
     sessionStorage.getItem("hrms_demo_mode") === "true" ||
     (token && token.startsWith("demo-token-"));
 
-  const normalizedEndpoint = endpoint.startsWith("/")
-    ? endpoint
-    : `/${endpoint}`;
+  const { normalized: normalizedEndpoint, url } = resolveEndpoint(endpoint);
 
   // If in Standalone Demo Mode (e.g. on Netlify preview with no backend)
   if (isDemo && !normalizedEndpoint.includes("/auth/login")) {
     return handleDemoApi(normalizedEndpoint, options);
   }
 
-  const url = `${API_BASE_URL}${normalizedEndpoint}`;
-
-  const headers = {
-    ...(options.body instanceof FormData
-      ? {}
-      : { "Content-Type": "application/json" }),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
-  };
-
-  console.log(`[API Request] ${url}`);
-  console.log(`[API Request] Token from sessionStorage:`, token ? `${token.substring(0, 10)}...` : null);
-  console.log(`[API Request] Headers:`, headers);
+  const headers = buildHeaders(options.headers, options.body instanceof FormData);
+  const method = (options.method || "GET").toUpperCase();
+  const shouldShowGlobalOverlay =
+    !isBackgroundSync.current &&
+    (method !== "GET" || options.showGlobalLoader === true);
 
   if (!isBackgroundSync.current) {
     NProgress.start();
+  }
+  if (shouldShowGlobalOverlay) {
     toggleGlobalLoader(true);
   }
 
@@ -127,7 +146,6 @@ export async function apiRequest(endpoint, options = {}) {
     }
 
     // If a data-mutating call succeeded, broadcast an update event so all views sync
-    const method = (options.method || "GET").toUpperCase();
     if (method !== "GET") {
       broadcastDataChange(normalizedEndpoint, { method, timestamp: Date.now() });
     }
@@ -136,23 +154,16 @@ export async function apiRequest(endpoint, options = {}) {
   } finally {
     if (!isBackgroundSync.current) {
       NProgress.done();
+    }
+    if (shouldShowGlobalOverlay) {
       toggleGlobalLoader(false);
     }
   }
 }
 
 export async function apiDownload(endpoint, filename = "download") {
-  const token = sessionStorage.getItem("hrms_token");
-
-  const normalizedEndpoint = endpoint.startsWith("/")
-    ? endpoint
-    : `/${endpoint}`;
-
-  const url = `${API_BASE_URL}${normalizedEndpoint}`;
-
-  const headers = {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+  const { url } = resolveEndpoint(endpoint);
+  const headers = buildHeaders();
 
   NProgress.start();
   toggleGlobalLoader(true);

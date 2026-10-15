@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { apiRequest } from "../../services/apiClient";
 import { toast } from "react-toastify";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
+import { formatPhotoUrl } from "../../utils/photo";
 import "./HRDashboard.css";
 import "./EmployeeManagement.css";
 
@@ -145,7 +146,7 @@ export default function HRResignationManagement() {
                       <td style={{ padding: "1rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                           {res.employee?.profilePhoto ? (
-                            <img src={`http://localhost:5000${res.employee.profilePhoto}`} alt="avatar" style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }} />
+                            <img src={formatPhotoUrl(res.employee.profilePhoto)} alt="avatar" style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }} />
                           ) : (
                             <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#e2e8f0", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
                               {(res.employee?.firstName?.[0] || '') + (res.employee?.lastName?.[0] || 'E')}

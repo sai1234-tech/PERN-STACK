@@ -8,6 +8,7 @@ import {
     getMyProfile,
     updateMyProfile,
     uploadMyProfilePhoto,
+    uploadEmployeeProfilePhoto,
     deleteMyProfilePhoto
 } from "../controllers/employeeController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -40,6 +41,13 @@ router.get("/", getEmployee);
 
 // GET single employee by ID or employeeCode
 router.get("/:id", getSingleEmployee);
+
+router.post(
+    "/:id/profile-picture",
+    authorizeRoles("hr", "admin"),
+    uploadProfilePhoto.single("profilePicture"),
+    uploadEmployeeProfilePhoto
+);
 
 // Create employee(s)
 router.post("/", authorizeRoles("hr", "admin", "manager"), createMultipleEmployees);

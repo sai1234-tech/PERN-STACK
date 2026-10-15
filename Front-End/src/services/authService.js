@@ -21,14 +21,28 @@ export const setupFirstAdmin = async (accountData) => {
   });
 };
 
+export const getFirstAdminSetupStatus = async () => {
+  return apiRequest("/auth/setup-status");
+};
+
 export const getCurrentUser = async () => {
   return apiRequest("/auth/me");
 };
 
 export const createManagedAccount = async (accountData) => {
-  return apiRequest("/auth/accounts", {
+  const {
+    role = "employee",
+    password,
+    ...employeeData
+  } = accountData;
+  return apiRequest("/employee", {
     method: "POST",
-    body: JSON.stringify(accountData),
+    body: JSON.stringify([{
+      ...employeeData,
+      grantLogin: true,
+      loginRole: role,
+      loginPassword: password,
+    }]),
   });
 };
 

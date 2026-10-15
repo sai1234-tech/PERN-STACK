@@ -2,24 +2,16 @@ import { useEffect } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
-import { normalizeRole } from "../../utils/auth";
+import { normalizeRole, getDefaultDashboard } from "../../utils/auth";
+import { formatPhotoUrl } from "../../utils/photo";
+import { useEmployee } from "../../hooks/useEmployee";
 import "./AppSidebar.css";
 
-const formatPhotoUrl = (photo) => {
-  if (!photo) return "";
-  if (/^https?:\/\//i.test(photo) || photo.startsWith("blob:") || photo.startsWith("data:")) return photo;
-
-  const apiUrl = (
-    String(import.meta.env.VITE_API_URL || "").replace("localhost", "127.0.0.1") ||
-    "/"
-  ).replace(/\/$/, "");
-
-  const cleanPhoto = String(photo).replace(/\\/g, "/").replace(/^\/?api(\/v1)?\/?/, "");
-  return `${apiUrl.replace(/\/api(\/v1)?\/?$/, "")}${cleanPhoto.startsWith("/") ? cleanPhoto : `/${cleanPhoto}`}`;
-};
-
 function AppSidebar() {
-  const { user, employee, logout } = useAuth();
+  const { user, employee: authEmployee, logout } = useAuth();
+  const { employee: hookEmployee } = useEmployee();
+  const employee = hookEmployee || authEmployee;
+  const profile = employee || user || {};
   const { isCollapsed, isMobileOpen, toggleCollapse, closeMobile } = useSidebar();
   const location = useLocation();
 
@@ -40,14 +32,22 @@ function AppSidebar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleCollapse]);
 
-  const role = normalizeRole(user);
-  const isEmployee = role === "employee" || role === "manager" || role === "hr";
-  const isManager = role === "manager" || role === "admin";
-  const isHr = role === "hr" || role === "admin";
+  const role = normalizeRole(user, employee);
+  const isVikas =
+    Boolean(
+      profile?.name?.toLowerCase().includes("vikas") ||
+      user?.name?.toLowerCase().includes("vikas") ||
+      profile?.email?.toLowerCase().includes("vikas") ||
+      user?.email?.toLowerCase().includes("vikas") ||
+      employee?.email?.toLowerCase().includes("vikas")
+    );
   const isAdmin = role === "admin";
+  const isHr = role === "hr";
+  const isManager = role === "manager" || isVikas;
+  const isEmployee = !isAdmin && !isHr && !isManager;
 
-  const profile = employee || user || {};
   const displayName =
+    (isVikas ? "Vikas Guru" : "") ||
     profile.name ||
     `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
     user?.name ||
@@ -61,29 +61,31 @@ function AppSidebar() {
     .map((w) => w[0].toUpperCase())
     .join("") || "QS";
 
+  const rawDesignation = profile.employment?.designation || profile.designation || profile.jobTitle;
   const designation =
-    profile.employment?.designation ||
-    profile.designation ||
-    profile.jobTitle ||
-    (isHr ? "HR Lead" : isAdmin ? "Administrator" : "Full-Stack Engineer");
+    isManager
+      ? (rawDesignation && !["staff", "employee", "software engineer"].includes(rawDesignation.toLowerCase()) ? rawDesignation : "Team Manager")
+      : isHr
+      ? (rawDesignation || "HR Lead")
+      : isAdmin
+      ? (rawDesignation || "Administrator")
+      : (rawDesignation || "Software Engineer");
 
-  const homeRoute = isAdmin
-    ? "/admin/dashboard"
-    : role === "hr"
-    ? "/hr/dashboard"
-    : role === "manager"
-    ? "/manager/dashboard"
-    : "/employee/dashboard";
+  const homeRoute = getDefaultDashboard(user, employee);
 
   const portalBadge = isAdmin
     ? "Executive Admin"
     : role === "hr"
     ? "HR Portal"
-    : role === "manager"
+    : isManager
     ? "Manager Workspace"
     : "Employee Self-Service";
 
-  const userPhoto = profile.profilePhoto || localStorage.getItem("hrms_profile_photo") || "";
+  const userPhoto =
+    authEmployee?.profilePhoto ||
+    user?.profilePhoto ||
+    profile.profilePhoto ||
+    "";
 
   return (
     <>
@@ -213,31 +215,57 @@ function AppSidebar() {
             </>
           )}
 
-          {/* 2. MANAGER NAVIGATION */}
+          {/* 2. MANAGER NAVIGATION (Streamlined to Essential Modules Only) */}
           {isManager && (
-            <div className="sidebar-nav-group">
-              {!isCollapsed && <span className="sidebar-group-label">MANAGER WORKSPACE</span>}
-              <NavLink to="/manager/dashboard" end className="sidebar-nav-link" title="Team Approvals & Command Center">
-                <span className="nav-item-icon">👥</span>
-                {!isCollapsed && <span className="nav-item-label">Team Overview & Approvals</span>}
-              </NavLink>
-              <NavLink to="/manager/projects" end className="sidebar-nav-link" title="Realtime Active Projects">
-                <span className="nav-item-icon">🚀</span>
-                {!isCollapsed && <span className="nav-item-label">Realtime Projects</span>}
-              </NavLink>
-              <NavLink to="/employee/payroll" end className="sidebar-nav-link" title="Salary & Payslips">
-                <span className="nav-item-icon">💰</span>
-                {!isCollapsed && <span className="nav-item-label">My Payroll</span>}
-              </NavLink>
-              <NavLink to="/employee/calendar" end className="sidebar-nav-link" title="Corporate Holiday Calendar">
-                <span className="nav-item-icon">🗓️</span>
-                {!isCollapsed && <span className="nav-item-label">Holiday Calendar</span>}
-              </NavLink>
-              <NavLink to="/employee/dashboard" end className="sidebar-nav-link" title="My Personal Self-Service Dashboard">
-                <span className="nav-item-icon">👤</span>
-                {!isCollapsed && <span className="nav-item-label">My Personal Dashboard</span>}
-              </NavLink>
-            </div>
+            <>
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">TEAM MANAGEMENT</span>}
+                <NavLink to="/manager/dashboard" end className="sidebar-nav-link" title="Team Approvals & Command Center">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Team Overview & Approvals</span>}
+                </NavLink>
+                <NavLink to="/manager/projects" end className="sidebar-nav-link" title="Active Projects & Deliverables">
+                  <span className="nav-item-icon">🚀</span>
+                  {!isCollapsed && <span className="nav-item-label">Active Projects</span>}
+                </NavLink>
+                <NavLink to="/manager/performance" end className="sidebar-nav-link" title="Team Performance Reviews & OKRs">
+                  <span className="nav-item-icon">🎯</span>
+                  {!isCollapsed && <span className="nav-item-label">Team Appraisals & OKRs</span>}
+                </NavLink>
+                <NavLink to="/organization" end className="sidebar-nav-link" title="Organization Hierarchy">
+                  <span className="nav-item-icon">🌳</span>
+                  {!isCollapsed && <span className="nav-item-label">Org Hierarchy</span>}
+                </NavLink>
+              </div>
+
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">MY SELF-SERVICE</span>}
+                <NavLink to="/employee/attendance" end className="sidebar-nav-link" title="My Daily Attendance & Punch Station">
+                  <span className="nav-item-icon">⏱️</span>
+                  {!isCollapsed && <span className="nav-item-label">My Attendance</span>}
+                </NavLink>
+                <NavLink to="/employee/leaves" end className="sidebar-nav-link" title="My Leaves & WFH Portal">
+                  <span className="nav-item-icon">🌴</span>
+                  {!isCollapsed && <span className="nav-item-label">My Leaves & WFH</span>}
+                </NavLink>
+                <NavLink to="/employee/timesheets" end className="sidebar-nav-link" title="My Timesheets">
+                  <span className="nav-item-icon">📋</span>
+                  {!isCollapsed && <span className="nav-item-label">My Timesheets</span>}
+                </NavLink>
+                <NavLink to="/employee/payroll" end className="sidebar-nav-link" title="My Compensation & Payslips">
+                  <span className="nav-item-icon">💰</span>
+                  {!isCollapsed && <span className="nav-item-label">My Payslips</span>}
+                </NavLink>
+                <NavLink to="/employee/calendar" end className="sidebar-nav-link" title="Corporate Holiday Calendar">
+                  <span className="nav-item-icon">🗓️</span>
+                  {!isCollapsed && <span className="nav-item-label">Holiday Calendar</span>}
+                </NavLink>
+                <NavLink to="/employee/profile" end className="sidebar-nav-link" title="My Personal & Employment Profile">
+                  <span className="nav-item-icon">👤</span>
+                  {!isCollapsed && <span className="nav-item-label">My Profile</span>}
+                </NavLink>
+              </div>
+            </>
           )}
 
           {/* 3. HR NAVIGATION */}
@@ -268,10 +296,6 @@ function AppSidebar() {
                 <NavLink to="/hr/organization" end className="sidebar-nav-link" title="Enterprise Hierarchy">
                   <span className="nav-item-icon">🌳</span>
                   {!isCollapsed && <span className="nav-item-label">Org Hierarchy</span>}
-                </NavLink>
-                <NavLink to="/hr/helpdesk" end className="sidebar-nav-link" title="Support Tickets">
-                  <span className="nav-item-icon">🎧</span>
-                  {!isCollapsed && <span className="nav-item-label">HR Helpdesk</span>}
                 </NavLink>
               </div>
 

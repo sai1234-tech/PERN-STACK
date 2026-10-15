@@ -3,32 +3,50 @@
    ========================================================================== */
 
 .hrms-dashboard-shell {
+  height: 100vh;
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
   display: flex;
   background: #f8fafc;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
   box-sizing: border-box;
+  transition: background 0.35s ease;
 }
 
 .hrms-main-viewport {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   max-width: 100%;
+  height: 100vh;
   width: 100%;
   margin-left: 260px;
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.35s ease;
   background: #f8fafc;
   overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
+}
+
+.hrms-main-viewport > * {
+  flex-shrink: 0;
 }
 
 .hrms-dashboard-shell.sidebar-collapsed .hrms-main-viewport {
   margin-left: 76px;
+}
+
+/* ── Dark Theme Overrides ─────────────────────────────────── */
+[data-theme="dark"] .hrms-dashboard-shell {
+  background: #0b1120;
+}
+
+[data-theme="dark"] .hrms-main-viewport {
+  background: #0b1120;
 }
 
 @media (max-width: 992px) {

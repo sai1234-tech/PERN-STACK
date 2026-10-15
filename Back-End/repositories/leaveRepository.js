@@ -55,6 +55,7 @@ export const initLeaveTables = async () => {
                 ('Casual Leave', 'CL', 12, true, true, 'Standard casual leave'),
                 ('Sick Leave', 'SL', 12, true, true, 'Medical & sick leave'),
                 ('Earned Leave', 'EL', 15, true, true, 'Privilege / earned leave'),
+                ('Paid Privilege Leave', 'PL', 18, true, true, 'Paid privilege leave'),
                 ('Work From Home', 'WFH', 48, true, true, 'Remote work allowance'),
                 ('Optional Holiday', 'OH', 3, true, true, 'Restricted or optional holiday')
             ON CONFLICT DO NOTHING;
@@ -177,12 +178,24 @@ export const findLeaveById = async (id) => {
         SELECT 
             l.*,
             e.employee_code, e.first_name AS employee_first_name, e.last_name AS employee_last_name, e.email AS employee_email,
+            e.reports_to,
+            rep_mgr.first_name AS reporting_manager_first_name, rep_mgr.last_name AS reporting_manager_last_name, rep_mgr.email AS reporting_manager_email,
+            e.hr_id,
+            COALESCE(hr_emp.first_name, e.employment->>'hrPartnerName', 'Lakshmi') AS assigned_hr_first_name,
+            COALESCE(hr_emp.last_name, '') AS assigned_hr_last_name,
+            COALESCE(hr_emp.email, e.employment->>'hrPartnerEmail', 'lragula@quadratics.com') AS assigned_hr_email,
             lt.name AS leave_type_name, lt.code AS leave_type_code, lt.annual_allocation, lt.is_paid,
-            u.name AS approved_by_name, u.email AS approved_by_email, u.role AS approved_by_role
+            u.name AS approved_by_name, u.email AS approved_by_email, u.role AS approved_by_role,
+            mu.name AS manager_approved_by_name, mu.email AS manager_approved_by_email,
+            hu.name AS hr_approved_by_name, hu.email AS hr_approved_by_email
         FROM leaves l
         JOIN employees e ON l.employee_id = e.id
+        LEFT JOIN employees rep_mgr ON e.reports_to = rep_mgr.id
+        LEFT JOIN employees hr_emp ON e.hr_id = hr_emp.id
         JOIN leave_types lt ON l.leave_type_id = lt.id
         LEFT JOIN users u ON l.approved_by = u.id
+        LEFT JOIN users mu ON l.manager_approved_by = mu.id
+        LEFT JOIN users hu ON l.hr_approved_by = hu.id
         WHERE l.id = $1;
     `;
     const { rows } = await pool.query(queryText, [id]);
@@ -235,11 +248,25 @@ export const findLeavesByEmployee = async (employeeId) => {
     const queryText = `
         SELECT 
             l.*,
+            e.employee_code, e.first_name AS employee_first_name, e.last_name AS employee_last_name, e.email AS employee_email,
+            e.reports_to,
+            rep_mgr.first_name AS reporting_manager_first_name, rep_mgr.last_name AS reporting_manager_last_name, rep_mgr.email AS reporting_manager_email,
+            e.hr_id,
+            COALESCE(hr_emp.first_name, e.employment->>'hrPartnerName', 'Lakshmi') AS assigned_hr_first_name,
+            COALESCE(hr_emp.last_name, '') AS assigned_hr_last_name,
+            COALESCE(hr_emp.email, e.employment->>'hrPartnerEmail', 'lragula@quadratics.com') AS assigned_hr_email,
             lt.name AS leave_type_name, lt.code AS leave_type_code, lt.annual_allocation, lt.is_paid,
-            u.name AS approved_by_name, u.email AS approved_by_email, u.role AS approved_by_role
+            u.name AS approved_by_name, u.email AS approved_by_email, u.role AS approved_by_role,
+            mu.name AS manager_approved_by_name, mu.email AS manager_approved_by_email,
+            hu.name AS hr_approved_by_name, hu.email AS hr_approved_by_email
         FROM leaves l
+        JOIN employees e ON l.employee_id = e.id
+        LEFT JOIN employees rep_mgr ON e.reports_to = rep_mgr.id
+        LEFT JOIN employees hr_emp ON e.hr_id = hr_emp.id
         JOIN leave_types lt ON l.leave_type_id = lt.id
         LEFT JOIN users u ON l.approved_by = u.id
+        LEFT JOIN users mu ON l.manager_approved_by = mu.id
+        LEFT JOIN users hu ON l.hr_approved_by = hu.id
         WHERE l.employee_id = $1
         ORDER BY l.created_at DESC;
     `;
@@ -248,17 +275,29 @@ export const findLeavesByEmployee = async (employeeId) => {
 };
 
 export const findAllLeaves = async (filters = {}) => {
-    const { status, employeeId, leaveTypeId, startDate, endDate } = filters;
+    const { status, employeeId, leaveTypeId, startDate, endDate, reportingManagerId } = filters;
     let queryText = `
         SELECT 
             l.*,
             e.employee_code, e.first_name AS employee_first_name, e.last_name AS employee_last_name, e.email AS employee_email,
+            e.reports_to,
+            rep_mgr.first_name AS reporting_manager_first_name, rep_mgr.last_name AS reporting_manager_last_name, rep_mgr.email AS reporting_manager_email,
+            e.hr_id,
+            COALESCE(hr_emp.first_name, e.employment->>'hrPartnerName', 'Lakshmi') AS assigned_hr_first_name,
+            COALESCE(hr_emp.last_name, '') AS assigned_hr_last_name,
+            COALESCE(hr_emp.email, e.employment->>'hrPartnerEmail', 'lragula@quadratics.com') AS assigned_hr_email,
             lt.name AS leave_type_name, lt.code AS leave_type_code, lt.annual_allocation, lt.is_paid,
-            u.name AS approved_by_name, u.email AS approved_by_email, u.role AS approved_by_role
+            u.name AS approved_by_name, u.email AS approved_by_email, u.role AS approved_by_role,
+            mu.name AS manager_approved_by_name, mu.email AS manager_approved_by_email,
+            hu.name AS hr_approved_by_name, hu.email AS hr_approved_by_email
         FROM leaves l
         JOIN employees e ON l.employee_id = e.id
+        LEFT JOIN employees rep_mgr ON e.reports_to = rep_mgr.id
+        LEFT JOIN employees hr_emp ON e.hr_id = hr_emp.id
         JOIN leave_types lt ON l.leave_type_id = lt.id
         LEFT JOIN users u ON l.approved_by = u.id
+        LEFT JOIN users mu ON l.manager_approved_by = mu.id
+        LEFT JOIN users hu ON l.hr_approved_by = hu.id
         WHERE 1=1
     `;
     const values = [];
@@ -271,6 +310,11 @@ export const findAllLeaves = async (filters = {}) => {
     if (employeeId) {
         values.push(employeeId);
         queryText += ` AND l.employee_id = $${values.length}`;
+    }
+
+    if (reportingManagerId) {
+        values.push(reportingManagerId);
+        queryText += ` AND e.reports_to = $${values.length}`;
     }
 
     if (leaveTypeId) {

@@ -2,24 +2,15 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
+import { useTheme } from "../../context/ThemeContext";
 import { getEmployee } from "../../services/employeeService";
 import { getMyDocuments } from "../../services/documentService";
+import { getLeaves } from "../../services/leaveService";
+import { getTodayAttendance } from "../../services/attendanceService";
 import { normalizeRole } from "../../utils/auth";
+import { formatPhotoUrl } from "../../utils/photo";
 import HeaderEmployeeSearch from "./HeaderEmployeeSearch";
 import "./EmployeeHeader.css";
-
-const formatPhotoUrl = (photo) => {
-  if (!photo) return "";
-  if (/^https?:\/\//i.test(photo) || photo.startsWith("blob:") || photo.startsWith("data:")) return photo;
-
-  const apiUrl = (
-    String(import.meta.env.VITE_API_URL || "").replace("localhost", "127.0.0.1") ||
-    "/"
-  ).replace(/\/$/, "");
-
-  const cleanPhoto = String(photo).replace(/\\/g, "/").replace(/^\/?api(\/v1)?\/?/, "");
-  return `${apiUrl.replace(/\/api(\/v1)?\/?$/, "")}${cleanPhoto.startsWith("/") ? cleanPhoto : `/${cleanPhoto}`}`;
-};
 
 // Route breadcrumb dictionary
 const ROUTE_CONTEXT_MAP = {
@@ -30,6 +21,7 @@ const ROUTE_CONTEXT_MAP = {
   "/employee/payroll": { section: "Finance", title: "My Payroll" },
   "/employee/documents": { section: "Records", title: "Document Vault" },
   "/employee/profile": { section: "Personal", title: "My Profile" },
+  "/employee/calendar": { section: "Organization", title: "Holiday Calendar" },
   "/organization": { section: "Enterprise", title: "Org Hierarchy & Tree" },
   "/employee/organization": { section: "Enterprise", title: "Org Hierarchy" },
   "/hr/dashboard": { section: "HR Command", title: "Dashboard" },
@@ -48,12 +40,15 @@ const ROUTE_CONTEXT_MAP = {
 function EmployeeHeader() {
   const { user, employee, logout } = useAuth();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
   const [requestedDocs, setRequestedDocs] = useState([]);
+  const [myLeaves, setMyLeaves] = useState([]);
+  const [todayAtt, setTodayAtt] = useState(null);
   const [clearedNotificationIds, setClearedNotificationIds] = useState(() => {
     try {
       const stored = localStorage.getItem("hrms_cleared_notifications");
@@ -70,65 +65,59 @@ function EmployeeHeader() {
   const [headerPhoto, setHeaderPhoto] = useState(() => {
     const direct = employee?.profilePhoto || user?.profilePhoto;
     if (direct && !direct.startsWith("blob:")) return direct;
-    const l = localStorage.getItem("hrms_profile_photo");
-    const s = sessionStorage.getItem("hrms_profile_photo");
-    if (s && !s.startsWith("blob:")) return s;
-    if (l && !l.startsWith("blob:")) return l;
     return "";
   });
 
-  // Sync profile photo on change or fetch from server
+  // Sync profile photo on change
   useEffect(() => {
     const directPhoto = employee?.profilePhoto || user?.profilePhoto;
-    if (directPhoto) {
+    if (directPhoto && !directPhoto.startsWith("blob:")) {
       setHeaderPhoto(directPhoto);
-      if (!directPhoto.startsWith("blob:")) {
-        localStorage.setItem("hrms_profile_photo", directPhoto);
-        sessionStorage.setItem("hrms_profile_photo", directPhoto);
-      }
     } else {
-      const stored = localStorage.getItem("hrms_profile_photo") || sessionStorage.getItem("hrms_profile_photo");
-      if (stored && !stored.startsWith("blob:")) {
-        setHeaderPhoto(stored);
-      } else {
-        let isMounted = true;
-        getEmployee()
-          .then((res) => {
-            if (!isMounted) return;
-            const empData = res?.employee || res?.data?.employee || res?.user || res;
-            const photo = empData?.profilePhoto;
-            if (photo && !photo.startsWith("blob:")) {
-              setHeaderPhoto(photo);
-              localStorage.setItem("hrms_profile_photo", photo);
-              sessionStorage.setItem("hrms_profile_photo", photo);
-            }
-          })
-          .catch(() => {});
-        return () => {
-          isMounted = false;
-        };
-      }
+      setHeaderPhoto("");
     }
   }, [employee, user]);
 
-  // Fetch real-time HR document requests for logged-in user
+  // Fetch real-time context (documents, leaves, attendance) for logged-in user
   useEffect(() => {
     let mounted = true;
-    const fetchRequestedDocs = async () => {
+    const fetchUserContext = async () => {
       try {
-        const res = await getMyDocuments();
-        const docs = res?.data || res?.documents || res || [];
-        if (mounted && Array.isArray(docs)) {
-          const reqs = docs.filter(
-            (d) => d.status === "requested" || d.status === "rejected"
-          );
-          setRequestedDocs(reqs);
+        const [docsRes, leavesRes, attRes] = await Promise.allSettled([
+          getMyDocuments(),
+          getLeaves(),
+          getTodayAttendance(),
+        ]);
+
+        if (mounted && docsRes.status === "fulfilled") {
+          const docs = docsRes.value?.data || docsRes.value?.documents || docsRes.value || [];
+          if (Array.isArray(docs)) {
+            const reqs = docs.filter(
+              (d) => d.status === "requested" || d.status === "rejected"
+            );
+            setRequestedDocs(reqs);
+          }
+        }
+
+        if (mounted && leavesRes.status === "fulfilled") {
+          const recs = leavesRes.value?.leaves || leavesRes.value?.records || leavesRes.value?.data || [];
+          if (Array.isArray(recs)) {
+            setMyLeaves(recs);
+          }
+        }
+
+        if (mounted && attRes.status === "fulfilled") {
+          const res = attRes.value;
+          const todayData = res?.data || res;
+          const record = res?.attendance || todayData?.attendance || (todayData?.checkIn ? todayData : null);
+          const resolved = Array.isArray(record) ? record[0] : record;
+          setTodayAtt(resolved && (resolved.checkIn || resolved.id) ? resolved : null);
         }
       } catch (e) {}
     };
 
-    fetchRequestedDocs();
-    const handleSync = () => fetchRequestedDocs();
+    fetchUserContext();
+    const handleSync = () => fetchUserContext();
     window.addEventListener("hrms:data_changed", handleSync);
     window.addEventListener("storage", handleSync);
     return () => {
@@ -141,25 +130,22 @@ function EmployeeHeader() {
   // Listen for real-time photo updates dispatched from Profile page
   useEffect(() => {
     const handlePhotoUpdated = (e) => {
-      const newPhoto =
-        e?.detail?.profilePhoto ||
-        localStorage.getItem("hrms_profile_photo") ||
-        sessionStorage.getItem("hrms_profile_photo");
-      if (newPhoto) {
+      const newPhoto = e?.detail?.profilePhoto;
+      if (newPhoto && !newPhoto.startsWith("blob:")) {
         setHeaderPhoto(newPhoto);
+      } else if (!newPhoto) {
+        setHeaderPhoto("");
       }
     };
 
     window.addEventListener("hrms:profile_photo_updated", handlePhotoUpdated);
-    window.addEventListener("storage", handlePhotoUpdated);
 
     return () => {
       window.removeEventListener("hrms:profile_photo_updated", handlePhotoUpdated);
-      window.removeEventListener("storage", handlePhotoUpdated);
     };
   }, []);
 
-  const role = normalizeRole(user);
+  const role = normalizeRole(user, employee);
   const isHr = role === "hr";
   const isAdmin = role === "admin";
 
@@ -193,7 +179,17 @@ function EmployeeHeader() {
 
   // Name & Initials calculation
   const profile = employee || user || {};
+  const isVikas =
+    Boolean(
+      profile?.name?.toLowerCase().includes("vikas") ||
+      user?.name?.toLowerCase().includes("vikas") ||
+      profile?.email?.toLowerCase().includes("vikas") ||
+      user?.email?.toLowerCase().includes("vikas") ||
+      employee?.email?.toLowerCase().includes("vikas")
+    );
+
   const displayName =
+    (isVikas ? "Vikas Guru" : "") ||
     profile.name ||
     `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
     user?.name ||
@@ -207,7 +203,8 @@ function EmployeeHeader() {
     .map((w) => w[0].toUpperCase())
     .join("") || "QS";
 
-  const roleLabel = role === "manager"
+  const isManager = role === "manager" || isVikas;
+  const roleLabel = isManager
     ? "Team Manager"
     : isHr
     ? "HR Lead"
@@ -220,47 +217,65 @@ function EmployeeHeader() {
   }, [location.pathname]);
 
   const rawNotifications = useMemo(() => {
-    const docNotifications = requestedDocs.map((doc) => ({
-      id: `doc-req-${doc._id || doc.id}`,
-      title: doc.status === "requested" ? "📨 HR Document Requested" : "✕ Document Rejected",
-      desc: `${doc.documentType || doc.documentName || "Document"}: ${doc.requestNote || doc.verificationNotes || "Upload requested by HR."}`,
-      time: "Action Needed",
-      link: "/employee/documents",
-    }));
+    const list = [...liveNotifications];
 
-    return [
-      ...liveNotifications,
-      ...docNotifications,
-      {
-        id: "sys-att-corr",
-        title: "⏱️ HR Attendance Correction",
-        desc: "HR resolved missing clock-out and updated check-out to 06:30 PM IST.",
-        time: "Just now",
-        link: "/employee/timesheets",
-      },
-      {
-        id: "sys-res-update",
-        title: "🚪 Resignation Status Update",
-        desc: "Your resignation request has been reviewed by HR. Please check the portal.",
-        time: "Recently",
-        link: "/employee/resignation",
-      },
-      {
-        id: "sys-1",
-        title: "Payroll Statement Verified",
-        desc: "September salary calculation finalized and available for download.",
-        time: "10m ago",
-        link: "/employee/payroll",
-      },
-      {
-        id: "sys-2",
-        title: "Leave Request Approved",
-        desc: "Upcoming leave has been recorded in the attendance calendar.",
-        time: "2h ago",
-        link: "/employee/leaves",
-      },
-    ];
-  }, [requestedDocs, liveNotifications]);
+    // 1. Real HR document upload requests / rejections
+    requestedDocs.forEach((doc) => {
+      list.push({
+        id: `doc-req-${doc._id || doc.id}`,
+        title: doc.status === "requested" ? "📨 HR Document Requested" : "✕ Document Rejected",
+        desc: `${doc.documentType || doc.documentName || "Document"}: ${doc.requestNote || doc.verificationNotes || "Upload requested by HR."}`,
+        time: "Action Needed",
+        link: "/employee/documents",
+      });
+    });
+
+    // 2. Real employee leaves notifications (Pending review, Approved, Declined)
+    myLeaves.forEach((l) => {
+      const st = (l.status || "").toLowerCase();
+      const typeName = l.leaveType?.name || l.type || "Leave";
+      const startStr = l.startDate ? String(l.startDate).slice(0, 10) : "";
+      if (st === "approved") {
+        list.push({
+          id: `leave-appr-${l.id || l._id}`,
+          title: "🌴 Leave Request Approved",
+          desc: `Your ${typeName} (${startStr}) has been approved by your manager.`,
+          time: "Approved",
+          link: "/employee/leaves",
+        });
+      } else if (st === "rejected") {
+        list.push({
+          id: `leave-rej-${l.id || l._id}`,
+          title: "❌ Leave Request Declined",
+          desc: `Your ${typeName} (${startStr}) was declined: ${l.rejection_reason || l.manager_remarks || "No remarks provided"}.`,
+          time: "Declined",
+          link: "/employee/leaves",
+        });
+      } else if (st.includes("pending")) {
+        list.push({
+          id: `leave-pend-${l.id || l._id}`,
+          title: "⏳ Leave Application In Review",
+          desc: `Your ${typeName} (${startStr}) is currently pending manager approval.`,
+          time: "In Review",
+          link: "/employee/leaves",
+        });
+      }
+    });
+
+    // 3. Real attendance notification (Late check-in today)
+    if (todayAtt && (todayAtt.is_late || todayAtt.status === "late")) {
+      const clockInVal = todayAtt.clockIn || todayAtt.checkInTime || todayAtt.clock_in || "past 10:00 AM";
+      list.push({
+        id: `att-late-${todayAtt.id || "today"}`,
+        title: "⚠️ Shift Late Arrival Logged",
+        desc: `Clocked in today at ${clockInVal}. Recorded as late arrival within permissible grace limit.`,
+        time: "Today",
+        link: "/employee/attendance",
+      });
+    }
+
+    return list;
+  }, [requestedDocs, liveNotifications, myLeaves, todayAtt]);
 
   // Listen for real-time ticket resolutions from HR Helpdesk
   useEffect(() => {
@@ -368,11 +383,26 @@ function EmployeeHeader() {
 
       {/* Right: Utilities (Clock, Notifications, User Profile, Sign out) */}
       <div className="employee-header-actions">
+        <button
+          type="button"
+          className="header-theme-toggle"
+          onClick={toggleTheme}
+          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          aria-pressed={isDark}
+        >
+          <span aria-hidden="true">{isDark ? "☀️" : "🌙"}</span>
+        </button>
+
         {/* Live Clock Capsule */}
         {currentTime && (
-          <div className="header-clock-capsule" title="Official Corporate Time (IST)">
-            <span className="clock-icon">🕒</span>
-            <span>{currentTime} IST</span>
+          <div
+            className="header-clock-capsule"
+            aria-label={`Official corporate time: ${currentTime} IST`}
+            tabIndex={0}
+          >
+            <span className="clock-icon" aria-hidden="true">🕒</span>
+            <span className="clock-time" aria-hidden="true">{currentTime} IST</span>
           </div>
         )}
 
@@ -454,8 +484,10 @@ function EmployeeHeader() {
                     ))}
                   </ul>
                 ) : (
-                  <div style={{ padding: "1.5rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.82rem" }}>
-                    🔔 No new notifications
+                  <div style={{ padding: "1.75rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.82rem" }}>
+                    <div style={{ fontSize: "1.6rem", marginBottom: "0.35rem" }}>🔔</div>
+                    <strong style={{ display: "block", color: "#334155", marginBottom: "0.2rem" }}>No New Notifications</strong>
+                    <span>You're all caught up! No unread notifications at this time.</span>
                   </div>
                 )}
               </div>
@@ -476,8 +508,6 @@ function EmployeeHeader() {
                 alt={displayName}
                 className="header-avatar-img"
                 onError={(e) => {
-                  localStorage.removeItem("hrms_profile_photo");
-                  sessionStorage.removeItem("hrms_profile_photo");
                   setHeaderPhoto("");
                   e.currentTarget.style.display = "none";
                   const fallback = e.currentTarget.nextElementSibling;

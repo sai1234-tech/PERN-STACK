@@ -61,3 +61,41 @@ export function formatTime(value) {
   if (isNaN(d.getTime())) return "Not provided";
   return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(d);
 }
+
+export function parseLocalDate(value) {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  const dateStr = getLocalDateString(value);
+  if (dateStr) {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+        return new Date(y, m, d);
+      }
+    }
+  }
+  const fallback = new Date(value);
+  return isNaN(fallback.getTime()) ? new Date() : fallback;
+}
+
+export function isToday(value) {
+  if (!value) return false;
+  const targetStr = getLocalDateString(value);
+  const todayStr = getLocalDateString(new Date());
+  return Boolean(targetStr && targetStr === todayStr);
+}
+
+export function formatDuration(totalSeconds) {
+  const num = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const hours = Math.floor(num / 3600);
+  const minutes = Math.floor((num % 3600) / 60);
+  const seconds = num % 60;
+
+  return [hours, minutes, seconds]
+    .map((unit) => String(unit).padStart(2, "0"))
+    .join(":");
+}
+

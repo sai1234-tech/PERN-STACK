@@ -11,7 +11,7 @@ import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-router.use(verifyToken, authorizeRoles("hr", "admin"));
+router.use(verifyToken, authorizeRoles("hr", "admin", "manager"));
 
 // Get all departments
 router.get("/", getDepartments);

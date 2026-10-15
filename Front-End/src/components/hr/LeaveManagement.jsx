@@ -81,21 +81,23 @@ function LeaveManagement({ leaves = [], onChanged }) {
     [filteredLeaves]
   );
 
-function ApprovalFlowBadge({ status }) {
+function ApprovalFlowBadge({ status, reportingManager, managerApprovedBy }) {
   const normStatus = String(status || "").toLowerCase();
   
   if (normStatus === "pending manager" || normStatus === "pending_manager" || normStatus === "pending") {
+    const mgr = reportingManager?.name ? ` (${reportingManager.name})` : "";
     return (
       <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", background: "#fef3c7", color: "#92400e", padding: "3px 10px", borderRadius: "12px", fontWeight: 600 }}>
-        <span>👤 Employee</span> ➔ <span style={{ textDecoration: "underline" }}>⌛ Manager Review</span> ➔ <span>🏢 HR Final</span>
+        <span>👤 Employee</span> ➔ <span style={{ textDecoration: "underline", color: "#b45309" }}>⌛ Step 1: Manager Review{mgr}</span> ➔ <span>🏢 Step 2: HR Final</span>
       </div>
     );
   }
   
   if (normStatus === "pending hr" || normStatus === "pending_hr") {
+    const mgr = managerApprovedBy?.name ? ` (${managerApprovedBy.name})` : "";
     return (
       <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", background: "#e0f2fe", color: "#0369a1", padding: "3px 10px", borderRadius: "12px", fontWeight: 600 }}>
-        <span>👤 Employee</span> ➔ <span>✓ Manager Approved</span> ➔ <span style={{ textDecoration: "underline" }}>⌛ HR Final Review</span>
+        <span>👤 Employee</span> ➔ <span style={{ color: "#059669" }}>✓ Manager Approved{mgr}</span> ➔ <span style={{ textDecoration: "underline", color: "#0284c7" }}>⌛ Step 2: HR Final Review</span>
       </div>
     );
   }
@@ -103,7 +105,7 @@ function ApprovalFlowBadge({ status }) {
   if (normStatus === "approved") {
     return (
       <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", background: "#dcfce7", color: "#166534", padding: "3px 10px", borderRadius: "12px", fontWeight: 600 }}>
-        <span>👤 Employee</span> ➔ <span>✓ Manager</span> ➔ <span>✓ HR Approved</span> 🎉
+        <span>👤 Employee</span> ➔ <span>✓ Manager</span> ➔ <span>✓ HR Approved (Final)</span> 🎉
       </div>
     );
   }
@@ -139,8 +141,9 @@ function ApprovalFlowBadge({ status }) {
         .filter((leave) => {
           const leaveTypeId =
             leave.leaveType?._id || leave.leaveType?.id || leave.leaveType;
+          const currentTypeId = type.id || type._id;
           return (
-            String(leaveTypeId) === String(type._id) &&
+            String(leaveTypeId) === String(currentTypeId) &&
             String(leave.status || "").toLowerCase() === "approved"
           );
         })
@@ -160,12 +163,12 @@ function ApprovalFlowBadge({ status }) {
     });
   }, [types, leaves]);
 
-  const act = async (leaveId, action) => {
+  const act = async (leaveId, action, override = false) => {
     setActionError("");
     try {
       setProcessingId(leaveId);
       if (action === "approve") {
-        await approveLeave(leaveId);
+        await approveLeave(leaveId, { override });
       }
       if (action === "reject") {
         const reason = window.prompt("Why is this leave being rejected?");
@@ -248,11 +251,14 @@ function ApprovalFlowBadge({ status }) {
             aria-label="Filter by leave type"
           >
             <option value="all">All Leave Types</option>
-            {types.map((type) => (
-              <option key={type._id} value={type._id}>
-                {type.name}
-              </option>
-            ))}
+            {types.map((type) => {
+              const typeId = type.id || type._id;
+              return (
+                <option key={typeId} value={typeId}>
+                  {type.name}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
@@ -267,7 +273,7 @@ function ApprovalFlowBadge({ status }) {
       {balance.length > 0 && (
         <div className="leave-balance-grid">
           {balance.map((type) => (
-            <div className="leave-balance-card" key={type._id}>
+            <div className="leave-balance-card" key={type.id || type._id}>
               <span className="leave-type-name">{type.name}</span>
               <strong className="leave-days-count">{type.available}</strong>
               <small className="leave-days-meta">
@@ -304,7 +310,8 @@ function ApprovalFlowBadge({ status }) {
           </div>
         ) : (
           pending.map((leave) => {
-            const isProcessing = processingId === leave._id;
+            const leaveId = leave.id || leave._id;
+            const isProcessing = processingId === leaveId;
             const empName = `${leave.employee?.firstName || ""} ${
               leave.employee?.lastName || ""
             }`.trim() || leave.employee?.name || leave.employee?.email || "Employee";
@@ -315,7 +322,7 @@ function ApprovalFlowBadge({ status }) {
             const palette = getColorForString(empName);
 
             return (
-              <div className="pending-leave-card" key={leave._id}>
+              <div className="pending-leave-card" key={leaveId}>
                 <div className="pending-card-main">
                   <div
                     className="applicant-avatar"
@@ -329,7 +336,11 @@ function ApprovalFlowBadge({ status }) {
                       <span className="leave-badge">
                         {leave.leaveType?.name || "Leave"}
                       </span>
-                      <ApprovalFlowBadge status={leave.status} />
+                      <ApprovalFlowBadge 
+                        status={leave.status} 
+                        reportingManager={leave.reportingManager} 
+                        managerApprovedBy={leave.managerApprovedBy} 
+                      />
                       <span className="leave-dates-text">
                         📅 {formatDate(leave.startDate)} to{" "}
                         {formatDate(leave.endDate)} ({leave.numberOfDays || 1}{" "}
@@ -345,38 +356,99 @@ function ApprovalFlowBadge({ status }) {
                         No reason specified
                       </small>
                     )}
+                    {/* Manager Status Indicator */}
+                    {["pending manager", "pending_manager", "pending"].includes(String(leave.status || "").toLowerCase()) && (
+                      <div style={{ marginTop: "6px", fontSize: "0.8rem", color: "#b45309", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span>⌛</span>
+                        <span>
+                          Step 1/2: Assigned to Reporting Manager: <strong>{leave.reportingManager?.name || "Assigned Manager"}</strong> (Awaiting Manager Sign-off)
+                        </span>
+                      </div>
+                    )}
+                    {["pending hr", "pending_hr"].includes(String(leave.status || "").toLowerCase()) && (
+                      <div style={{ marginTop: "6px", fontSize: "0.8rem", color: "#047857", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span>✓</span>
+                        <span>
+                          Step 1/2 Complete: Approved by Manager <strong>{leave.managerApprovedBy?.name || "Manager"}</strong>
+                          {leave.managerRemarks ? ` — "${leave.managerRemarks}"` : ""}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="pending-actions-wrap">
-                  <button
-                    type="button"
-                    className="btn-approve"
-                    disabled={isProcessing}
-                    onClick={() => act(leave._id, "approve")}
-                  >
-                    {isProcessing ? (
-                      "Saving..."
-                    ) : (
-                      <>
-                        <span>✓</span> Approve
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-reject"
-                    disabled={isProcessing}
-                    onClick={() => act(leave._id, "reject")}
-                  >
-                    {isProcessing ? (
-                      "Saving..."
-                    ) : (
-                      <>
-                        <span>✕</span> Reject
-                      </>
-                    )}
-                  </button>
+                  {["pending manager", "pending_manager", "pending"].includes(String(leave.status || "").toLowerCase()) ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span 
+                        style={{ 
+                          fontSize: "0.78rem", 
+                          color: "#92400e", 
+                          background: "#fef3c7", 
+                          padding: "5px 10px", 
+                          borderRadius: "6px",
+                          fontWeight: 600,
+                          border: "1px solid #fde68a"
+                        }}
+                      >
+                        ⌛ Awaiting {leave.reportingManager?.name || "Manager"}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-approve"
+                        style={{ fontSize: "0.76rem", padding: "6px 10px", background: "#f8fafc", color: "#475569", border: "1px solid #cbd5e1" }}
+                        disabled={isProcessing}
+                        title="Override manager approval and approve directly as HR Admin"
+                        onClick={() => {
+                          if (window.confirm(`Reporting Manager (${leave.reportingManager?.name || "Manager"}) approval is pending. Do you wish to override and approve directly as HR?`)) {
+                            act(leaveId, "approve", true);
+                          }
+                        }}
+                      >
+                        ⚡ HR Override
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-reject"
+                        disabled={isProcessing}
+                        onClick={() => act(leaveId, "reject")}
+                      >
+                        {isProcessing ? "Saving..." : <><span>✕</span> Reject</>}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <button
+                        type="button"
+                        className="btn-approve"
+                        disabled={isProcessing}
+                        onClick={() => act(leaveId, "approve")}
+                        title="Give final HR approval"
+                      >
+                        {isProcessing ? (
+                          "Saving..."
+                        ) : (
+                          <>
+                            <span>✓</span> Final Approve (HR)
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-reject"
+                        disabled={isProcessing}
+                        onClick={() => act(leaveId, "reject")}
+                      >
+                        {isProcessing ? (
+                          "Saving..."
+                        ) : (
+                          <>
+                            <span>✕</span> Reject
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -419,6 +491,7 @@ function ApprovalFlowBadge({ status }) {
               </tr>
             ) : (
               history.map((leave) => {
+                const leaveId = leave.id || leave._id;
                 const empName = `${leave.employee?.firstName || ""} ${
                   leave.employee?.lastName || ""
                 }`.trim() || leave.employee?.name || leave.employee?.email || "Employee";
@@ -427,7 +500,7 @@ function ApprovalFlowBadge({ status }) {
                 const palette = getColorForString(empName);
 
                 return (
-                  <tr key={leave._id}>
+                  <tr key={leaveId}>
                     <td>
                       <div className="history-emp-cell">
                         <div
@@ -466,16 +539,26 @@ function ApprovalFlowBadge({ status }) {
                         <span className="pulse-dot" />
                         {leave.status}
                       </span>
+                      {leave.managerApprovedBy && (
+                        <div style={{ fontSize: "0.72rem", color: "#047857", marginTop: "3px" }}>
+                          ✓ Mgr: {leave.managerApprovedBy.name}
+                        </div>
+                      )}
+                      {leave.hrApprovedBy && (
+                        <div style={{ fontSize: "0.72rem", color: "#1d4ed8", marginTop: "1px" }}>
+                          ✓ HR: {leave.hrApprovedBy.name}
+                        </div>
+                      )}
                     </td>
                     <td>
                       {canRevert && (
                         <button
                           type="button"
                           className="btn-revert"
-                          disabled={processingId === leave._id}
-                          onClick={() => act(leave._id, "revert")}
+                          disabled={processingId === leaveId}
+                          onClick={() => act(leaveId, "revert")}
                         >
-                          {processingId === leave._id ? "Reverting..." : "Revert"}
+                          {processingId === leaveId ? "Reverting..." : "Revert"}
                         </button>
                       )}
                     </td>

@@ -13,6 +13,14 @@ export const getAllTickets = async () => {
   return response;
 };
 
+export const getMyTickets = async () => {
+  return apiRequest('/tickets/my');
+};
+
+export const getTicketById = async (ticketId) => {
+  return apiRequest(`/tickets/${encodeURIComponent(ticketId)}`);
+};
+
 export const resolveTicket = async (id, resolution) => {
   const response = await apiRequest(`/tickets/${id}/resolve`, {
     method: "PUT",

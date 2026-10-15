@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import { apiRequest } from "../../services/apiClient";
+import { parseLocalDate, getLocalDateString, isToday } from "../../utils/date";
 import "./EmployeeCalendar.css";
 import { toast } from "react-toastify";
 
@@ -71,6 +72,10 @@ export default function EmployeeCalendar() {
 
   useEffect(() => {
     fetchCalendarData();
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1200);
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   const fetchCalendarData = async () => {
@@ -210,20 +215,8 @@ export default function EmployeeCalendar() {
     [year, month, firstDayOfWeek]
   );
 
-  // Helper date key formatter
-  function formatDateKey(dateObj) {
-    if (!dateObj) return "";
-    if (typeof dateObj === "string") {
-      const clean = dateObj.trim().slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
-    }
-    const d = new Date(dateObj);
-    if (isNaN(d.getTime())) return "";
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
+  // Canonical date key formatter from date utils
+  const formatDateKey = getLocalDateString;
 
   // Holiday map lookup
   const holidayMap = useMemo(() => {
@@ -295,14 +288,7 @@ export default function EmployeeCalendar() {
   const getLeavesForDate = (dateObj) => leaveMap.get(formatDateKey(dateObj)) || [];
   const getCustomEventsForDate = (dateObj) => customEventsMap.get(formatDateKey(dateObj)) || [];
 
-  const isTodayDate = (dateObj) => {
-    const today = new Date();
-    return (
-      dateObj.getDate() === today.getDate() &&
-      dateObj.getMonth() === today.getMonth() &&
-      dateObj.getFullYear() === today.getFullYear()
-    );
-  };
+  const isTodayDate = isToday;
 
   const isSelectedDate = (dateObj) => formatDateKey(dateObj) === formatDateKey(selectedDate);
 
@@ -674,21 +660,13 @@ export default function EmployeeCalendar() {
                   <div className="holiday-cards-grid">
                     {holidays.length > 0 ? (
                       holidays.map((h, idx) => {
-                        const dateStr = h.date ? String(h.date).slice(0, 10) : "";
-                        let formattedDateStr = dateStr;
-                        let dayOfWeek = "";
-                        if (dateStr) {
-                          const parts = dateStr.split("-");
-                          if (parts.length === 3) {
-                            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-                            dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
-                            formattedDateStr = d.toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            });
-                          }
-                        }
+                        const d = parseLocalDate(h.date);
+                        const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
+                        const formattedDateStr = d.toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        });
 
                         return (
                           <div key={h.id || h._id || idx} className="holiday-list-card">
@@ -867,7 +845,7 @@ export default function EmployeeCalendar() {
                 <div className="upcoming-list">
                   {upcomingHolidays.length > 0 ? (
                     upcomingHolidays.map((holiday) => {
-                      const d = new Date(holiday.date);
+                      const d = parseLocalDate(holiday.date);
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
                       const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));

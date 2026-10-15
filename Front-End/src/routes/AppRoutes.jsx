@@ -2,7 +2,7 @@ import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import InitialLoader from "../components/common/InitialLoader";
-import { normalizeRole } from "../utils/auth";
+import { normalizeRole, getDefaultDashboard } from "../utils/auth";
 import { SidebarProvider } from "../context/SidebarContext";
 import DashboardLayout from "../components/layout/DashboardLayout";
 
@@ -48,21 +48,15 @@ const OrganizationHierarchy = lazy(() => import("../pages/organization/Organizat
 /**
  * Protect routes based on authentication and role.
  */
-/**
- * Protect routes based on authentication and role.
- */
 function ProtectedRoute({ children, roles = [] }) {
-  const { user, loading } = useAuth();
+  const { user, employee, loading } = useAuth();
 
   if (loading) return <InitialLoader />;
   if (!user) return <Navigate to="/login" replace />;
 
-  const userRole = normalizeRole(user);
+  const userRole = normalizeRole(user, employee);
   if (roles.length > 0 && !roles.includes(userRole)) {
-    if (userRole === "admin") return <Navigate to="/admin/dashboard" replace />;
-    if (userRole === "hr") return <Navigate to="/hr/dashboard" replace />;
-    if (userRole === "manager") return <Navigate to="/manager/dashboard" replace />;
-    return <Navigate to="/employee/dashboard" replace />;
+    return <Navigate to={getDefaultDashboard(user, employee)} replace />;
   }
 
   return children;
@@ -72,16 +66,12 @@ function ProtectedRoute({ children, roles = [] }) {
  * Dynamic Root Redirect based on user role
  */
 function RootRedirect() {
-  const { user, loading } = useAuth();
+  const { user, employee, loading } = useAuth();
 
   if (loading) return <InitialLoader />;
   if (!user) return <Navigate to="/login" replace />;
 
-  const role = normalizeRole(user);
-  if (role === "admin") return <Navigate to="/admin/dashboard" replace />;
-  if (role === "hr") return <Navigate to="/hr/dashboard" replace />;
-  if (role === "manager") return <Navigate to="/manager/dashboard" replace />;
-  return <Navigate to="/employee/dashboard" replace />;
+  return <Navigate to={getDefaultDashboard(user, employee)} replace />;
 }
 
 const ALL_ROLES = ["employee", "manager", "hr", "admin"];
@@ -173,7 +163,7 @@ function AppRoutes() {
           <Route path="/admin/accounts"  element={<ProtectedRoute roles={["admin"]}><AccountManagement /></ProtectedRoute>} />
 
           {/* ── HR / Admin Governance ── */}
-          <Route path="/hr/dashboard"    element={<ProtectedRoute roles={ALL_ROLES}><HRDashboard /></ProtectedRoute>} />
+          <Route path="/hr/dashboard"    element={<ProtectedRoute roles={["hr", "admin"]}><HRDashboard /></ProtectedRoute>} />
           <Route path="/hr/departments"  element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
           <Route path="/departments"     element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
           <Route path="/hr/employees"    element={<ProtectedRoute roles={["hr", "admin"]}><EmployeeManagement /></ProtectedRoute>} />
@@ -181,7 +171,7 @@ function AppRoutes() {
           <Route path="/hr/recruitment"  element={<ProtectedRoute roles={["hr", "admin"]}><RecruitmentOnboarding /></ProtectedRoute>} />
           <Route path="/hr/resources"    element={<ProtectedRoute roles={["hr", "admin"]}><ResourceAllocation /></ProtectedRoute>} />
           <Route path="/hr/roster"       element={<ProtectedRoute roles={["hr", "admin"]}><ShiftRoster /></ProtectedRoute>} />
-          <Route path="/hr/payroll"      element={<ProtectedRoute roles={["hr", "admin", "manager"]}><PayrollManagement /></ProtectedRoute>} />
+          <Route path="/hr/payroll"      element={<ProtectedRoute roles={["hr", "admin"]}><PayrollManagement /></ProtectedRoute>} />
           <Route path="/hr/helpdesk"     element={<ProtectedRoute roles={["hr", "admin"]}><Helpdesk /></ProtectedRoute>} />
           <Route path="/helpdesk"        element={<ProtectedRoute roles={ALL_ROLES}><Helpdesk /></ProtectedRoute>} />
           <Route path="/hr/leaves"       element={<ProtectedRoute roles={["hr", "admin"]}><HRLeaveManagement /></ProtectedRoute>} />

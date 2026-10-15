@@ -2,7 +2,8 @@ node_modules/
 **/node_modules/
 .env
 **/.env
-uploads/documents/*
-!uploads/documents/.gitkeep
+uploads/
+**/uploads/
 .DS_Store
 *.log
+

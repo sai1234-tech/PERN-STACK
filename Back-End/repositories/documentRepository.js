@@ -35,7 +35,7 @@ export const initDocumentTable = async () => {
             file_url TEXT DEFAULT '',
             mime_type VARCHAR(100) DEFAULT '',
             size INTEGER DEFAULT 0,
-            status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('requested', 'pending', 'verified', 'rejected')),
+            status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('requested', 'pending', 'verified', 'rejected', 'fulfilled')),
             expiry_date DATE,
             verification_notes TEXT DEFAULT '',
             request_note TEXT DEFAULT '',
@@ -47,6 +47,10 @@ export const initDocumentTable = async () => {
         -- Dynamic Column Migrations
         ALTER TABLE employee_documents ADD COLUMN IF NOT EXISTS verified_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
         ALTER TABLE employee_documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        ALTER TABLE employee_documents DROP CONSTRAINT IF EXISTS employee_documents_status_check;
+        ALTER TABLE employee_documents
+            ADD CONSTRAINT employee_documents_status_check
+            CHECK (status IN ('requested', 'pending', 'verified', 'rejected', 'fulfilled'));
     `;
     await pool.query(queryText);
 };

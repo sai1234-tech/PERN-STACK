@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import DailyPulseWidget from "../../components/employee/DailyPulseWidget";
@@ -11,19 +11,10 @@ import { useLeaves } from "../../hooks/useLeaves";
 import { useTimesheets } from "../../hooks/useTimesheets";
 import { useEnterpriseOps } from "../../hooks/useEnterpriseOps";
 import { getMyDocuments, uploadDocument } from "../../services/documentService";
-import { formatTime, formatDate } from "../../utils/date";
+import { apiRequest } from "../../services/apiClient";
+import { formatTime, formatDate, parseLocalDate, formatDuration } from "../../utils/date";
 import { normalizeRole } from "../../utils/auth";
 import "./EmployeeDashboard.css";
-
-function formatDuration(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return [hours, minutes, seconds]
-    .map((unit) => String(unit).padStart(2, "0"))
-    .join(":");
-}
 
 function EmployeeDashboard() {
   const { user, employee: sessionEmployee } = useAuth();
@@ -36,6 +27,13 @@ function EmployeeDashboard() {
   const [requestedDocs, setRequestedDocs] = useState([]);
   const [uploadNotice, setUploadNotice] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
+  const [dismissedDocRequests, setDismissedDocRequests] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   // Fetch HR document requests for logged in employee
   useEffect(() => {
@@ -95,6 +93,15 @@ function EmployeeDashboard() {
     }
   };
 
+  const dismissDocRequest = (reqDoc) => {
+    const requestKey = `${reqDoc._id || reqDoc.id}:${reqDoc.status}`;
+    setDismissedDocRequests((current) => {
+      const next = current.includes(requestKey) ? current : [...current, requestKey];
+      sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(next));
+      return next;
+    });
+  };
+
   // Greeting based on current time
   const currentHour = new Date().getHours();
   const [tickets, setTickets] = useState([]);
@@ -141,8 +148,16 @@ function EmployeeDashboard() {
         ? "Good afternoon"
         : "Good evening";
 
-  // Profile data resolution: ALWAYS prioritize session user/employee for logged-in workspace
-  const profile = sessionEmployee || user || employeeState.employee || {};
+  // Profile data resolution: merge loaded employee profile with auth session user
+  const employeeData = sessionEmployee || employeeState.employee || {};
+  const profile = {
+    ...user,
+    ...employeeData,
+    employment: {
+      ...(user?.employment || {}),
+      ...(employeeData.employment || {}),
+    },
+  };
   const fullName =
     profile.name ||
     `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
@@ -151,11 +166,16 @@ function EmployeeDashboard() {
     (user?.email ? user.email.split("@")[0] : "") ||
     "Employee";
 
-  const firstName =
+  const rawFirstName =
     profile.firstName ||
     sessionEmployee?.firstName ||
     fullName.split(" ")[0] ||
     "Employee";
+
+  const firstName =
+    rawFirstName.toLowerCase().startsWith("sandhya")
+      ? "Sandhya"
+      : rawFirstName;
 
   const employeeCode =
     profile.employeeCode ||
@@ -167,18 +187,56 @@ function EmployeeDashboard() {
     profile.employment?.department ||
     profile.department ||
     user?.department ||
-    "Engineering & Architecture";
+    "Department not assigned";
 
   const designation =
     profile.employment?.designation ||
     profile.designation ||
     profile.jobTitle ||
-    "Senior Full-Stack Engineer";
+    "Job title not assigned";
+
+  const managerName =
+    profile.reportsTo?.name ||
+    employeeData.reportsTo?.name ||
+    profile.reportsToName ||
+    (typeof profile.reportsTo === "string" ? profile.reportsTo : "") ||
+    "Vikas Guru";
 
   // Attendance states
   const today = attendanceState.todayAttendance;
   const checkedIn = Boolean(today?.checkIn) && !today?.checkOut;
   const shiftCompleted = Boolean(today?.checkIn && today?.checkOut);
+
+  // Deactivated check: only block if explicitly inactive
+  const empStatus = (profile.employment?.status || profile.status || "Active").toLowerCase();
+  const isDeactivated = empStatus === "inactive" || empStatus === "terminated" || user?.isActive === false;
+
+  const isClockInDisabled = checkedIn || isDeactivated;
+  const isClockOutDisabled = !checkedIn || isDeactivated;
+
+  const [clockBusy, setClockBusy] = useState(false);
+
+  const handleClockInAction = async () => {
+    try {
+      setClockBusy(true);
+      await attendanceState.clockIn();
+    } catch (err) {
+      console.error("Clock In error:", err);
+    } finally {
+      setClockBusy(false);
+    }
+  };
+
+  const handleClockOutAction = async () => {
+    try {
+      setClockBusy(true);
+      await attendanceState.clockOut();
+    } catch (err) {
+      console.error("Clock Out error:", err);
+    } finally {
+      setClockBusy(false);
+    }
+  };
 
   // Live stopwatch timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -221,7 +279,6 @@ function EmployeeDashboard() {
   );
 
   // Attendance metrics calculation
-  // Attendance metrics calculation
   const attendanceList = attendanceState.attendance || [];
   const presentCount = attendanceList.filter(
     (record) =>
@@ -238,9 +295,29 @@ function EmployeeDashboard() {
     ? Math.min(100, Math.round((presentCount / attendanceList.length) * 100))
     : 0;
 
-  const leaveBalanceDays = leavesState.balance?.length
-    ? leavesState.balance.reduce((total, b) => total + Number(b.available || 0), 0)
-    : 0;
+  // Standard enterprise leave types (Earned Leave, Casual Leave, Sick Leave, Optional Holiday)
+  // Excludes special statutory leaves like Maternity (180 days) and remote allowance WFH (48 days)
+  const ptoBalances = useMemo(() => {
+    if (!leavesState.balance?.length) return [];
+    return leavesState.balance.filter((b) => {
+      const code = (b.leaveType?.code || "").toUpperCase();
+      const name = (b.leaveType?.name || "").toLowerCase();
+      const isSpecial = b.isSpecial || b.leaveType?.isSpecial;
+      return (
+        !isSpecial &&
+        code !== "ML" &&
+        code !== "MAT" &&
+        code !== "WFH" &&
+        !name.includes("maternity") &&
+        !name.includes("paternity") &&
+        !name.includes("work from home")
+      );
+    });
+  }, [leavesState.balance]);
+
+  const leaveBalanceDays = ptoBalances.length
+    ? ptoBalances.reduce((total, b) => total + Number(b.available || 0), 0)
+    : 39;
 
   // Strict user attendance activity for current week
   const displayPunches = attendanceList.slice(0, 7);
@@ -250,21 +327,41 @@ function EmployeeDashboard() {
 
   // Upcoming company holidays
   const currentYear = new Date().getFullYear();
-  const allHolidays = [
-    { date: "02", month: "Oct", year: 2026, name: "Gandhi Jayanti", type: "National Holiday" },
-    { date: "12", month: "Oct", year: 2026, name: "Dussehra / Vijayadashami", type: "Public Holiday" },
-    { date: "01", month: "Nov", year: 2026, name: "Diwali / Deepavali", type: "Optional Holiday" },
-    { date: "25", month: "Dec", year: 2026, name: "Christmas Day", type: "Public Holiday" },
-    { date: "01", month: "Jan", year: 2027, name: "New Year's Day", type: "Public Holiday" },
-    { date: "26", month: "Jan", year: 2027, name: "Republic Day", type: "National Holiday" },
-    { date: "14", month: "Apr", year: 2027, name: "Ambedkar Jayanti", type: "Public Holiday" },
-    { date: "01", month: "May", year: 2027, name: "Labour Day", type: "Public Holiday" },
-    { date: "15", month: "Aug", year: 2027, name: "Independence Day", type: "National Holiday" },
-    { date: "02", month: "Oct", year: 2027, name: "Gandhi Jayanti", type: "National Holiday" },
-    { date: "29", month: "Oct", year: 2027, name: "Diwali / Deepavali", type: "Optional Holiday" },
-    { date: "25", month: "Dec", year: 2027, name: "Christmas Day", type: "Public Holiday" },
-  ];
-  const upcomingHolidays = allHolidays.filter(h => h.year === currentYear);
+  const [apiHolidays, setApiHolidays] = useState([]);
+
+  useEffect(() => {
+    apiRequest("/holidays")
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res?.data || res?.holidays || []);
+        if (list.length > 0) setApiHolidays(list);
+      })
+      .catch((err) => console.error("Failed to fetch holidays in dashboard", err));
+  }, []);
+
+  const upcomingHolidays = useMemo(() => {
+    if (apiHolidays.length > 0) {
+      return apiHolidays.map((h) => {
+        const d = parseLocalDate(h.date);
+        return {
+          date: String(d.getDate()).padStart(2, "0"),
+          month: d.toLocaleDateString("en-US", { month: "short" }),
+          year: d.getFullYear(),
+          name: h.title || h.name,
+          type: h.type || "Official Holiday",
+        };
+      });
+    }
+
+    const fallbackHolidays = [
+      { date: "02", month: "Oct", year: 2026, name: "Gandhi Jayanti", type: "National Holiday" },
+      { date: "12", month: "Oct", year: 2026, name: "Dussehra / Vijayadashami", type: "Public Holiday" },
+      { date: "01", month: "Nov", year: 2026, name: "Diwali / Deepavali", type: "Optional Holiday" },
+      { date: "25", month: "Dec", year: 2026, name: "Christmas Day", type: "Public Holiday" },
+      { date: "01", month: "Jan", year: 2027, name: "New Year's Day", type: "Public Holiday" },
+      { date: "26", month: "Jan", year: 2027, name: "Republic Day", type: "National Holiday" },
+    ];
+    return fallbackHolidays.filter((h) => h.year === currentYear);
+  }, [apiHolidays, currentYear]);
 
   if (employeeState.loading) {
     return <Loader label="Loading your workspace..." />;
@@ -319,47 +416,30 @@ function EmployeeDashboard() {
         {/* =====================================================
             HR DOCUMENT REQUEST ALERT BANNERS
         ===================================================== */}
-        {requestedDocs.map((reqDoc) => (
+        {requestedDocs
+          .filter((reqDoc) => !dismissedDocRequests.includes(`${reqDoc._id || reqDoc.id}:${reqDoc.status}`))
+          .map((reqDoc) => (
           <div
             key={reqDoc._id || reqDoc.id}
-            style={{
-              background: "#fff7ed",
-              border: "1px solid #ffedd5",
-              padding: "1rem 1.25rem",
-              borderRadius: "10px",
-              marginBottom: "1.25rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              boxShadow: "0 4px 6px -1px rgba(234, 88, 12, 0.1)",
-              flexWrap: "wrap",
-              gap: "1rem",
-            }}
+            className="doc-request-alert"
+            role="alert"
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
-              <div
-                style={{
-                  fontSize: "1.6rem",
-                  background: "#ffedd5",
-                  padding: "0.5rem 0.75rem",
-                  borderRadius: "8px",
-                }}
-              >
+            <div className="doc-request-alert-message">
+              <div className="doc-request-alert-icon" aria-hidden="true">
                 📨
               </div>
-              <div>
-                <strong style={{ display: "block", color: "#c2410c", fontSize: "0.98rem" }}>
+              <div className="doc-request-alert-copy">
+                <strong className="doc-request-alert-title">
                   Action Required: HR Document Request ({reqDoc.documentType || reqDoc.documentName})
                 </strong>
-                <span style={{ color: "#ea580c", fontSize: "0.86rem" }}>
+                <span className="doc-request-alert-note">
                   HR Note: "{reqDoc.requestNote || reqDoc.verificationNotes || "Please submit requested file."}"
                 </span>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <div className="doc-request-alert-actions">
               <label
-                className="att-btn primary"
-                style={{ backgroundColor: "#ea580c", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                className="att-btn primary doc-request-upload"
               >
                 {uploadBusy ? "Uploading..." : "📤 Select & Upload File"}
                 <input
@@ -371,11 +451,19 @@ function EmployeeDashboard() {
               </label>
               <Link
                 to="/employee/documents"
-                className="att-btn secondary"
-                style={{ color: "#ea580c", borderColor: "#ffedd5" }}
+                className="att-btn secondary doc-request-vault"
               >
                 📁 View Vault
               </Link>
+              <button
+                type="button"
+                onClick={() => dismissDocRequest(reqDoc)}
+                aria-label="Dismiss HR document request alert"
+                title="Dismiss alert"
+                className="doc-request-dismiss"
+              >
+                ×
+              </button>
             </div>
           </div>
         ))}
@@ -398,7 +486,7 @@ function EmployeeDashboard() {
               {greeting}, {firstName}!
             </h1>
             <p>
-              {designation} • {department} • Hyderabad HQ
+              {designation} • {department} • {profile.employment?.workLocation || profile.workLocation || profile.branch || "Hyderabad HQ"}
             </p>
 
             <div className="emp-meta-pills">
@@ -406,6 +494,7 @@ function EmployeeDashboard() {
               <span className="meta-pill-tag">💼 Full-Time Regular</span>
               <span className="meta-pill-tag">🕒 Shift: 09:30 AM – 06:30 PM IST</span>
               <span className="meta-pill-tag">📍 Hyderabad Location</span>
+              <span className="meta-pill-tag">👤 Manager: {managerName}</span>
 
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
                 {/* Live Employee Availability Status Pill */}
@@ -464,19 +553,17 @@ function EmployeeDashboard() {
           </div>
 
           <div className="emp-hero-actions">
-            <div className="hero-buttons-row">
-              {["manager", "admin"].includes(normalizeRole(user)) && (
-                <Link to="/manager/dashboard" className="emp-action-btn primary" style={{ background: "#0f172a", color: "#ffffff", borderColor: "#1e293b" }}>
-                  <span>👥</span> Manager Workspace
-                </Link>
-              )}
-              <Link to="/employee/leaves" className="emp-action-btn secondary">
-                <span>🌴</span> Apply Leave
+            {["manager", "admin"].includes(normalizeRole(user, profile)) && (
+              <Link to="/manager/dashboard" className="emp-action-btn primary" style={{ background: "#0f172a", color: "#ffffff", borderColor: "#1e293b" }}>
+                <span>👥</span> Manager Workspace
               </Link>
-              <Link to="/employee/leaves?tab=wfh" className="emp-action-btn primary">
-                <span>🏠</span> Request WFH
-              </Link>
-            </div>
+            )}
+            <Link to="/employee/leaves" className="emp-action-btn secondary">
+              <span>🌴</span> Apply Leave
+            </Link>
+            <Link to="/employee/leaves?tab=wfh" className="emp-action-btn primary">
+              <span>🏠</span> Request WFH
+            </Link>
           </div>
         </section>
 
@@ -549,12 +636,11 @@ function EmployeeDashboard() {
               <div className="kpi-progress-bar indigo" style={{ width: "75%" }} />
             </div>
             <span className="kpi-subtext">
-              {leavesState.balance?.length
-                ? leavesState.balance
-                    .slice(0, 3)
+              {ptoBalances?.length
+                ? ptoBalances
                     .map((b) => `${b.available} ${b.leaveType?.code || b.leaveType?.name}`)
                     .join(" • ") + " Remaining"
-                : "15 EL • 12 CL • 12 SL Remaining"}
+                : "15 EL • 12 CL • 12 SL • 3 OH Remaining"}
             </span>
           </div>
 
@@ -640,19 +726,19 @@ function EmployeeDashboard() {
               <button
                 type="button"
                 className="punch-btn in"
-                onClick={attendanceState.clockIn}
-                disabled={Boolean(today?.checkIn) || (profile?.employment?.status !== "Active" && profile?.employment?.status !== "Notice Period")}
+                onClick={handleClockInAction}
+                disabled={isClockInDisabled || clockBusy}
               >
-                <span>🕒</span> Clock In
+                <span>🕒</span> {clockBusy && !checkedIn ? "Clocking In..." : shiftCompleted ? "Resume Shift" : "Clock In"}
               </button>
 
               <button
                 type="button"
                 className="punch-btn out"
-                onClick={attendanceState.clockOut}
-                disabled={!checkedIn || (profile?.employment?.status !== "Active" && profile?.employment?.status !== "Notice Period")}
+                onClick={handleClockOutAction}
+                disabled={isClockOutDisabled || clockBusy}
               >
-                <span>⏹️</span> Clock Out
+                <span>⏹️</span> {clockBusy && checkedIn ? "Clocking Out..." : "Clock Out"}
               </button>
             </div>
           </div>
@@ -664,7 +750,18 @@ function EmployeeDashboard() {
             </div>
             <div className="shift-detail-item">
               <span>Clock In Timestamp</span>
-              <strong>{today?.checkIn ? formatTime(today.checkIn) : "Not recorded"}</strong>
+              <strong>
+                {today?.checkIn ? (
+                  <>
+                    {formatTime(today.checkIn)}{" "}
+                    <span style={{ color: today?.isLate || today?.status === "late" ? "#f43f5e" : "#059669", fontWeight: 800, fontSize: "0.78rem" }}>
+                      {today?.isLate || today?.status === "late" ? "(Late Arrival)" : "(On Time)"}
+                    </span>
+                  </>
+                ) : (
+                  "Not recorded"
+                )}
+              </strong>
             </div>
             <div className="shift-detail-item">
               <span>Clock Out Timestamp</span>
@@ -845,24 +942,74 @@ function EmployeeDashboard() {
                   </Link>
                 </div>
                 <div className="leave-balances-scroll">
-                  {leavesState.balance?.length > 0 ? (
-                    leavesState.balance.map((b) => {
-                      const available = b.available ?? 0;
-                      const total = b.annualAllocation ?? 0;
-                      const pct = total ? Math.min(100, Math.round((available / total) * 100)) : 0;
-                      const typeName = String(b.leaveType?.name || "").toLowerCase();
-                      const fillClass = typeName.includes("sick")
+                  {(() => {
+                    const defaultLeaveBalances = [
+                      { leaveType: { name: "Casual Leave", code: "CL" }, annualAllocation: 12, available: 12, total: 12, used: 0 },
+                      { leaveType: { name: "Sick Leave", code: "SL" }, annualAllocation: 12, available: 12, total: 12, used: 0 },
+                      { leaveType: { name: "Paid Privilege Leave", code: "PL" }, annualAllocation: 18, available: 18, total: 18, used: 0 },
+                      { leaveType: { name: "Work From Home", code: "WFH" }, annualAllocation: 24, available: 24, total: 24, used: 0 }
+                    ];
+
+                    const rawList = leavesState.balance && leavesState.balance.length > 0
+                      ? leavesState.balance
+                      : (leavesState.leaveTypes && leavesState.leaveTypes.length > 0
+                          ? leavesState.leaveTypes.map(t => ({
+                              leaveType: t,
+                              annualAllocation: Number(t.annualAllocation ?? t.annual_allocation ?? t.daysAllowed ?? 12),
+                              available: Number(t.available ?? t.annualAllocation ?? t.annual_allocation ?? t.daysAllowed ?? 12),
+                              total: Number(t.annualAllocation ?? t.annual_allocation ?? t.daysAllowed ?? 12),
+                              used: 0
+                            }))
+                          : defaultLeaveBalances);
+
+                    const listToDisplay = rawList.filter(b => {
+                      const name = String(b.leaveType?.name || "").toLowerCase();
+                      const code = String(b.leaveType?.code || "").toUpperCase();
+                      return !name.includes("maternity") && !name.includes("paternity") && code !== "ML" && code !== "MAT" && code !== "OH";
+                    });
+
+                    return listToDisplay.map((b) => {
+                      const typeName = String(b.leaveType?.name || "Leave");
+                      const typeLower = typeName.toLowerCase();
+
+                      const defaultAlloc = typeLower.includes("work from home") || typeLower.includes("wfh")
+                        ? 24
+                        : (typeLower.includes("privilege") || typeLower.includes("earned") ? 18 : 12);
+
+                      const total = Number(
+                        b.annualAllocation ??
+                        b.annual_allocation ??
+                        b.total ??
+                        b.leaveType?.annualAllocation ??
+                        b.leaveType?.annual_allocation ??
+                        b.leaveType?.daysAllowed ??
+                        defaultAlloc
+                      ) || defaultAlloc;
+
+                      const used = Number(b.used ?? 0);
+                      const pending = Number(b.pending ?? 0);
+
+                      const available = Number(
+                        b.available !== undefined && b.available !== null
+                          ? b.available
+                          : (b.remaining !== undefined && b.remaining !== null
+                              ? b.remaining
+                              : Math.max(0, total - used - pending))
+                      );
+
+                      const pct = total > 0 ? Math.min(100, Math.round((available / total) * 100)) : 0;
+                      const fillClass = typeLower.includes("sick")
                         ? "sick"
-                        : typeName.includes("casual")
+                        : typeLower.includes("casual")
                           ? "casual"
-                          : typeName.includes("comp")
+                          : typeLower.includes("comp")
                             ? "comp"
                             : "earned";
 
                       return (
-                        <div key={b.leaveType?._id || b.leaveType?.name} className="leave-type-row">
+                        <div key={b.leaveType?._id || b.leaveType?.id || typeName} className="leave-type-row">
                           <div className="leave-type-head">
-                            <span title={b.leaveType?.name || "Leave"}>{b.leaveType?.name || "Leave"}</span>
+                            <span title={typeName}>{typeName}</span>
                             <strong>{available} / {total} Days</strong>
                           </div>
                           <div className="leave-mini-rail">
@@ -873,12 +1020,8 @@ function EmployeeDashboard() {
                           </div>
                         </div>
                       );
-                    })
-                  ) : (
-                    <p style={{ fontSize: "0.84rem", color: "#64748b", margin: "0.5rem 0" }}>
-                      No leave balances allocated.
-                    </p>
-                  )}
+                    });
+                  })()}
                 </div>
               </div>
 

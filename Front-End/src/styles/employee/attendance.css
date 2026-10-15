@@ -115,6 +115,35 @@
   transform: translateY(-2px);
 }
 
+.att-live-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.95rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.status-beacon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-beacon.beacon-active {
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: livePulse 2s infinite;
+}
+
+.status-beacon.beacon-idle {
+  background: #94a3b8;
+}
+
 /* ==========================================================================
    KPI Cards Grid
    ========================================================================== */

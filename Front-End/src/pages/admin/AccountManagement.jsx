@@ -63,6 +63,17 @@ function AccountManagement() {
 
   useSyncRefresh(loadData, { interval: 4000, silent: true });
 
+  const accountCounts = useMemo(() => {
+    const roleOf = (employee) =>
+      (employee.role || employee.user?.role || employee.user_role || "").toLowerCase();
+    return {
+      accounts: employees.length,
+      hr: employees.filter((employee) => roleOf(employee) === "hr").length,
+      employees: employees.filter((employee) => roleOf(employee) === "employee").length,
+      admins: employees.filter((employee) => roleOf(employee) === "admin").length,
+    };
+  }, [employees]);
+
   const setField = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
     setError("");
@@ -122,7 +133,7 @@ function AccountManagement() {
       const code = (emp.employeeCode || "").toLowerCase();
       const dept = (emp.employment?.department || emp.department || "").toLowerCase();
       const desig = (emp.employment?.designation || emp.designation || "").toLowerCase();
-      const role = (emp.role || (dept.includes("hr") ? "hr" : "employee")).toLowerCase();
+      const role = (emp.role || emp.user?.role || emp.user_role || (dept.includes("hr") ? "hr" : "employee")).toLowerCase();
       const status = (emp.employment?.status || emp.status || "Active").toLowerCase();
 
       const matchesSearch =
@@ -196,7 +207,7 @@ function AccountManagement() {
               <div className="kpi-icon-pod emerald">👥</div>
             </div>
             <div className="kpi-stat-row">
-              <span className="kpi-big-num">{summary?.accounts?.total || employees.length || 24}</span>
+              <span className="kpi-big-num">{summary?.accounts?.total ?? accountCounts.accounts}</span>
               <span className="kpi-badge-chip positive">Provisioned</span>
             </div>
             <div className="kpi-progress-rail">
@@ -211,7 +222,7 @@ function AccountManagement() {
               <div className="kpi-icon-pod teal">💼</div>
             </div>
             <div className="kpi-stat-row">
-              <span className="kpi-big-num">{summary?.hr?.total || 3}</span>
+              <span className="kpi-big-num">{summary?.hr?.total ?? accountCounts.hr}</span>
               <span className="kpi-badge-chip neutral">Staff Ops</span>
             </div>
             <div className="kpi-progress-rail">
@@ -226,7 +237,7 @@ function AccountManagement() {
               <div className="kpi-icon-pod indigo">👤</div>
             </div>
             <div className="kpi-stat-row">
-              <span className="kpi-big-num">{summary?.employees?.active || employees.length || 20}</span>
+              <span className="kpi-big-num">{summary?.employees?.active ?? accountCounts.employees}</span>
               <span className="kpi-badge-chip indigo">Self-Service</span>
             </div>
             <div className="kpi-progress-rail">
@@ -241,7 +252,7 @@ function AccountManagement() {
               <div className="kpi-icon-pod rose">👑</div>
             </div>
             <div className="kpi-stat-row">
-              <span className="kpi-big-num">1</span>
+              <span className="kpi-big-num">{summary?.admins?.total ?? accountCounts.admins}</span>
               <span className="kpi-badge-chip positive">Full Authority</span>
             </div>
             <div className="kpi-progress-rail">
@@ -399,7 +410,9 @@ function AccountManagement() {
                       const name = emp.name || `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || "User";
                       const dept = emp.employment?.department || emp.department || "Engineering";
                       const desig = emp.employment?.designation || emp.designation || "Specialist";
-                      const isHr = dept.toLowerCase().includes("hr") || emp.role === "hr";
+                      const role = (emp.role || emp.user?.role || emp.user_role || "").toLowerCase();
+                      const isAdmin = role === "admin";
+                      const isHr = !isAdmin && (role === "hr" || dept.toLowerCase().includes("hr"));
                       const code = emp.employeeCode || `QSI-${emp._id?.slice(-4) || "001"}`;
                       const status = emp.employment?.status || emp.status || "Active";
                       const date = emp.employment?.joiningDate || emp.joiningDate || "2023-01-15";
@@ -408,8 +421,8 @@ function AccountManagement() {
                         <tr key={emp._id || code}>
                           <td>
                             <div className="acct-user-cell">
-                              <div className={`acct-avatar ${isHr ? "hr" : "employee"}`}>
-                                {name.charAt(0).toUpperCase()}
+                              <div className={`acct-avatar ${isAdmin ? "admin" : isHr ? "hr" : "employee"}`}>
+                                {isAdmin ? "👑" : name.charAt(0).toUpperCase()}
                               </div>
                               <div className="acct-user-meta">
                                 <strong>{name}</strong>
@@ -418,8 +431,8 @@ function AccountManagement() {
                             </div>
                           </td>
                           <td>
-                            <span className={`role-badge ${isHr ? "hr" : "employee"}`}>
-                              {isHr ? "💼 HR Manager" : "👤 Employee"}
+                            <span className={`role-badge ${isAdmin ? "admin" : isHr ? "hr" : "employee"}`}>
+                              {isAdmin ? "👑 Admin / CEO" : isHr ? "💼 HR Manager" : "👤 Employee"}
                             </span>
                           </td>
                           <td>

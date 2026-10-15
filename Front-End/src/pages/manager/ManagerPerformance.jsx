@@ -1,28 +1,38 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
+import ExpandableText from "../../components/common/ExpandableText";
 import { usePerformance } from "../../hooks/usePerformance";
 import "../employee/Performance.css";
-import { toast } from "react-toastify";
 
 export default function ManagerPerformance() {
-  const { okrs, rateOkr, loading, error, refreshOkrs } = usePerformance(true);
+  const { okrs, rateOkr, loading, error } = usePerformance(true);
   const [feedbacks, setFeedbacks] = useState({});
-
-  useEffect(() => {
-    const handleDataChanged = () => refreshOkrs();
-    window.addEventListener("hrms:data_changed", handleDataChanged);
-    return () => window.removeEventListener("hrms:data_changed", handleDataChanged);
-  }, [refreshOkrs]);
-
-  console.log("Manager Appraisals loaded okrs:", okrs);
+  const [savingId, setSavingId] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   const handleRate = async (id, score) => {
     const feedback = feedbacks[id] || "";
-    await rateOkr(id, score, feedback);
+    setSavingId(id);
+    setSaveMessage("");
+    setSaveError("");
+    try {
+      await rateOkr(id, score, feedback);
+      setFeedbacks((previous) => {
+        const next = { ...previous };
+        delete next[id];
+        return next;
+      });
+      setSaveMessage(`Feedback saved for ${okrs.find((okr) => okr._id === id)?.employee?.firstName || "employee"}.`);
+    } catch (requestError) {
+      setSaveError(requestError.message || "Failed to save feedback.");
+    } finally {
+      setSavingId("");
+    }
   };
 
   const handleFeedbackChange = (id, value) => {
-    setFeedbacks({ ...feedbacks, [id]: value });
+    setFeedbacks((previous) => ({ ...previous, [id]: value }));
   };
 
   return (
@@ -37,46 +47,54 @@ export default function ManagerPerformance() {
         </header>
 
         {error && <div className="error-banner">{error}</div>}
+        {saveMessage && <div className="success-banner" role="status">{saveMessage}</div>}
+        {saveError && <div className="error-banner" role="alert">{saveError}</div>}
         {loading && <p>Loading OKRs...</p>}
 
         <div className="okr-list">
           {okrs.map(okr => (
             <div key={okr._id} className="okr-card">
               <div className="okr-info">
-                <h4>{okr.objective}</h4>
-                <div style={{ fontSize: "0.85rem", color: "#666", marginBottom: "0.5rem" }}>
+                <ExpandableText text={okr.objective} as="h4" />
+                <div className="okr-employee-meta">
                   Employee: <strong>{okr.employee?.firstName} {okr.employee?.lastName}</strong> ({okr.employee?.email})
                 </div>
                 <span className={`status ${okr.result === "Reviewed" ? "reviewed" : ""}`}>{okr.result}</span>
               </div>
               
-              <div className="hr-review-box" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div>
-                  <p style={{ marginBottom: '5px' }}>Manager Rating:</p>
-                  <div className="star-rating">
+              <div className="hr-review-box">
+                <div className="review-field">
+                  <p>Manager Rating</p>
+                  <div className="star-rating" role="group" aria-label={`Rate ${okr.employee?.firstName || "employee"}'s objective`}>
                     {[1,2,3,4,5].map(star => (
-                      <span 
+                      <button
                         key={star} 
+                        type="button"
                         className={`star ${okr.score >= star ? 'filled' : ''}`}
                         onClick={() => handleRate(okr._id, star)}
-                        style={{ cursor: "pointer" }}
-                      >★</span>
+                        disabled={savingId === okr._id}
+                        aria-label={`${star} star${star > 1 ? "s" : ""}`}
+                        aria-pressed={okr.score === star}
+                      >★</button>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <p style={{ marginBottom: '5px' }}>Manager Feedback:</p>
+                <div className="review-field">
+                  <p>Manager Feedback</p>
                   <textarea 
                     value={feedbacks[okr._id] !== undefined ? feedbacks[okr._id] : (okr.feedback || "")}
                     onChange={(e) => handleFeedbackChange(okr._id, e.target.value)}
                     placeholder="Enter performance feedback here..."
-                    style={{ width: '100%', minHeight: '60px', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    disabled={savingId === okr._id}
+                    className="manager-feedback-input"
                   />
                   <button 
+                    type="button"
+                    disabled={savingId === okr._id}
                     onClick={() => handleRate(okr._id, okr.score || 1)}
-                    style={{ marginTop: '8px', padding: '6px 12px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    className="manager-feedback-submit"
                   >
-                    Submit Feedback
+                    {savingId === okr._id ? "Saving..." : "Submit Feedback"}
                   </button>
                 </div>
               </div>

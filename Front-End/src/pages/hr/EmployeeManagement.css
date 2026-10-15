@@ -154,56 +154,56 @@
 
 .emp-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .kpi-card-box {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 1.35rem 1.5rem;
+  border-radius: 12px;
+  padding: 0.85rem 1.15rem;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
 
 .kpi-card-box:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px -2px rgba(15, 23, 42, 0.08);
 }
 
-.kpi-card-box.teal { border-top: 3.5px solid #0d9488; }
-.kpi-card-box.emerald { border-top: 3.5px solid #10b981; }
-.kpi-card-box.blue { border-top: 3.5px solid #3b82f6; }
-.kpi-card-box.purple { border-top: 3.5px solid #8b5cf6; }
+.kpi-card-box.teal { border-top: 3px solid #0d9488; }
+.kpi-card-box.emerald { border-top: 3px solid #10b981; }
+.kpi-card-box.blue { border-top: 3px solid #3b82f6; }
+.kpi-card-box.purple { border-top: 3px solid #8b5cf6; }
 
 .kpi-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.4rem;
 }
 
 .kpi-title-text {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .kpi-icon-pod {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  font-size: 1.15rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 0.95rem;
 }
 
 .kpi-icon-pod.teal { background: #ccfbf1; }
@@ -215,12 +215,12 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.65rem;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .kpi-big-num {
-  font-size: 2.1rem;
+  font-size: 1.65rem;
   font-weight: 800;
   color: #0f172a;
   line-height: 1;
@@ -229,9 +229,9 @@
 
 .kpi-badge-chip {
   display: inline-flex;
-  padding: 0.22rem 0.55rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 800;
 }
 
@@ -249,11 +249,11 @@
 
 .kpi-progress-rail {
   width: 100%;
-  height: 5px;
+  height: 4px;
   background: #f1f5f9;
   border-radius: 999px;
   overflow: hidden;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.35rem;
 }
 
 .kpi-progress-bar {
@@ -269,7 +269,8 @@
 
 .kpi-subtext {
   color: #94a3b8;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
   margin-top: auto;
 }
 
@@ -279,9 +280,15 @@
 
 .employee-management-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+  grid-template-columns: minmax(380px, 460px) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: stretch;
+}
+
+@media (min-width: 1440px) {
+  .employee-management-layout {
+    grid-template-columns: minmax(410px, 490px) minmax(0, 1fr);
+  }
 }
 
 .panel-card-container {
@@ -290,6 +297,10 @@
   border-radius: 16px;
   padding: 1.5rem 1.75rem;
   box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 /* ==========================================================================
@@ -385,6 +396,151 @@
   background: #ffffff;
 }
 
+/* ==========================================================================
+   Statutory & Banking Details Card
+   ========================================================================== */
+
+.emp-statutory-access-block {
+  margin-top: 1.25rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 8px -2px rgba(16, 185, 129, 0.08);
+}
+
+.emp-statutory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.18);
+}
+
+.emp-statutory-title {
+  margin: 0;
+  color: #065f46;
+  font-size: 0.88rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.emp-statutory-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #047857;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.emp-statutory-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.emp-statutory-access-block .emp-input-field label {
+  color: #065f46;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.emp-statutory-access-block .emp-input-field input {
+  background: #ffffff;
+  border: 1.5px solid #a7f3d0;
+  color: #0f172a;
+}
+
+.emp-statutory-access-block .emp-input-field input:focus {
+  outline: 3px solid rgba(16, 185, 129, 0.22);
+  border-color: #10b981;
+  background: #ffffff;
+}
+
+.emp-code-input {
+  text-transform: uppercase;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.emp-code-input::placeholder {
+  text-transform: none;
+  font-family: inherit;
+  font-weight: normal;
+  letter-spacing: normal;
+  opacity: 0.6;
+}
+
+/* ==========================================================================
+   Portal Login Access Card
+   ========================================================================== */
+
+.emp-login-access-block {
+  margin-top: 1.25rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(79, 70, 229, 0.07) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 2px 8px -2px rgba(99, 102, 241, 0.08);
+}
+
+.emp-login-access-block label.grant-login-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #4338ca;
+  font-size: 0.88rem;
+}
+
+.emp-login-badge-pill {
+  font-size: 0.72rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  padding-right: 2.5rem !important;
+}
+
+.btn-password-toggle {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  padding: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-password-toggle:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.06);
+}
+
 .form-submit-row {
   margin-top: 1.25rem;
   padding-top: 1rem;
@@ -424,6 +580,8 @@
 .employee-directory-panel {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .directory-panel-header {
@@ -435,6 +593,7 @@
   margin-bottom: 1.25rem;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
 }
 
 .directory-header-info h2 {
@@ -525,8 +684,9 @@
 /* Table Wrapper */
 .emp-table-wrapper {
   flex: 1 1 auto;
-  min-height: 480px;
-  max-height: calc(100vh - 280px);
+  min-height: 0;
+  max-height: none;
+  height: 100%;
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -535,6 +695,25 @@
   background: #ffffff;
   width: 100%;
   box-sizing: border-box;
+}
+
+.emp-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.emp-table-wrapper::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.emp-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+.emp-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .modern-emp-table {

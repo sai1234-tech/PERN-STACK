@@ -48,6 +48,10 @@ function getFileTypeIcon(filename = "") {
   return { label: "FILE", cls: "doc" };
 }
 
+function getDocumentId(document) {
+  return document?._id ?? document?.id;
+}
+
 const REJECTION_TAGS = [
   "Uploaded file is blurred or illegible",
   "Document has expired / past validity date",
@@ -383,11 +387,11 @@ function DocumentManagement() {
 
     try {
       if (!verifyModal.isSample) {
-        await updateDocumentStatus(verifyModal._id, "verified", verifyNote.trim());
+        await updateDocumentStatus(getDocumentId(verifyModal), "verified", verifyNote.trim());
       }
       setAllDocuments((prev) =>
         prev.map((d) =>
-          d._id === verifyModal._id
+          getDocumentId(d) === getDocumentId(verifyModal)
             ? { ...d, status: "verified", verificationNotes: verifyNote.trim() }
             : d
         )
@@ -415,11 +419,11 @@ function DocumentManagement() {
 
     try {
       if (!rejectModal.isSample) {
-        await updateDocumentStatus(rejectModal._id, "rejected", rejectNote.trim());
+        await updateDocumentStatus(getDocumentId(rejectModal), "rejected", rejectNote.trim());
       }
       setAllDocuments((prev) =>
         prev.map((d) =>
-          d._id === rejectModal._id
+          getDocumentId(d) === getDocumentId(rejectModal)
             ? { ...d, status: "rejected", verificationNotes: rejectNote.trim() }
             : d
         )
@@ -445,9 +449,11 @@ function DocumentManagement() {
 
     try {
       if (!doc.isSample) {
-        await deleteDocument(doc._id);
+        await deleteDocument(getDocumentId(doc));
       }
-      setAllDocuments((prev) => prev.filter((d) => d._id !== doc._id));
+      setAllDocuments((prev) =>
+        prev.filter((item) => getDocumentId(item) !== getDocumentId(doc))
+      );
       setActionNotice(`Document "${doc.documentName || "file"}" deleted.`);
     } catch (err) {
       setActionError(err.message || "Failed to delete document.");
@@ -1053,7 +1059,11 @@ function DocumentManagement() {
                         <td>
                           <span className={`doc-status-pill ${status}`}>
                             <span className="pulse-dot" />
-                            {status === "pending" ? "Pending Review" : status}
+                            {status === "pending"
+                              ? "Pending Review"
+                              : status === "fulfilled"
+                              ? "Request Fulfilled"
+                              : status}
                           </span>
                         </td>
 

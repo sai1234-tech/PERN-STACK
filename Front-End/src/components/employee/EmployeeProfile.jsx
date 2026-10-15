@@ -1,20 +1,10 @@
 import { formatDate } from "../../utils/date";
+import { formatPhotoUrl } from "../../utils/photo";
 
 function EmployeeProfile({ employee, compact = false }) {
   const designation = employee?.employment?.designation || employee?.designation || employee?.jobTitle || employee?.role || "Not specified";
   const name = employee?.name || `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim() || "Employee";
-  const profilePhoto = employee?.profilePhoto;
-  let profilePhotoUrl = "";
-  if (profilePhoto && !profilePhoto.startsWith("blob:")) {
-    if (/^https?:\/\//i.test(profilePhoto) || profilePhoto.startsWith("data:")) {
-      profilePhotoUrl = profilePhoto;
-    } else {
-      const apiUrl = (String(import.meta.env.VITE_API_URL || "").replace("localhost", "127.0.0.1") || "http://127.0.0.1:5000/api/v1").replace(/\/$/, "");
-      const cleanPhoto = String(profilePhoto).replace(/\\/g, "/").replace(/^\/?api(\/v1)?\/?/, "");
-      const baseUrl = apiUrl.replace(/\/api(\/v1)?\/?$/, "");
-      profilePhotoUrl = `${baseUrl}${cleanPhoto.startsWith("/") ? cleanPhoto : `/${cleanPhoto}`}`;
-    }
-  }
+  const profilePhotoUrl = formatPhotoUrl(employee?.profilePhoto);
 
   const department = employee?.employment?.department || employee?.department || "Not provided";
   const joiningDate = employee?.employment?.joiningDate || employee?.joiningDate;

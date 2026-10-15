@@ -329,6 +329,7 @@
 
 .result-avatar {
   position: relative;
+  overflow: hidden;
   width: 44px;
   height: 44px;
   border-radius: 13px;
@@ -339,6 +340,16 @@
   font-weight: 800;
   flex-shrink: 0;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
+}
+
+.workforce-result-photo {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .result-status-dot {
@@ -676,6 +687,61 @@
   font-weight: 900;
   color: #ffffff;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.modal-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-photo-input {
+  display: none;
+}
+
+.profile-photo-upload-button {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  z-index: 2;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  background: #2563eb;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.25);
+}
+
+.profile-photo-upload-button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.profile-photo-upload-error {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 4;
+  width: max-content;
+  max-width: min(280px, 70vw);
+  padding: 6px 9px;
+  border-radius: 7px;
+  color: #991b1b;
+  background: #fee2e2;
+  font-size: 12px;
+}
+
+.modal-live-status-dot {
+  left: -2px;
+  right: auto;
 }
 
 .modal-live-status-dot {
@@ -1245,4 +1311,3 @@
     gap: 4px;
   }
 }
-

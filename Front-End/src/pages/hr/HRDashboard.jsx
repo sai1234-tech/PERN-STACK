@@ -11,7 +11,10 @@ import {
   getEmployees,
 } from "../../services/hrService";
 import { formatDate, formatTime } from "../../utils/date";
+import { formatPhotoUrl } from "../../utils/photo";
 import { useSyncRefresh } from "../../utils/syncManager";
+import { useAttendance } from "../../hooks/useAttendance";
+import { useAuth } from "../../context/AuthContext";
 import "./HRDashboard.css";
 
 const avatarColors = [
@@ -71,7 +74,7 @@ function HRDashboard() {
     try {
       const [employeeResponse, attendanceResponse, leaveResponse] =
         await Promise.all([
-          getEmployees(search),
+          getEmployees(),
           getAllAttendance(),
           getAllLeaves(),
         ]);
@@ -84,13 +87,30 @@ function HRDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [search]);
+  }, []);
+
+  const { user } = useAuth();
 
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
 
-  useSyncRefresh(() => loadDashboard(true), { interval: 4000, silent: true });
+  useSyncRefresh(() => loadDashboard(true), { interval: 2500, silent: true });
+
+  // Cross-tab and window realtime data sync
+  useEffect(() => {
+    const handleSync = () => {
+      loadDashboard(true);
+    };
+    window.addEventListener("hrms_data_updated", handleSync);
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("focus", handleSync);
+    return () => {
+      window.removeEventListener("hrms_data_updated", handleSync);
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("focus", handleSync);
+    };
+  }, [loadDashboard]);
 
   // Derived statistics
   const activeEmployees = useMemo(
@@ -106,15 +126,73 @@ function HRDashboard() {
     [leaves]
   );
 
-  const presentToday = useMemo(
-    () =>
-      attendance.filter((record) =>
+  const { todayAttendance, clockIn, clockOut } = useAttendance();
+  const [clockActionSubmitting, setClockActionSubmitting] = useState(false);
+  const checkedIn = Boolean(todayAttendance?.checkIn) && !todayAttendance?.checkOut;
+
+  const handleClockInAction = async () => {
+    setClockActionSubmitting(true);
+    try {
+      await clockIn();
+      await loadDashboard(true);
+    } finally {
+      setClockActionSubmitting(false);
+    }
+  };
+
+  const handleClockOutAction = async () => {
+    setClockActionSubmitting(true);
+    try {
+      await clockOut();
+      await loadDashboard(true);
+    } finally {
+      setClockActionSubmitting(false);
+    }
+  };
+
+  const presentToday = useMemo(() => {
+    const todayLocal = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD" local
+    const todayUTC = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD" UTC
+    const presentEmpKeys = new Set();
+
+    attendance.forEach((record) => {
+      if (!record) return;
+      const recDate = record.date ? String(record.date).slice(0, 10) : "";
+      const checkInDate = record.checkIn ? String(record.checkIn).slice(0, 10) : "";
+      const isTodayRec =
+        recDate === todayLocal ||
+        recDate === todayUTC ||
+        checkInDate === todayLocal ||
+        checkInDate === todayUTC;
+
+      const isPresentStatus =
         ["present", "late", "half-day", "completed"].includes(
           String(record.status || "").toLowerCase()
-        )
-      ).length,
-    [attendance]
-  );
+        ) || Boolean(record.checkIn);
+
+      if (isTodayRec && isPresentStatus) {
+        const empKey =
+          record.employee?.id ||
+          record.employee?.employeeCode ||
+          record.employee?.email ||
+          record.employee_id ||
+          record.user_id ||
+          record.id;
+        if (empKey) {
+          presentEmpKeys.add(String(empKey));
+        }
+      }
+    });
+
+    if (checkedIn && user) {
+      const currentEmpKey = user.id || user.employeeId || user.email;
+      if (currentEmpKey) {
+        presentEmpKeys.add(String(currentEmpKey));
+      }
+    }
+
+    return presentEmpKeys.size;
+  }, [attendance, checkedIn, user]);
 
   // Department analytics map
   const departmentAnalytics = useMemo(() => {
@@ -140,12 +218,26 @@ function HRDashboard() {
   }, [employees]);
 
   const filteredEmployees = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return employees.filter((emp) => {
       const matchesDept =
         deptFilter === "All" || emp.employment?.department === deptFilter;
-      return matchesDept;
+      if (!matchesDept) return false;
+      if (!q) return true;
+      const fullName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim().toLowerCase();
+      const code = String(emp.employeeCode || "").toLowerCase();
+      const email = String(emp.email || emp.user?.email || "").toLowerCase();
+      const dept = String(emp.employment?.department || "").toLowerCase();
+      const desig = String(emp.employment?.designation || "").toLowerCase();
+      return (
+        fullName.includes(q) ||
+        code.includes(q) ||
+        email.includes(q) ||
+        dept.includes(q) ||
+        desig.includes(q)
+      );
     });
-  }, [employees, deptFilter]);
+  }, [employees, deptFilter, search]);
 
   if (loading) return <Loader label="Loading HR Command Center..." />;
 
@@ -154,46 +246,96 @@ function HRDashboard() {
       <EmployeeHeader />
       <main className="hr-dashboard-next">
         {/* Top Hero Command Banner */}
-        <section className="hr-hero-banner">
-          <div className="hr-hero-left">
-            <div className="hero-kicker-pill">
-              <span className="pulsing-live-dot" />
-              <span>HR Command Hub</span>
+        <section className="hr-hero-banner" aria-label="HR Command Center Banner">
+          <div className="hr-hero-top-row">
+            <div className="hr-hero-left">
+              <div className="hero-kicker-pill">
+                <span className="pulsing-live-dot" />
+                <span>HR Command Hub</span>
+                <span className="hero-kicker-divider">•</span>
+                <span className="hero-live-text">Live Workspace</span>
+              </div>
+              <h1 className="hr-hero-title">Workforce Command Center</h1>
+              <p className="hr-hero-subtitle">
+                Real-time intelligence across headcount, daily attendance, leave approvals, and employee records.
+              </p>
             </div>
-            <h1>Workforce Command Center</h1>
-            <p>
-              Real-time intelligence across headcount, daily attendance, leave approvals, and employee records.
-            </p>
+
+            <div className="hr-hero-status-pill">
+              <div className="status-indicator-badge">
+                <span className={`status-beacon ${checkedIn ? "beacon-active" : "beacon-idle"}`} />
+                <span className="status-beacon-label">
+                  {checkedIn ? "Shift Active" : "Shift Inactive"}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="hero-refresh-btn"
+                onClick={() => {
+                  setRefreshing(true);
+                  loadDashboard();
+                }}
+                disabled={refreshing}
+                title="Refresh HR Analytics & Attendance"
+              >
+                <span className={refreshing ? "spin-icon" : ""}>🔄</span>
+                <span>{refreshing ? "Updating..." : "Refresh"}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="hr-hero-actions">
-            <Link to="/employee/attendance" className="hero-action-btn primary" style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff" }}>
-              <span>⏱️</span> My Punch Clock (In/Out)
+          {/* Prominent High-Visibility Action Toolbar */}
+          <div className="hr-hero-actions-bar" aria-label="Quick Navigation and Punch Actions">
+            {checkedIn ? (
+              <button
+                type="button"
+                className="cmd-action-btn cmd-clock-out"
+                onClick={handleClockOutAction}
+                disabled={clockActionSubmitting}
+                title="Clock Out from shift"
+              >
+                <span className="cmd-btn-icon">⏹️</span>
+                <span className="cmd-btn-text">
+                  Clock Out ({todayAttendance.checkIn ? formatTime(todayAttendance.checkIn) : "Active"})
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="cmd-action-btn cmd-clock-in"
+                onClick={handleClockInAction}
+                disabled={clockActionSubmitting}
+                title="Clock In to start shift"
+              >
+                <span className="cmd-btn-icon">🕒</span>
+                <span className="cmd-btn-text">Clock In Now</span>
+              </button>
+            )}
+
+            <Link to="/employee/attendance" className="cmd-action-btn cmd-attendance" title="View Daily Attendance Log">
+              <span className="cmd-btn-icon">⏱️</span>
+              <span className="cmd-btn-text">Attendance Log</span>
             </Link>
-            <Link to="/hr/employees" className="hero-action-btn secondary">
-              <span>+</span> Add Employee
+
+            <Link to="/hr/employees" className="cmd-action-btn cmd-add-emp" title="Add & Manage Employees">
+              <span className="cmd-btn-icon">➕</span>
+              <span className="cmd-btn-text">Add Employee</span>
             </Link>
-            <Link to="/hr/departments" className="hero-action-btn secondary">
-              <span>🏢</span> Departments
+
+            <Link to="/hr/departments" className="cmd-action-btn cmd-depts" title="Manage Departments & Pods">
+              <span className="cmd-btn-icon">🏢</span>
+              <span className="cmd-btn-text">Departments</span>
             </Link>
-            <Link to="/hr/organization" className="hero-action-btn secondary">
-              <span>🌳</span> Org Chart
+
+            <Link to="/hr/organization" className="cmd-action-btn cmd-org" title="Enterprise Org Hierarchy">
+              <span className="cmd-btn-icon">🌳</span>
+              <span className="cmd-btn-text">Org Chart</span>
             </Link>
-            <Link to="/hr/helpdesk" className="hero-action-btn secondary">
-              <span>🎧</span> Helpdesk
+
+            <Link to="/hr/helpdesk" className="cmd-action-btn cmd-helpdesk" title="HR Support & Tickets">
+              <span className="cmd-btn-icon">🎧</span>
+              <span className="cmd-btn-text">Helpdesk</span>
             </Link>
-            <button
-              type="button"
-              className="hero-action-btn tertiary"
-              onClick={() => {
-                setRefreshing(true);
-                loadDashboard();
-              }}
-              disabled={refreshing}
-            >
-              <span className={refreshing ? "spin-icon" : ""}>🔄</span>
-              {refreshing ? "Updating..." : "Refresh"}
-            </button>
           </div>
         </section>
 
@@ -303,29 +445,35 @@ function HRDashboard() {
           </div>
 
           {/* Card 4: Quick Shortcuts Hub */}
-          <div className="kpi-card indigo">
+          <div className="kpi-card indigo kpi-shortcuts-card">
             <div className="kpi-card-header">
               <span className="kpi-label">Operational Modules</span>
               <div className="kpi-icon-pill bg-indigo">⚡</div>
             </div>
             <div className="kpi-shortcuts-grid">
-              <Link to="/hr/timesheets" className="shortcut-chip timesheets" title="Timesheets">
-                <span>🕒</span> Timesheets
+              <Link to="/hr/timesheets" className="shortcut-chip timesheets" title="Timesheets Approvals">
+                <span className="chip-icon">🕒</span>
+                <span className="chip-name">Timesheets</span>
               </Link>
-              <Link to="/hr/payroll" className="shortcut-chip payroll" title="Payroll">
-                <span>💰</span> Payroll
+              <Link to="/hr/payroll" className="shortcut-chip payroll" title="Payroll Run">
+                <span className="chip-icon">💰</span>
+                <span className="chip-name">Payroll</span>
               </Link>
-              <Link to="/hr/documents" className="shortcut-chip documents" title="Documents">
-                <span>📄</span> Documents
+              <Link to="/hr/documents" className="shortcut-chip documents" title="Company Documents">
+                <span className="chip-icon">📄</span>
+                <span className="chip-name">Documents</span>
               </Link>
-              <Link to="/hr/departments" className="shortcut-chip teams" title="Teams">
-                <span>🏢</span> Teams
+              <Link to="/hr/departments" className="shortcut-chip teams" title="Departments & Teams">
+                <span className="chip-icon">🏢</span>
+                <span className="chip-name">Teams</span>
               </Link>
-              <Link to="/hr/resignations" className="shortcut-chip resignations" title="Resignations">
-                <span>👋</span> Resignations
+              <Link to="/hr/resignations" className="shortcut-chip resignations" title="Resignation Approvals">
+                <span className="chip-icon">👋</span>
+                <span className="chip-name">Resignations</span>
               </Link>
               <Link to="/hr/helpdesk" className="shortcut-chip helpdesk" title="HR Helpdesk">
-                <span>🎧</span> Helpdesk
+                <span className="chip-icon">🎧</span>
+                <span className="chip-name">Helpdesk</span>
               </Link>
             </div>
             <small className="kpi-meta">1-click executive module shortcuts</small>
@@ -335,37 +483,43 @@ function HRDashboard() {
         {/* =====================================================
             EMPLOYEE ENGAGEMENT & DAILY PULSE ANALYTICS
         ===================================================== */}
-        <section style={{ marginTop: "24px" }}>
+        <section className="hr-pulse-section">
           <EmployeeEngagementAnalytics />
         </section>
 
         {/* Department Analytics Visualization Map */}
-        <section className="hr-panel-card analytics-map-section" style={{ marginTop: '24px', padding: '24px', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-          <div className="panel-card-header" style={{ marginBottom: '20px' }}>
+        <section className="analytics-map-section">
+          <div className="analytics-map-header">
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#111827' }}>Department Distribution Map</h2>
-              <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '0.875rem' }}>Workforce analytics and headcount allocation across organization units.</p>
+              <h2>Department Distribution Map</h2>
+              <p>Workforce analytics and headcount allocation across organization units.</p>
             </div>
-            <Link to="/hr/organization" className="manage-all-link" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#4f46e5', fontWeight: '500', textDecoration: 'none' }}>
+            <Link to="/hr/organization" className="analytics-map-link">
               <span>🌳</span> View Full Org Chart →
             </Link>
           </div>
-          <div className="department-map-container" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="department-map-container">
             {departmentAnalytics.length === 0 ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>No department data available.</div>
+              <div className="analytics-empty-notice">No department data available.</div>
             ) : (
               departmentAnalytics.map((dept, index) => {
                 const color = avatarColors[index % avatarColors.length];
                 return (
-                  <div key={dept.name} className="dept-map-row" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div className="dept-map-label" style={{ width: '150px', fontWeight: '500', color: '#374151', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div key={dept.name} className="dept-map-row">
+                    <div className="dept-map-label" title={dept.name}>
                       {dept.name}
                     </div>
-                    <div className="dept-map-track" style={{ flex: 1, height: '12px', background: '#f3f4f6', borderRadius: '6px', overflow: 'hidden' }}>
-                      <div className="dept-map-fill" style={{ height: '100%', width: `${dept.percentage}%`, backgroundColor: color.text, borderRadius: '6px', transition: 'width 1s ease-in-out' }}></div>
+                    <div className="dept-map-track">
+                      <div
+                        className="dept-map-fill"
+                        style={{
+                          width: `${dept.percentage}%`,
+                          backgroundColor: color.text || "#4f46e5",
+                        }}
+                      />
                     </div>
-                    <div className="dept-map-stats" style={{ width: '80px', textAlign: 'right', fontSize: '0.875rem' }}>
-                      <strong style={{ color: '#111827' }}>{dept.count}</strong> <span style={{ color: '#6b7280' }}>emp</span>
+                    <div className="dept-map-stats">
+                      <strong>{dept.count}</strong> <span>emp</span>
                     </div>
                   </div>
                 );
@@ -537,16 +691,24 @@ function HRDashboard() {
                         <tr key={employee._id || employee.id || index}>
                           <td>
                             <div className="employee-cell-meta">
-                              <div
-                                className="employee-avatar"
-                                style={{
-                                  backgroundColor: color.bg,
-                                  color: color.text,
-                                  borderColor: color.border,
-                                }}
-                              >
-                                {initials}
-                              </div>
+                              {employee.profilePhoto ? (
+                                <img
+                                  src={formatPhotoUrl(employee.profilePhoto)}
+                                  alt={fullName}
+                                  className="employee-avatar employee-avatar-img"
+                                />
+                              ) : (
+                                <div
+                                  className="employee-avatar"
+                                  style={{
+                                    backgroundColor: color.bg,
+                                    color: color.text,
+                                    borderColor: color.border,
+                                  }}
+                                >
+                                  {initials}
+                                </div>
+                              )}
                               <div className="employee-info-texts">
                                 <strong className="employee-name">
                                   {fullName}
@@ -645,12 +807,20 @@ function HRDashboard() {
                     </tr>
                   ) : (
                     attendance.slice(0, 15).map((record, index) => {
+                      const matchedEmp = employees.find(
+                        (e) =>
+                          String(e.id || e._id || e.user?.id) ===
+                          String(record.employee?.id || record.employee?._id || record.employeeId || record.employee)
+                      );
                       const empName =
                         record.employee?.name ||
-                        `${record.employee?.firstName || ""} ${
-                          record.employee?.lastName || ""
-                        }`.trim() ||
+                        (matchedEmp
+                          ? `${matchedEmp.firstName || ""} ${matchedEmp.lastName || ""}`.trim() || matchedEmp.user?.name
+                          : "") ||
+                        `${record.employee?.firstName || ""} ${record.employee?.lastName || ""}`.trim() ||
                         "Employee";
+                      const empCode = record.employee?.employeeCode || matchedEmp?.employeeCode || "";
+                      const empPhoto = record.employee?.profilePhoto || matchedEmp?.profilePhoto || "";
                       const color = getColorForString(empName);
                       const status = String(record.status || "").toLowerCase();
 
@@ -658,18 +828,33 @@ function HRDashboard() {
                         <tr key={record._id || record.id || index}>
                           <td>
                             <div className="employee-cell-meta">
-                              <div
-                                className="employee-avatar"
-                                style={{
-                                  backgroundColor: color.bg,
-                                  color: color.text,
-                                }}
-                              >
-                                {getInitials("", "", empName)}
+                              {empPhoto ? (
+                                <img
+                                  src={formatPhotoUrl(empPhoto)}
+                                  alt={empName}
+                                  className="employee-avatar employee-avatar-img"
+                                />
+                              ) : (
+                                <div
+                                  className="employee-avatar"
+                                  style={{
+                                    backgroundColor: color.bg,
+                                    color: color.text,
+                                  }}
+                                >
+                                  {getInitials("", "", empName)}
+                                </div>
+                              )}
+                              <div className="employee-info-texts">
+                                <strong className="employee-name">
+                                  {empName}
+                                </strong>
+                                {empCode && (
+                                  <small className="employee-email">
+                                    {empCode}
+                                  </small>
+                                )}
                               </div>
-                              <strong className="employee-name">
-                                {empName}
-                              </strong>
                             </div>
                           </td>
                           <td>

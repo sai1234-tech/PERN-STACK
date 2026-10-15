@@ -6,6 +6,7 @@ import {
     generatePayroll,
     updateEmployeeSalary,
     getPayroll,
+    updatePayrollRecord,
 } from "../controllers/payrollController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
@@ -22,5 +23,9 @@ router.get("/my/payslip/download", verifyToken, authorizeRoles(...ALL_ROLES), do
 router.post("/generate", verifyToken, authorizeRoles("hr", "admin"), generatePayroll);
 router.get("/", verifyToken, authorizeRoles("hr", "admin"), getPayroll);
 router.patch("/employees/:employeeId/salary", verifyToken, authorizeRoles("hr", "admin"), updateEmployeeSalary);
+router.put("/records/:id", verifyToken, authorizeRoles("hr", "admin"), updatePayrollRecord);
+router.put("/records", verifyToken, authorizeRoles("hr", "admin"), updatePayrollRecord);
+router.post("/records", verifyToken, authorizeRoles("hr", "admin"), updatePayrollRecord);
+router.put("/employees/:employeeId", verifyToken, authorizeRoles("hr", "admin"), updatePayrollRecord);
 
 export default router;

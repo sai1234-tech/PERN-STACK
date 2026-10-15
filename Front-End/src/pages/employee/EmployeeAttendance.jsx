@@ -1,34 +1,28 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
+import { useAuth } from "../../context/AuthContext";
 import { useAttendance } from "../../hooks/useAttendance";
-import { formatDate, formatTime, getLocalDateString } from "../../utils/date";
+import { formatDate, formatTime, getLocalDateString, isToday } from "../../utils/date";
+import { getDefaultDashboard } from "../../utils/auth";
 import "../../styles/employee/attendance.css";
 
 function EmployeeAttendance() {
+  const { user, employee } = useAuth();
   const { attendance, todayAttendance, loading, error, reload } = useAttendance();
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchDate, setSearchDate] = useState("");
 
+  const overviewPath = getDefaultDashboard(user, employee);
   const checkedIn = Boolean(todayAttendance?.checkIn) && !todayAttendance?.checkOut;
-
-  const isTodayDateRecord = (dateVal) => {
-    if (!dateVal) return false;
-    const d = new Date(dateVal);
-    const t = new Date();
-    return (
-      d.getDate() === t.getDate() &&
-      d.getMonth() === t.getMonth() &&
-      d.getFullYear() === t.getFullYear()
-    );
-  };
 
   // Helper to format record hours cleanly
   const getRecordHours = (rec) => {
     if (!rec.checkIn) return "0.0 hrs";
 
-    const isToday = isTodayDateRecord(rec.date);
+    const isTodayRecord = isToday(rec.date);
     const start = new Date(rec.checkIn).getTime();
 
     if (rec.checkOut) {
@@ -43,7 +37,7 @@ function EmployeeAttendance() {
       return "0.0 hrs";
     }
 
-    if (isToday && !Number.isNaN(start)) {
+    if (isTodayRecord && !Number.isNaN(start)) {
       const hrs = Math.max(0, (Date.now() - start) / (1000 * 60 * 60)).toFixed(1);
       return `${hrs} hrs (Active)`;
     }
@@ -134,9 +128,28 @@ function EmployeeAttendance() {
           </div>
 
           <div className="att-hero-actions">
+            <div className="att-live-status-badge">
+              <span className={`status-beacon ${checkedIn ? "beacon-active" : "beacon-idle"}`} />
+              <span>
+                {checkedIn
+                  ? `Shift Active (${todayAttendance?.checkIn ? formatTime(todayAttendance.checkIn) : "In Progress"})`
+                  : todayAttendance?.checkOut
+                  ? `Shift Ended (${formatTime(todayAttendance.checkOut)})`
+                  : "Shift Inactive"}
+              </span>
+            </div>
+
+            <Link
+              to={overviewPath}
+              className="att-btn secondary"
+              title="Return to your role's overview to clock in or out"
+            >
+              ⏱️ Overview Punch Console
+            </Link>
+
             <button
               type="button"
-              className="att-btn secondary"
+              className="att-btn primary"
               onClick={handleExportCSV}
               title="Export records to CSV"
             >
@@ -186,12 +199,16 @@ function EmployeeAttendance() {
             </div>
             <div className="kpi-stat-row">
               <span className="kpi-big-num">{lateDays}</span>
-              <span className="kpi-badge-chip rose">Grace Limit: 3</span>
+              <span className={`kpi-badge-chip ${lateDays > 0 ? "rose" : "positive"}`}>
+                {lateDays > 0 ? "Grace Limit: 3" : "On Time / Perfect"}
+              </span>
             </div>
             <div className="kpi-progress-rail">
-              <div className="kpi-progress-bar rose" style={{ width: `${(lateDays / 3) * 100}%` }} />
+              <div className="kpi-progress-bar rose" style={{ width: `${Math.min(100, (lateDays / 3) * 100)}%` }} />
             </div>
-            <span className="kpi-subtext">Within permissible monthly tolerance</span>
+            <span className="kpi-subtext">
+              {lateDays > 0 ? "Within permissible monthly tolerance" : "Zero late arrival flags this cycle"}
+            </span>
           </div>
 
           <div className="kpi-card-box indigo">
@@ -301,7 +318,7 @@ function EmployeeAttendance() {
                         <span className="time-badge">
                           {rec.checkOut
                             ? formatTime(rec.checkOut)
-                            : isTodayDateRecord(rec.date) && rec.checkIn
+                            : isToday(rec.date) && rec.checkIn
                             ? "Active"
                             : "--:--"}
                         </span>

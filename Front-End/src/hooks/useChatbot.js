@@ -3,22 +3,20 @@ import { useAuth } from "../context/AuthContext";
 import { useLeaves } from "./useLeaves";
 import { useTimesheets } from "./useTimesheets";
 import { useRecruitment } from "./useRecruitment";
-import { useEnterpriseOps } from "./useEnterpriseOps";
 import { normalizeRole } from "../utils/auth";
+import { getMyTickets, getTicketById } from "../services/ticketService";
 
 export const useChatbot = () => {
   const { user } = useAuth();
   const { leaves } = useLeaves();
   const { timesheets } = useTimesheets();
   const { candidates, onboardingStatus, triggerOnboarding } = useRecruitment();
-  const { tickets } = useEnterpriseOps();
-  
   const role = normalizeRole(user);
   
   // State for interactive confirmation
   const [pendingAction, setPendingAction] = useState(null);
 
-  const processQuery = useCallback((text) => {
+  const processQuery = useCallback(async (text) => {
     const query = text.toLowerCase();
     
     // --- Cancel Action ---
@@ -97,21 +95,45 @@ export const useChatbot = () => {
     }
 
     if (query.includes("my ticket") || query.includes("ticket status") || query.includes("check ticket") || (query.includes("status") && query.includes("ticket"))) {
-      const empCode = user?.employeeCode || user?.employeeId || "EM0175";
-      const empName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.name || "";
-      const myTickets = tickets.filter(t => 
-        (t.empId || "").toLowerCase().includes(empCode.toLowerCase()) || 
-        (empName && (t.empId || "").toLowerCase().includes(empName.toLowerCase())) ||
-        t.empId === "EMP-000"
-      );
-      if (myTickets.length === 0) {
-        return { text: "You don't have any open or resolved support tickets at the moment." };
+      const ticketId = text.match(/\bTICK-\d+\b/i)?.[0];
+      let myTickets;
+      try {
+        if (ticketId) {
+          const response = await getTicketById(ticketId);
+          myTickets = response.ticket ? [response.ticket] : [];
+        } else {
+          const response = await getMyTickets();
+          myTickets = response.tickets || [];
+        }
+      } catch (error) {
+        console.error("Failed to retrieve HR support ticket status:", error);
+        return {
+          text: ticketId
+            ? `I couldn't retrieve ${ticketId}. Please verify the ticket number or try again.`
+            : "I couldn't retrieve your HR support tickets just now. Please try again.",
+        };
       }
-      const latestTicket = myTickets[0];
-      if (latestTicket.status === "Resolved") {
-        return { text: `Your ticket (${latestTicket.id}) has been RESOLVED by HR. Resolution: "${latestTicket.resolution}".` };
+
+      if (myTickets.length === 0) {
+        return {
+          text: ticketId
+            ? `I couldn't find ${ticketId}, or you may not have permission to view it.`
+            : "You don't have any open or resolved support tickets at the moment.",
+        };
+      }
+
+      const latestTicket = ticketId
+        ? myTickets[0]
+        : myTickets.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))[0];
+      const normalizedStatus = String(latestTicket.status || "Open").toLowerCase();
+      if (normalizedStatus === "resolved") {
+        return {
+          text: `Ticket ${latestTicket.id} is RESOLVED.${latestTicket.resolution ? ` HR update: ${latestTicket.resolution}` : " No further information is required from you at this time."}`,
+        };
       } else {
-        return { text: `Your ticket (${latestTicket.id}) is currently OPEN. HR is reviewing it and will respond shortly.` };
+        return {
+          text: `Ticket ${latestTicket.id} is currently ${String(latestTicket.status || "OPEN").toUpperCase()}. HR is reviewing it and will respond when there is an update.`,
+        };
       }
     }
 

@@ -7,22 +7,10 @@ import { useEmployee } from "../../hooks/useEmployee";
 import { useAuth } from "../../context/AuthContext";
 import { uploadProfilePicture, updateProfileSkills, updateMyProfile, getAllEmployees, updateEmployeeById } from "../../services/employeeService";
 import { formatDate } from "../../utils/date";
+import { formatPhotoUrl as profilePhotoUrl } from "../../utils/photo";
 import { calculateTenure, formatTenure } from "../../utils/tenureUtils";
 import TenureDetails from "../../components/employee/TenureDetails";
 import "../../styles/employee/profile.css";
-
-const profilePhotoUrl = (photo) => {
-  if (!photo) return "";
-  if (/^https?:\/\//i.test(photo) || photo.startsWith("blob:") || photo.startsWith("data:")) return photo;
-
-  const apiUrl = (
-    String(import.meta.env.VITE_API_URL || "").replace("localhost", "127.0.0.1") ||
-    "http://127.0.0.1:5000/api/v1"
-  ).replace(/\/$/, "");
-
-  const cleanPhoto = String(photo).replace(/\\/g, "/").replace(/^\/?api(\/v1)?\/?/, "");
-  return `${apiUrl.replace(/\/api(\/v1)?\/?$/, "")}${cleanPhoto.startsWith("/") ? cleanPhoto : `/${cleanPhoto}`}`;
-};
 
 const resolveManagerName = (emp, employeeList = []) => {
   if (!emp) return "Not assigned";
@@ -61,6 +49,39 @@ const resolveManagerName = (emp, employeeList = []) => {
   return "Not assigned";
 };
 
+const resolveWorkLocation = (profile, savedLocation) => {
+  const candidates = [
+    profile?.workLocation,
+    profile?.work_location,
+    profile?.employment?.workLocation,
+    profile?.employment?.work_location,
+    profile?.employment?.location,
+    profile?.officeLocation,
+    profile?.office_location,
+    profile?.branch,
+    profile?.location,
+    savedLocation,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+    if (candidate && typeof candidate === "object") {
+      const parts = [
+        candidate.name,
+        candidate.label,
+        candidate.office,
+        candidate.city,
+        candidate.branch,
+      ].filter((part) => typeof part === "string" && part.trim());
+      if (parts.length) return [...new Set(parts)].join(", ");
+    }
+  }
+
+  return "Not provided";
+};
+
 function EmployeeProfile() {
   const [searchParams] = useSearchParams();
   const queryId = searchParams.get("id") || searchParams.get("code") || searchParams.get("employeeId");
@@ -74,7 +95,9 @@ function EmployeeProfile() {
   const [localPreview, setLocalPreview] = useState(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
+  const [savingSkills, setSavingSkills] = useState(false);
   const [skillsTab, setSkillsTab] = useState("skills");
   const [newSkillInput, setNewSkillInput] = useState("");
   const [newCertForm, setNewCertForm] = useState({ icon: "📜", title: "", issuer: "", validity: "" });
@@ -92,13 +115,12 @@ function EmployeeProfile() {
       .catch(() => {});
   }, []);
 
-  const isExplicitQuery = !!(queryId || sessionStorage.getItem("hrms_selected_employee_id") || localStorage.getItem("hrms_selected_employee_id"));
+  const isExplicitQuery = !!queryId;
 
   const profile =
     employee?.employee ||
     employee?.data ||
     (employee && (employee.firstName || employee.email || employee.employeeCode) ? employee : null) ||
-    allEmployees[0] ||
     user?.employee ||
     user ||
     null;
@@ -177,7 +199,10 @@ function EmployeeProfile() {
   const currentStatus = profile?.employment?.status || profile?.status || "Active";
   const employmentType = profile?.employment?.employmentType || profile?.employmentType || "Full Time";
   const reportingManager = resolveManagerName(profile, allEmployees);
-  const workLocation = profile?.workLocation || profile?.employment?.workLocation || (personalData.workLocation && personalData.workLocation !== "Not provided" ? personalData.workLocation : "") || "Not provided";
+  const hrPartner = profile?.assignedHr
+    ? `${profile.assignedHr.name || ""}${profile.assignedHr.employeeCode ? ` (${profile.assignedHr.employeeCode})` : ""}`.trim() || "Not assigned"
+    : profile?.employment?.hrPartnerName || "Not assigned";
+  const workLocation = resolveWorkLocation(profile, personalData.workLocation);
 
   const statutoryData = {
     bankName: profile?.banking?.bankName || profile?.bankName || profile?.salaryBank || "Not provided",
@@ -214,7 +239,10 @@ function EmployeeProfile() {
           : (typeof profile.address === "string" && profile.address.trim() ? profile.address : validSavedAddress || "Not provided"),
         bloodGroup: profile.personal?.bloodGroup || (savedEdits.bloodGroup !== "Not provided" ? savedEdits.bloodGroup : "") || "Not provided",
         dateOfBirth: profile.personal?.dateOfBirth ? formatDate(profile.personal.dateOfBirth) : (savedEdits.dateOfBirth !== "Not provided" ? savedEdits.dateOfBirth : "") || "Not provided",
-        workLocation: profile.workLocation || profile.employment?.workLocation || (savedEdits.workLocation !== "Not provided" ? savedEdits.workLocation : "") || "Not provided",
+        workLocation: resolveWorkLocation(
+          profile,
+          savedEdits.workLocation !== "Not provided" ? savedEdits.workLocation : ""
+        ),
         emergencyContactName: profile.emergencyContact?.name || (savedEdits.emergencyContactName !== "Not provided" ? savedEdits.emergencyContactName : "") || "Not provided",
         emergencyRelationship: profile.emergencyContact?.relationship || (savedEdits.emergencyRelationship !== "Not provided" ? savedEdits.emergencyRelationship : "") || "Not provided",
         emergencyPhone: profile.emergencyContact?.phone || (savedEdits.emergencyPhone !== "Not provided" ? savedEdits.emergencyPhone : "") || "Not provided",
@@ -304,25 +332,31 @@ function EmployeeProfile() {
   };
 
   const handleSaveSkillsModal = async () => {
-    setSkillsData(skillsEditForm);
+    setUploadError("");
+    setSavingSkills(true);
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ ...personalData, ...skillsEditForm }));
-    } catch {}
-
-    try {
-      if (profile._id || profile.id) {
-        await updateEmployeeById(profile._id || profile.id, skillsEditForm);
+      if (isExplicitQuery) {
+        const empTarget = profile.employeeCode || profile._id || profile.id;
+        if (!empTarget) {
+          throw new Error("Unable to identify the selected employee profile.");
+        }
+        await updateEmployeeById(empTarget, skillsEditForm);
       } else {
         await updateProfileSkills(skillsEditForm);
       }
       if (reload) await reload();
+      setSkillsData(skillsEditForm);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ ...personalData, ...skillsEditForm }));
+      } catch {}
       setUploadSuccess("Skills & Recognition updated successfully!");
+      setShowSkillsModal(false);
+      setTimeout(() => setUploadSuccess(""), 4000);
     } catch (err) {
-      setUploadSuccess("Skills & Recognition saved!");
+      setUploadError(err?.message || "Unable to save skills and recognition. Please try again.");
+    } finally {
+      setSavingSkills(false);
     }
-
-    setShowSkillsModal(false);
-    setTimeout(() => setUploadSuccess(""), 4000);
   };
 
   const formatForDateInput = (dStr) => {
@@ -357,6 +391,8 @@ function EmployeeProfile() {
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
+    setUploadError("");
+    setSavingProfile(true);
     const formattedDobDisplay = editForm.dateOfBirth ? formatDate(editForm.dateOfBirth) : "Not provided";
     const updatedPersonalState = {
       personalEmail: editForm.personalEmail.trim() || "Not provided",
@@ -372,11 +408,6 @@ function EmployeeProfile() {
       emergencyAltPhone: editForm.emergencyAltPhone.trim() || "Not provided",
       medicalNotes: editForm.medicalNotes.trim() || "Not provided",
     };
-    setPersonalData(updatedPersonalState);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify({ ...updatedPersonalState, ...skillsData }));
-    } catch {}
-
     const payload = {
       phone: editForm.phone.trim(),
       workLocation: editForm.workLocation.trim(),
@@ -391,6 +422,7 @@ function EmployeeProfile() {
       },
       address: {
         addressLine: editForm.address.trim(),
+        city: "",
       },
       emergencyContact: {
         name: editForm.emergencyContactName.trim(),
@@ -402,28 +434,35 @@ function EmployeeProfile() {
     };
 
     try {
-      const empTarget = profile.employeeCode || profile._id || profile.id;
-      if (empTarget) {
+      if (isExplicitQuery) {
+        const empTarget = profile.employeeCode || profile._id || profile.id;
+        if (!empTarget) {
+          throw new Error("Unable to identify the selected employee profile.");
+        }
         await updateEmployeeById(empTarget, payload);
       } else {
         await updateMyProfile(payload);
       }
       if (reload) await reload();
+      setPersonalData(updatedPersonalState);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ ...updatedPersonalState, ...skillsData }));
+      } catch {}
       setUploadSuccess("Personal profile and emergency directives updated successfully!");
+      setShowEditModal(false);
+      setTimeout(() => setUploadSuccess(""), 4000);
     } catch (err) {
-      setUploadSuccess("Personal profile updated!");
+      setUploadError(err?.message || "Unable to save profile changes. Please try again.");
+    } finally {
+      setSavingProfile(false);
     }
-
-    setShowEditModal(false);
-    setTimeout(() => setUploadSuccess(""), 4000);
   };
 
   const activePhotoUrl =
     localPreview ||
-    profilePhotoUrl(profile.profilePhoto) ||
+    profilePhotoUrl(profile?.profilePhoto) ||
     profilePhotoUrl(user?.profilePhoto) ||
-    (localStorage.getItem("hrms_profile_photo") && !localStorage.getItem("hrms_profile_photo").startsWith("blob:") ? profilePhotoUrl(localStorage.getItem("hrms_profile_photo")) : "") ||
-    (sessionStorage.getItem("hrms_profile_photo") && !sessionStorage.getItem("hrms_profile_photo").startsWith("blob:") ? profilePhotoUrl(sessionStorage.getItem("hrms_profile_photo")) : "");
+    "";
 
   const handleProfilePictureChange = async (event) => {
     const file = event.target.files?.[0];
@@ -439,30 +478,32 @@ function EmployeeProfile() {
       return;
     }
 
+    let preview = "";
     try {
       setUploading(true);
       setUploadError("");
       setUploadSuccess("");
 
-      const preview = URL.createObjectURL(file);
+      preview = URL.createObjectURL(file);
       setLocalPreview(preview);
 
       const uploadResult = await uploadProfilePicture(file);
       const serverPhoto = uploadResult?.profilePhoto || uploadResult?.employee?.profilePhoto || uploadResult?.data?.profilePhoto;
 
-      const finalPhoto = serverPhoto || preview;
-      if (serverPhoto) {
-        localStorage.setItem("hrms_profile_photo", serverPhoto);
-        sessionStorage.setItem("hrms_profile_photo", serverPhoto);
+      if (!serverPhoto || serverPhoto.startsWith("blob:")) {
+        throw new Error("The server did not return a saved profile picture.");
       }
+      setLocalPreview("");
       if (updateProfilePhoto) {
-        updateProfilePhoto(finalPhoto);
+        updateProfilePhoto(serverPhoto);
       }
       if (reload) await reload();
       setUploadSuccess("Profile picture updated successfully!");
     } catch (err) {
+      setLocalPreview("");
       setUploadError(err.message || "Failed to update profile photo.");
     } finally {
+      if (preview) URL.revokeObjectURL(preview);
       setUploading(false);
       event.target.value = "";
     }
@@ -608,7 +649,7 @@ function EmployeeProfile() {
                   </div>
                   <h1>{fullName}</h1>
                   <p>
-                    {designation} • {department} • Hyderabad HQ
+                    {designation} • {department} • {workLocation && workLocation !== "Not provided" ? workLocation : (profile?.branch || "Hyderabad HQ")}
                   </p>
 
                   <div className="emp-meta-pills">
@@ -721,75 +762,6 @@ function EmployeeProfile() {
             {/* =====================================================
                 4 KPI METRICS
             ===================================================== */}
-            <section className="prof-kpi-grid" aria-label="Profile KPIs">
-              <div className="kpi-card-box emerald">
-                <div className="kpi-card-head">
-                  <span className="kpi-title-text">Service Milestone</span>
-                  <div className="kpi-icon-pod emerald">🏅</div>
-                </div>
-                <div className="kpi-stat-row">
-                  <span className="kpi-big-num" style={{ fontSize: "1.25rem" }}>
-                    {dateOfJoining ? `Joined ${formatDate(dateOfJoining)}` : "Not recorded"}
-                  </span>
-                  <span className={`kpi-badge-chip ${currentStatus === "Active" ? "positive" : "deduction"}`}>
-                    {currentStatus}
-                  </span>
-                </div>
-                <div className="kpi-progress-rail">
-                  <div className="kpi-progress-bar emerald" style={{ width: "100%" }} />
-                </div>
-                <span className="kpi-subtext">Verified Corporate Employment Record</span>
-              </div>
-
-              <div className="kpi-card-box teal">
-                <div className="kpi-card-head">
-                  <span className="kpi-title-text">Reporting Manager</span>
-                  <div className="kpi-icon-pod teal">👤</div>
-                </div>
-                <div className="kpi-stat-row">
-                  <span className="kpi-big-num" style={{ fontSize: "1.2rem" }}>
-                    {reportingManager}
-                  </span>
-                </div>
-                <div className="kpi-progress-rail">
-                  <div className="kpi-progress-bar teal" style={{ width: "100%" }} />
-                </div>
-                <span className="kpi-subtext">Direct Reporting Line</span>
-              </div>
-
-              <div className="kpi-card-box indigo">
-                <div className="kpi-card-head">
-                  <span className="kpi-title-text">Work Location</span>
-                  <div className="kpi-icon-pod indigo">📍</div>
-                </div>
-                <div className="kpi-stat-row">
-                  <span className="kpi-big-num" style={{ fontSize: "1.2rem" }}>
-                    {workLocation}
-                  </span>
-                  <span className="kpi-badge-chip indigo">Assigned</span>
-                </div>
-                <div className="kpi-progress-rail">
-                  <div className="kpi-progress-bar indigo" style={{ width: "100%" }} />
-                </div>
-                <span className="kpi-subtext">Primary Base</span>
-              </div>
-
-              <div className="kpi-card-box rose">
-                <div className="kpi-card-head">
-                  <span className="kpi-title-text">Portal Access</span>
-                  <div className="kpi-icon-pod rose">🔑</div>
-                </div>
-                <div className="kpi-stat-row">
-                  <span className="kpi-big-num">{portalAccessEnabled}</span>
-                  <span className="kpi-badge-chip positive">{systemRole}</span>
-                </div>
-                <div className="kpi-progress-rail">
-                  <div className="kpi-progress-bar rose" style={{ width: "100%" }} />
-                </div>
-                <span className="kpi-subtext">System Role: {systemRole}</span>
-              </div>
-            </section>
-
             {/* =====================================================
                 SEGMENTED TAB BAR
             ===================================================== */}
@@ -947,6 +919,11 @@ function EmployeeProfile() {
                     <div className="dossier-field">
                       <span>Reporting Manager</span>
                       <strong>{reportingManager}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <span>HR Partner</span>
+                      <strong>{hrPartner}</strong>
                     </div>
 
                     <div className="dossier-field">
@@ -1368,8 +1345,9 @@ function EmployeeProfile() {
                 <button
                   type="submit"
                   className="att-btn primary"
+                  disabled={savingProfile}
                 >
-                  Save Profile Changes
+                  {savingProfile ? "Saving..." : "Save Profile Changes"}
                 </button>
               </div>
             </form>
@@ -1733,8 +1711,9 @@ function EmployeeProfile() {
                 type="button"
                 className="att-btn primary"
                 onClick={handleSaveSkillsModal}
+                disabled={savingSkills}
               >
-                Save Credentials & Recognition
+                {savingSkills ? "Saving..." : "Save Credentials & Recognition"}
               </button>
             </div>
           </div>

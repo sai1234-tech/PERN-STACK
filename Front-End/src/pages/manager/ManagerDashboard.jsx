@@ -2,18 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import { useManager } from "../../hooks/useManager";
-import { formatDate } from "../../utils/date";
+import { useAttendance } from "../../hooks/useAttendance";
+import { formatDate, formatTime } from "../../utils/date";
 import Loader from "../../components/common/Loader";
+import { formatPhotoUrl } from "../../utils/photo";
 import "./ManagerDashboard.css";
-
-const formatPhotoUrl = (photo) => {
-  if (!photo || photo.startsWith("blob:")) return photo || "";
-  if (/^https?:\/\//i.test(photo) || photo.startsWith("data:")) return photo;
-  const apiUrl = (String(import.meta.env.VITE_API_URL || "").replace("localhost", "127.0.0.1") || "http://127.0.0.1:5000/api/v1").replace(/\/$/, "");
-  const cleanPhoto = String(photo).replace(/\\/g, "/").replace(/^\/?api(\/v1)?\/?/, "");
-  const baseUrl = apiUrl.replace(/\/api(\/v1)?\/?$/, "");
-  return `${baseUrl}${cleanPhoto.startsWith("/") ? cleanPhoto : `/${cleanPhoto}`}`;
-};
 
 function ManagerDashboard() {
   const {
@@ -31,10 +24,27 @@ function ManagerDashboard() {
     approveResignation,
     rejectResignation,
   } = useManager();
+  const {
+    todayAttendance,
+    clockIn,
+    clockOut,
+    error: attendanceError,
+  } = useAttendance();
 
   const [activeTab, setActiveTab] = useState("all");
   const [viewSection, setViewSection] = useState("approvals"); // "approvals" | "roster" | "projects"
   const [projectSearch, setProjectSearch] = useState("");
+  const [clockActionSubmitting, setClockActionSubmitting] = useState(false);
+  const checkedIn = Boolean(todayAttendance?.checkIn) && !todayAttendance?.checkOut;
+
+  const handleClockAction = async () => {
+    setClockActionSubmitting(true);
+    try {
+      await (checkedIn ? clockOut() : clockIn());
+    } finally {
+      setClockActionSubmitting(false);
+    }
+  };
 
   if (loading) return <Loader label="Loading Manager Command Center..." />;
   if (error) {
@@ -101,6 +111,24 @@ function ManagerDashboard() {
             </div>
 
             <div className="hero-actions-group">
+              <div className="manager-attendance-control">
+                <span className={`manager-shift-indicator ${checkedIn ? "active" : ""}`} />
+                <span className="manager-shift-status">
+                  {checkedIn
+                    ? `Clocked in at ${formatTime(todayAttendance.checkIn)}`
+                    : "Not clocked in"}
+                </span>
+                <button
+                  type="button"
+                  className={`manager-clock-btn ${checkedIn ? "clock-out" : "clock-in"}`}
+                  onClick={handleClockAction}
+                  disabled={clockActionSubmitting}
+                >
+                  {clockActionSubmitting
+                    ? checkedIn ? "Clocking out..." : "Clocking in..."
+                    : checkedIn ? "Clock Out" : "Clock In"}
+                </button>
+              </div>
               <Link to="/manager/projects" className="hero-action-link">
                 🚀 Team Projects
               </Link>
@@ -112,6 +140,11 @@ function ManagerDashboard() {
               </Link>
             </div>
           </div>
+          {attendanceError && (
+            <p className="manager-attendance-error" role="alert">
+              {attendanceError}
+            </p>
+          )}
 
           {/* KPI CARDS GRID */}
           <div className="manager-kpi-grid">

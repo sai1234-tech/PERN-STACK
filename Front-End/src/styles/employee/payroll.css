@@ -1695,6 +1695,172 @@ main.payroll-page {
   background: #f8fafc;
 }
 
+/* Detailed Payroll Edit Modal */
+.payroll-modal.edit-payroll-modal {
+  max-width: 680px;
+}
+
+.payroll-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 1.25rem 1.75rem 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .payroll-edit-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.payroll-edit-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.payroll-edit-col-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0f766e;
+  border-bottom: 2px solid #ccfbf1;
+  padding-bottom: 0.35rem;
+  margin: 0;
+}
+
+.payroll-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.payroll-edit-field label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.payroll-edit-field input,
+.payroll-edit-field select {
+  height: 40px;
+  padding: 0 0.85rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.payroll-edit-field input:focus,
+.payroll-edit-field select:focus {
+  outline: 3px solid rgba(13, 148, 136, 0.18);
+  border-color: #0d9488;
+  background: #ffffff;
+}
+
+.payroll-edit-summary {
+  margin: 0.75rem 1.75rem 0.5rem;
+  padding: 0.85rem 1.25rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.payroll-edit-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.payroll-edit-summary-item span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.payroll-edit-summary-item strong {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.payroll-edit-summary-item.net strong {
+  color: #059669;
+}
+
+.payroll-sync-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.payroll-sync-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #0d9488;
+}
+
+.payroll-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.payroll-actions-cell button.btn-edit-payroll {
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  color: #ffffff;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.payroll-actions-cell button.btn-edit-payroll:hover {
+  background: #115e59;
+  transform: translateY(-1px);
+}
+
+.payroll-actions-cell button.btn-quick-salary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.payroll-actions-cell button.btn-quick-salary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+
 /* ==========================================================================
    Responsive Breakpoints - Payroll & Compensation Hub
    ========================================================================== */

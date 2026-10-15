@@ -37,6 +37,22 @@ const KNOWN_ACCOUNTS = {
     designation: "Software Engineer",
     role: "employee",
   },
+  "sandhyakushangala@quadratics.com": {
+    firstName: "Sandhya",
+    lastName: "Rani",
+    department: "Engineering",
+    designation: "Software Engineer",
+    role: "employee",
+    salary: 600000,
+  },
+  "skushangala@quadratics.com": {
+    firstName: "SaiKiran",
+    lastName: "Kushangala",
+    department: "Engineering",
+    designation: "Full Stack Engineer",
+    role: "employee",
+    salary: 900000,
+  },
   "manager@hrms.com": {
     firstName: "Demo",
     lastName: "Manager",
@@ -72,6 +88,20 @@ const KNOWN_ACCOUNTS = {
     designation: "Frontend Engineer",
     role: "employee",
   },
+  "vikasguru@gmail.com": {
+    firstName: "Vikas",
+    lastName: "Guru",
+    department: "Engineering",
+    designation: "Team Manager",
+    role: "manager",
+  },
+  "gvikas@quadratics.com": {
+    firstName: "Vikas",
+    lastName: "Guru",
+    department: "Engineering",
+    designation: "Team Manager",
+    role: "manager",
+  },
 };
 
 function capitalize(str = "") {
@@ -102,6 +132,21 @@ export function deriveNameFromEmail(email = "") {
     };
   }
 
+  // Fallback for compound strings like sandhyakushangala or saikirankushangala
+  const lower = localPart.toLowerCase();
+  if (lower.startsWith("sandhya") && lower.length > 7) {
+    return {
+      firstName: "Sandhya",
+      lastName: capitalize(lower.slice(7)),
+    };
+  }
+  if (lower.startsWith("kushangala") && lower.length > 10) {
+    return {
+      firstName: capitalize(lower.slice(10)),
+      lastName: "Kushangala",
+    };
+  }
+
   // Fallback for single continuous string (e.g. narsimhakushangala)
   return {
     firstName: capitalize(localPart),
@@ -125,12 +170,12 @@ export function getDemoFallbackSession(email = "") {
     role = known.role || "employee";
     department = known.department;
     designation = known.designation;
-  } else if (cleanEmail.includes("manager")) {
-    firstName = "Demo";
-    lastName = "Manager";
+  } else if (cleanEmail.includes("vikas") || cleanEmail.includes("manager") || cleanEmail === "vikasguru@gmail.com" || cleanEmail === "gvikas@quadratics.com") {
+    firstName = cleanEmail.includes("vikas") ? "Vikas" : "Demo";
+    lastName = cleanEmail.includes("vikas") ? "Guru" : "Manager";
     role = "manager";
     department = "Engineering";
-    designation = "Engineering Manager";
+    designation = "Team Manager";
   } else if (cleanEmail.includes("admin")) {
     firstName = "System";
     lastName = "Administrator";
@@ -255,6 +300,7 @@ export function handleDemoApi(endpoint, options = {}) {
           reportsTo: newEmp.reportsTo || null,
           grantLogin: !!newEmp.grantLogin,
           loginRole: newEmp.loginRole || "employee",
+          salary: newEmp.salary !== undefined ? newEmp.salary : newEmp.employment?.salary,
           user: newEmp.grantLogin ? { role: newEmp.loginRole || "employee", email: email } : null,
           employment: {
             department: dept,
@@ -262,6 +308,7 @@ export function handleDemoApi(endpoint, options = {}) {
             status: empStatus,
             employmentType: empType,
             joiningDate: jDate,
+            salary: newEmp.salary !== undefined ? newEmp.salary : newEmp.employment?.salary,
           },
         };
 
@@ -299,9 +346,11 @@ export function handleDemoApi(endpoint, options = {}) {
             ...emp,
             ...updateData,
             name: updateData.name || `${updateData.firstName || emp.firstName} ${updateData.lastName || emp.lastName}`.trim(),
+            salary: updateData.salary !== undefined ? updateData.salary : (updateData.employment?.salary !== undefined ? updateData.employment.salary : emp.salary),
             employment: {
               ...emp.employment,
               ...(updateData.employment || {}),
+              salary: updateData.salary !== undefined ? updateData.salary : (updateData.employment?.salary !== undefined ? updateData.employment.salary : emp.employment?.salary),
             },
           };
         }
@@ -502,10 +551,10 @@ export function handleDemoApi(endpoint, options = {}) {
   // LEAVES API
   if (norm.includes("/leaves/types") || norm.includes("/leave/types")) {
     const types = [
-      { _id: "lt-1", id: "lt-1", name: "Casual Leave", code: "CL", daysAllowed: 12 },
-      { _id: "lt-2", id: "lt-2", name: "Sick Leave", code: "SL", daysAllowed: 10 },
-      { _id: "lt-3", id: "lt-3", name: "Paid Privilege Leave", code: "PL", daysAllowed: 18 },
-      { _id: "lt-4", id: "lt-4", name: "Work From Home", code: "WFH", daysAllowed: 24 },
+      { _id: "lt-1", id: 1, name: "Casual Leave", code: "CL", daysAllowed: 12, annualAllocation: 12, annual_allocation: 12, isPaid: true },
+      { _id: "lt-2", id: 2, name: "Sick Leave", code: "SL", daysAllowed: 12, annualAllocation: 12, annual_allocation: 12, isPaid: true },
+      { _id: "lt-3", id: 3, name: "Paid Privilege Leave", code: "PL", daysAllowed: 18, annualAllocation: 18, annual_allocation: 18, isPaid: true },
+      { _id: "lt-4", id: 4, name: "Work From Home", code: "WFH", daysAllowed: 24, annualAllocation: 24, annual_allocation: 24, isPaid: true },
     ];
     return {
       success: true,
@@ -517,10 +566,46 @@ export function handleDemoApi(endpoint, options = {}) {
 
   if (norm.includes("/leaves/balance") || norm.includes("/leave/balance")) {
     const balances = [
-      { leaveType: { _id: "lt-1", name: "Casual Leave", code: "CL" }, total: 12, used: 4, remaining: 8 },
-      { leaveType: { _id: "lt-2", name: "Sick Leave", code: "SL" }, total: 10, used: 2, remaining: 8 },
-      { leaveType: { _id: "lt-3", name: "Paid Privilege Leave", code: "PL" }, total: 18, used: 3, remaining: 15 },
-      { leaveType: { _id: "lt-4", name: "Work From Home", code: "WFH" }, total: 24, used: 6, remaining: 18 },
+      {
+        leaveType: { _id: "lt-1", id: 1, name: "Casual Leave", code: "CL", annualAllocation: 12 },
+        annualAllocation: 12,
+        annual_allocation: 12,
+        total: 12,
+        used: 0,
+        pending: 0,
+        available: 12,
+        remaining: 12
+      },
+      {
+        leaveType: { _id: "lt-2", id: 2, name: "Sick Leave", code: "SL", annualAllocation: 12 },
+        annualAllocation: 12,
+        annual_allocation: 12,
+        total: 12,
+        used: 0,
+        pending: 0,
+        available: 12,
+        remaining: 12
+      },
+      {
+        leaveType: { _id: "lt-3", id: 3, name: "Paid Privilege Leave", code: "PL", annualAllocation: 18 },
+        annualAllocation: 18,
+        annual_allocation: 18,
+        total: 18,
+        used: 0,
+        pending: 0,
+        available: 18,
+        remaining: 18
+      },
+      {
+        leaveType: { _id: "lt-4", id: 4, name: "Work From Home", code: "WFH", annualAllocation: 24 },
+        annualAllocation: 24,
+        annual_allocation: 24,
+        total: 24,
+        used: 0,
+        pending: 0,
+        available: 24,
+        remaining: 24
+      },
     ];
     return {
       success: true,
@@ -581,39 +666,295 @@ export function handleDemoApi(endpoint, options = {}) {
 
   // PAYROLL API
   if (norm.includes("/payroll")) {
-    const payload = {
-      _id: "pay-sep-2026",
-      id: "pay-sep-2026",
-      month: "2026-09",
-      basicSalary: 95000,
-      allowances: 38000,
-      bonus: 15000,
-      tax: 12000,
-      pf: 6000,
-      otherDeductions: 0,
-      totalDeductions: 18000,
-      grossSalary: 148000,
-      netSalary: 130000,
-      status: "Generated",
-      generatedAt: "2026-09-20T00:00:00.000Z",
-      earnings: {
-        basicSalary: 95000,
-        allowances: 38000,
-        bonus: 15000,
-      },
-      deductions: {
-        tax: 12000,
-        pf: 6000,
-        otherDeductions: 0,
-      },
+    let customPayrolls = [];
+    try {
+      customPayrolls = JSON.parse(localStorage.getItem("hrms_custom_payroll") || "[]");
+    } catch (e) {
+      customPayrolls = [];
+    }
+
+    const currentPeriod = new Date().toISOString().slice(0, 7);
+
+    const deriveBreakdown = (salaryInput) => {
+      const num = Number(salaryInput || 0);
+      const annual = num > 0 && num < 300000 ? num * 12 : num;
+      const monthly = Math.round(annual / 12);
+      const basic = Math.round(monthly * 0.5);
+      const allow = Math.round(monthly * 0.5);
+      const pf = monthly > 0 ? Math.min(Math.round(basic * 0.12), 3600) : 0;
+      const tax = monthly > 0 ? 200 : 0;
+      const ded = Math.round(monthly * 0.08);
+      const totalDed = pf + tax + ded;
+      const net = Math.max(0, monthly - totalDed);
+      return { annual, monthly, basic, allow, pf, tax, ded, totalDed, net };
     };
+
+    // 1. HR Update/Save Payroll Record
+    if (
+      (method === "PUT" || method === "POST") &&
+      (norm.includes("/records") || norm.includes("/record") || norm.includes("/employees/"))
+    ) {
+      const body = options.body ? JSON.parse(options.body) : {};
+      const empId = String(body.employeeId || body.id || norm.split("/").pop());
+      const pMonth = body.month || currentPeriod;
+
+      const basic = Number(body.basicSalary || 0);
+      const allow = Number(body.allowances || 0);
+      const bonus = Number(body.bonus || 0);
+      const tax = Number(body.tax || 0);
+      const pf = Number(body.pf || 0);
+      const deduction = Number(body.deduction || body.otherDeductions || 0);
+
+      const grossSalary = body.grossSalary !== undefined ? Number(body.grossSalary) : (basic + allow + bonus);
+      const totalDeductions = body.totalDeductions !== undefined ? Number(body.totalDeductions) : (tax + pf + deduction);
+      const netSalary = body.netSalary !== undefined ? Number(body.netSalary) : Math.max(0, grossSalary - totalDeductions);
+      const status = body.status || "generated";
+
+      const updatedRecord = {
+        _id: `pay-${empId}-${pMonth}`,
+        id: `pay-${empId}-${pMonth}`,
+        employeeId: empId,
+        month: pMonth,
+        basicSalary: basic,
+        allowances: allow,
+        bonus: bonus,
+        tax: tax,
+        pf: pf,
+        deduction: deduction,
+        otherDeductions: deduction,
+        grossSalary,
+        totalDeductions,
+        netSalary,
+        status,
+        generatedAt: new Date().toISOString(),
+        earnings: { basicSalary: basic, allowances: allow, bonus },
+        deductions: { tax, pf, otherDeductions: deduction },
+      };
+
+      const existingIndex = customPayrolls.findIndex(
+        (p) => String(p.employeeId) === empId && String(p.month).slice(0, 7) === String(pMonth).slice(0, 7)
+      );
+
+      if (existingIndex >= 0) {
+        customPayrolls[existingIndex] = { ...customPayrolls[existingIndex], ...updatedRecord };
+      } else {
+        customPayrolls.unshift(updatedRecord);
+      }
+
+      localStorage.setItem("hrms_custom_payroll", JSON.stringify(customPayrolls));
+
+      if (body.updateBaseSalary && grossSalary > 0) {
+        customEmps = customEmps.map((e) => {
+          if (String(e._id) === empId || String(e.id) === empId || String(e.employeeCode) === empId) {
+            return {
+              ...e,
+              salary: grossSalary * 12,
+              employment: { ...(e.employment || {}), salary: grossSalary * 12 },
+            };
+          }
+          return e;
+        });
+        localStorage.setItem("hrms_custom_employees", JSON.stringify(customEmps));
+      }
+
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+
+      return {
+        success: true,
+        message: "Payroll record updated successfully",
+        data: updatedRecord,
+      };
+    }
+
+    // 2. HR Update Salary
+    if (method === "PATCH" && norm.includes("/salary")) {
+      const empId = norm.split("/employees/")[1]?.split("/")[0];
+      const body = options.body ? JSON.parse(options.body) : {};
+      const newSal = Number(body.salary || 0);
+
+      customEmps = customEmps.map((e) => {
+        if (String(e._id) === String(empId) || String(e.id) === String(empId) || String(e.employeeCode) === String(empId)) {
+          return {
+            ...e,
+            salary: newSal,
+            employment: { ...(e.employment || {}), salary: newSal },
+          };
+        }
+        return e;
+      });
+      localStorage.setItem("hrms_custom_employees", JSON.stringify(customEmps));
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      return { success: true, message: "Salary updated successfully" };
+    }
+
+    // 3. HR Generate Payroll
+    if (method === "POST" && norm.includes("/generate")) {
+      const body = options.body ? JSON.parse(options.body) : {};
+      const targetMonth = body.month || currentPeriod;
+
+      const generated = customEmps.map((emp) => {
+        const empSalary = emp.employment?.salary || emp.salary || 0;
+        const b = deriveBreakdown(empSalary);
+        const record = {
+          _id: `pay-${emp._id || emp.id}-${targetMonth}`,
+          id: `pay-${emp._id || emp.id}-${targetMonth}`,
+          employeeId: emp._id || emp.id,
+          employee: emp,
+          month: targetMonth,
+          basicSalary: b.basic,
+          allowances: b.allow,
+          bonus: 0,
+          tax: b.tax,
+          pf: b.pf,
+          deduction: b.ded,
+          otherDeductions: b.ded,
+          grossSalary: b.monthly,
+          totalDeductions: b.totalDed,
+          netSalary: b.net,
+          status: "generated",
+          generatedAt: new Date().toISOString(),
+          earnings: { basicSalary: b.basic, allowances: b.allow, bonus: 0 },
+          deductions: { tax: b.tax, pf: b.pf, otherDeductions: b.ded },
+        };
+        return record;
+      });
+
+      customPayrolls = generated;
+      localStorage.setItem("hrms_custom_payroll", JSON.stringify(customPayrolls));
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+
+      return {
+        success: true,
+        message: `Payroll generated for ${generated.length} employees`,
+        data: generated,
+      };
+    }
+
+    // 4. Employee Self-Service: /payroll/my/salary or /payroll/my/payslip
+    if (norm.includes("/my/salary") || norm.includes("/my/payslip")) {
+      let authUser = null;
+      try {
+        authUser = JSON.parse(
+          sessionStorage.getItem("hrms_user") ||
+          sessionStorage.getItem("hrms_employee") ||
+          localStorage.getItem("hrms_user") ||
+          localStorage.getItem("user") ||
+          sessionStorage.getItem("user") ||
+          "null"
+        );
+      } catch (e) {}
+
+      const userEmail = (authUser?.email || "").toLowerCase().trim();
+      const matchedEmp = customEmps.find((e) => e.email?.toLowerCase().trim() === userEmail) || authUser;
+
+      const requestedMonth = (endpoint.split("month=")[1] || currentPeriod).slice(0, 7);
+
+      const existingRecord = customPayrolls.find(
+        (p) => (String(p.employeeId) === String(matchedEmp?._id || matchedEmp?.id) || p.employee?.email === userEmail) &&
+               String(p.month).slice(0, 7) === requestedMonth
+      );
+
+      if (existingRecord) {
+        return {
+          success: true,
+          data: existingRecord,
+          payslip: existingRecord,
+          payroll: existingRecord,
+        };
+      }
+
+      // If no generated record, derive dynamically from matched employee's real salary
+      const configuredSalary = matchedEmp?.employment?.salary || matchedEmp?.salary || 0;
+
+      if (!configuredSalary || Number(configuredSalary) <= 0) {
+        const emptyState = {
+          month: requestedMonth,
+          employee: matchedEmp,
+          basicSalary: 0,
+          allowances: 0,
+          bonus: 0,
+          tax: 0,
+          pf: 0,
+          deduction: 0,
+          otherDeductions: 0,
+          grossSalary: 0,
+          totalDeductions: 0,
+          netSalary: 0,
+          status: "not_generated",
+          message: "Salary not configured",
+        };
+        return {
+          success: true,
+          data: emptyState,
+          payslip: emptyState,
+          payroll: emptyState,
+        };
+      }
+
+      const b = deriveBreakdown(configuredSalary);
+      const dynamicSummary = {
+        _id: `pay-${matchedEmp?._id || "my"}-${requestedMonth}`,
+        id: `pay-${matchedEmp?._id || "my"}-${requestedMonth}`,
+        month: requestedMonth,
+        employee: matchedEmp,
+        basicSalary: b.basic,
+        allowances: b.allow,
+        bonus: 0,
+        tax: b.tax,
+        pf: b.pf,
+        deduction: b.ded,
+        otherDeductions: b.ded,
+        grossSalary: b.monthly,
+        totalDeductions: b.totalDed,
+        netSalary: b.net,
+        status: "not_generated",
+        message: "Awaiting payroll run",
+        earnings: { basicSalary: b.basic, allowances: b.allow, bonus: 0 },
+        deductions: { tax: b.tax, pf: b.pf, otherDeductions: b.ded },
+      };
+
+      return {
+        success: true,
+        data: dynamicSummary,
+        payslip: dynamicSummary,
+        payroll: dynamicSummary,
+      };
+    }
+
+    // 5. Default GET /payroll: HR Register
+    const targetMonth = (endpoint.split("month=")[1] || currentPeriod).slice(0, 7);
+    const records = customEmps.map((emp) => {
+      const match = customPayrolls.find(
+        (p) => String(p.employeeId) === String(emp._id || emp.id) && String(p.month).slice(0, 7) === targetMonth
+      );
+      if (match) return match;
+      const b = deriveBreakdown(emp.employment?.salary || emp.salary || 0);
+      return {
+        _id: `pay-${emp._id || emp.id}-${targetMonth}`,
+        id: `pay-${emp._id || emp.id}-${targetMonth}`,
+        employeeId: emp._id || emp.id,
+        employee: emp,
+        month: targetMonth,
+        basicSalary: b.basic,
+        allowances: b.allow,
+        bonus: 0,
+        tax: b.tax,
+        pf: b.pf,
+        deduction: b.ded,
+        otherDeductions: b.ded,
+        grossSalary: b.monthly,
+        totalDeductions: b.totalDed,
+        netSalary: b.net,
+        status: b.monthly > 0 ? "generated" : "not_generated",
+        earnings: { basicSalary: b.basic, allowances: b.allow, bonus: 0 },
+        deductions: { tax: b.tax, pf: b.pf, otherDeductions: b.ded },
+      };
+    });
 
     return {
       success: true,
-      data: payload,
-      payslip: payload,
-      payroll: payload,
-      records: [payload],
+      data: records,
+      records: records,
     };
   }
 

@@ -135,13 +135,20 @@ export const findAllAttendanceRecords = async () => {
     const queryText = `
         SELECT 
             a.*, 
-            u.id as user_id, 
-            u.name as employee_name, 
-            u.email as employee_email, 
-            u.role as employee_role
+            COALESCE(u.id, e.user_id) as user_id, 
+            COALESCE(u.name, TRIM(CONCAT(e.first_name, ' ', e.last_name))) as employee_name, 
+            COALESCE(u.email, e.email) as employee_email, 
+            COALESCE(u.role, 'employee') as employee_role,
+            e.employee_code,
+            e.first_name,
+            e.last_name,
+            e.profile_photo,
+            e.employment->>'department' as department,
+            e.employment->>'designation' as designation
         FROM attendance a
-        JOIN users u ON a.employee_id = u.id
-        ORDER BY a.date DESC;
+        LEFT JOIN users u ON a.employee_id = u.id
+        LEFT JOIN employees e ON (e.user_id = u.id OR (u.id IS NULL AND a.employee_id = e.id))
+        ORDER BY a.date DESC, a.check_in DESC;
     `;
     const { rows } = await pool.query(queryText);
     return rows;
@@ -151,12 +158,19 @@ export const findMonthlyAttendanceReport = async (startDate, endDate) => {
     const queryText = `
         SELECT 
             a.*, 
-            u.id as user_id, 
-            u.name as employee_name, 
-            u.email as employee_email, 
-            u.role as employee_role
+            COALESCE(u.id, e.user_id) as user_id, 
+            COALESCE(u.name, TRIM(CONCAT(e.first_name, ' ', e.last_name))) as employee_name, 
+            COALESCE(u.email, e.email) as employee_email, 
+            COALESCE(u.role, 'employee') as employee_role,
+            e.employee_code,
+            e.first_name,
+            e.last_name,
+            e.profile_photo,
+            e.employment->>'department' as department,
+            e.employment->>'designation' as designation
         FROM attendance a
-        JOIN users u ON a.employee_id = u.id
+        LEFT JOIN users u ON a.employee_id = u.id
+        LEFT JOIN employees e ON (e.user_id = u.id OR (u.id IS NULL AND a.employee_id = e.id))
         WHERE a.date >= $1 AND a.date <= $2
         ORDER BY a.date ASC;
     `;

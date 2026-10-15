@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
 
   const saveSession = (response) => {
     const session = response?.data && (response.data.user || response.data.token) ? response.data : response;
-    const normalizedUser = { ...session.user, role: normalizeRole(session.user) };
+    const normalizedUser = { ...session.user, role: normalizeRole(session.user, session.employee) };
 
     // Clear previous user's cached storage items
     try {
@@ -75,11 +75,6 @@ export function AuthProvider({ children }) {
 
     const isBlob = photoUrl.startsWith("blob:");
 
-    if (!isBlob) {
-      sessionStorage.setItem("hrms_profile_photo", photoUrl);
-      localStorage.setItem("hrms_profile_photo", photoUrl);
-    }
-
     setEmployee((prev) => {
       const updated = prev ? { ...prev, profilePhoto: photoUrl } : { profilePhoto: photoUrl };
       if (!isBlob) {
@@ -107,6 +102,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     try {
       sessionStorage.clear();
+      localStorage.removeItem("hrms_profile_photo");
+      localStorage.removeItem("hrms_selected_employee_id");
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith("hrms_")) {
           localStorage.removeItem(key);
@@ -123,11 +120,9 @@ export function AuthProvider({ children }) {
     const restoreSession = async () => {
       const token = sessionStorage.getItem("hrms_token");
 
-      // Clean up dead blob URLs from storage on start
-      const sPhoto = sessionStorage.getItem("hrms_profile_photo");
-      const lPhoto = localStorage.getItem("hrms_profile_photo");
-      if (sPhoto && sPhoto.startsWith("blob:")) sessionStorage.removeItem("hrms_profile_photo");
-      if (lPhoto && lPhoto.startsWith("blob:")) localStorage.removeItem("hrms_profile_photo");
+      // Purge unscoped legacy photo keys from storage on start
+      sessionStorage.removeItem("hrms_profile_photo");
+      localStorage.removeItem("hrms_profile_photo");
 
       if (!token) {
         setLoading(false);
@@ -143,7 +138,7 @@ export function AuthProvider({ children }) {
           const storedUser = JSON.parse(sessionStorage.getItem("hrms_user") || "null");
           const storedEmp = JSON.parse(sessionStorage.getItem("hrms_employee") || "null");
           if (storedUser) {
-            setUser({ ...storedUser, role: normalizeRole(storedUser) });
+            setUser({ ...storedUser, role: normalizeRole(storedUser, storedEmp) });
             setEmployee(storedEmp);
             setLoading(false);
             return;
@@ -157,20 +152,13 @@ export function AuthProvider({ children }) {
         const response = await getCurrentUser();
 
         const session = response?.data && response.data.user ? response.data : response;
-        const fetchedUser = session.user ? { ...session.user, role: normalizeRole(session.user) } : null;
         const fetchedEmp = session.employee || (sessionStorage.getItem("hrms_employee") ? JSON.parse(sessionStorage.getItem("hrms_employee")) : null);
+        const fetchedUser = session.user ? { ...session.user, role: normalizeRole(session.user, fetchedEmp) } : null;
 
-        const serverPhoto = fetchedEmp?.profilePhoto || fetchedUser?.profilePhoto;
-        const validCachedPhoto = serverPhoto ||
-          (sessionStorage.getItem("hrms_profile_photo") && !sessionStorage.getItem("hrms_profile_photo").startsWith("blob:") ? sessionStorage.getItem("hrms_profile_photo") : null) ||
-          (localStorage.getItem("hrms_profile_photo") && !localStorage.getItem("hrms_profile_photo").startsWith("blob:") ? localStorage.getItem("hrms_profile_photo") : null);
-
-        if (validCachedPhoto) {
-          sessionStorage.setItem("hrms_profile_photo", validCachedPhoto);
-          localStorage.setItem("hrms_profile_photo", validCachedPhoto);
-          if (fetchedEmp && !fetchedEmp.profilePhoto) fetchedEmp.profilePhoto = validCachedPhoto;
-          if (fetchedUser && !fetchedUser.profilePhoto) fetchedUser.profilePhoto = validCachedPhoto;
-        }
+        // Ensure profilePhoto is strictly scoped to this authenticated user/employee only
+        const userPhoto = fetchedEmp?.profilePhoto || fetchedUser?.profilePhoto || "";
+        if (fetchedEmp) fetchedEmp.profilePhoto = userPhoto;
+        if (fetchedUser) fetchedUser.profilePhoto = userPhoto;
 
         setUser(fetchedUser);
         setEmployee(fetchedEmp);

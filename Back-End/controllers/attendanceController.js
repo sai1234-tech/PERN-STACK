@@ -79,12 +79,30 @@ export const checkIn = async (req, res) => {
         // Check if attendance record already exists today
         const existingAttendance = await findAttendanceByEmployeeAndDate(user.id, today);
         if (existingAttendance) {
-            return res.status(400).json({
-                success: false,
-                message: "Already checked in today",
+            // If already clocked in and shift is currently active
+            if (!existingAttendance.check_out) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Already checked in today (shift active)",
+                    data: {
+                        employee: formatEmployee(user),
+                        attendance: formatAttendance(existingAttendance)
+                    }
+                });
+            }
+
+            // If previously clocked out, allow resuming work / re-clocking in for today
+            const updatedAttendance = await updateAttendanceRecord(existingAttendance.id, {
+                check_out: null,
+                status: existingAttendance.status === "half-day" ? "present" : (existingAttendance.status || "present")
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "Shift resumed successfully. Clocked back in.",
                 data: {
                     employee: formatEmployee(user),
-                    attendance: formatAttendance(existingAttendance)
+                    attendance: formatAttendance(updatedAttendance)
                 }
             });
         }
@@ -294,24 +312,32 @@ export const getAllAttendance = async (req, res) => {
     try {
         const records = await findAllAttendanceRecords();
 
-        const data = records.map((item) => ({
-            id: item.id,
-            employee: {
-                id: item.user_id,
-                employeeId: `EMP${String(item.user_id).padStart(3, "0")}`,
-                name: item.employee_name,
-                email: item.employee_email,
-                role: item.employee_role
-            },
-            date: item.date,
-            checkIn: item.check_in,
-            checkOut: item.check_out,
-            workingHours: Number(item.working_hours || 0),
-            status: item.status,
-            isLate: item.is_late,
-            lateMinutes: item.late_minutes,
-            overtimeHours: Number(item.overtime_hours || 0)
-        }));
+        const data = records.map((item) => {
+            const fullName = `${item.first_name || ""} ${item.last_name || ""}`.trim() || item.employee_name || "Employee";
+            const code = item.employee_code || `EMP${String(item.user_id).padStart(3, "0")}`;
+            return {
+                id: item.id,
+                employee: {
+                    id: item.user_id,
+                    employeeId: code,
+                    employeeCode: code,
+                    name: fullName,
+                    email: item.employee_email,
+                    role: item.employee_role,
+                    department: item.department || "General",
+                    designation: item.designation || "-",
+                    profilePhoto: item.profile_photo || ""
+                },
+                date: item.date,
+                checkIn: item.check_in,
+                checkOut: item.check_out,
+                workingHours: Number(item.working_hours || 0),
+                status: item.status,
+                isLate: item.is_late,
+                lateMinutes: item.late_minutes,
+                overtimeHours: Number(item.overtime_hours || 0)
+            };
+        });
 
         return res.status(200).json({
             success: true,
@@ -353,24 +379,32 @@ export const getMonthlyReport = async (req, res) => {
 
         const records = await findMonthlyAttendanceReport(startDate, endDate);
 
-        const data = records.map((item) => ({
-            id: item.id,
-            employee: {
-                id: item.user_id,
-                employeeId: `EMP${String(item.user_id).padStart(3, "0")}`,
-                name: item.employee_name,
-                email: item.employee_email,
-                role: item.employee_role
-            },
-            date: item.date,
-            checkIn: item.check_in,
-            checkOut: item.check_out,
-            workingHours: Number(item.working_hours || 0),
-            status: item.status,
-            isLate: item.is_late,
-            lateMinutes: item.late_minutes,
-            overtimeHours: Number(item.overtime_hours || 0)
-        }));
+        const data = records.map((item) => {
+            const fullName = `${item.first_name || ""} ${item.last_name || ""}`.trim() || item.employee_name || "Employee";
+            const code = item.employee_code || `EMP${String(item.user_id).padStart(3, "0")}`;
+            return {
+                id: item.id,
+                employee: {
+                    id: item.user_id,
+                    employeeId: code,
+                    employeeCode: code,
+                    name: fullName,
+                    email: item.employee_email,
+                    role: item.employee_role,
+                    department: item.department || "General",
+                    designation: item.designation || "-",
+                    profilePhoto: item.profile_photo || ""
+                },
+                date: item.date,
+                checkIn: item.check_in,
+                checkOut: item.check_out,
+                workingHours: Number(item.working_hours || 0),
+                status: item.status,
+                isLate: item.is_late,
+                lateMinutes: item.late_minutes,
+                overtimeHours: Number(item.overtime_hours || 0)
+            };
+        });
 
         return res.status(200).json({
             success: true,

@@ -4,6 +4,7 @@ import {
     getAllTickets,
     resolveTicket,
     getMyTickets,
+    getTicketById,
 } from "../controllers/ticketController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
@@ -15,12 +16,13 @@ router.use(verifyToken);
 
 // GET /api/tickets/my — Get tickets for the logged in employee
 router.get("/my", getMyTickets);
+router.get("/:id", getTicketById);
 
 // POST /api/tickets — Create ticket
 // GET /api/tickets — Get all tickets (HR/Admin)
 router.route("/")
     .post(createTicket)
-    .get(authorizeRoles("hr", "admin"), getAllTickets);
+    .get(authorizeRoles("hr", "admin", "manager"), getAllTickets);
 
 // PUT /api/tickets/:id/resolve — Resolve ticket (HR/Admin only)
 router.put("/:id/resolve", authorizeRoles("hr", "admin"), resolveTicket);

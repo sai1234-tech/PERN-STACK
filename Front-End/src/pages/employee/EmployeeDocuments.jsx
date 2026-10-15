@@ -232,10 +232,6 @@ function EmployeeDocuments() {
         documentName: reqDoc.documentName || reqDoc.documentType || file.name,
       });
       setMessage(`Successfully uploaded "${file.name}" for HR request. It is now in HR review.`);
-      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
-      const res = await getMyDocuments();
-      const docs = res.data || res.documents || res || [];
-      if (Array.isArray(docs)) setDocuments(docs);
     } catch (err) {
       setActionError(err.message || "Failed to upload requested document.");
     } finally {
@@ -314,17 +310,6 @@ function EmployeeDocuments() {
     },
   ];
 
-  const scrollToUploadSection = () => {
-    const section = document.getElementById("upload-official-document-section");
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
-      const firstInput = section.querySelector("select, input");
-      if (firstInput) {
-        setTimeout(() => firstInput.focus(), 400);
-      }
-    }
-  };
-
   return (
     <>
       <EmployeeHeader />
@@ -352,17 +337,6 @@ function EmployeeDocuments() {
             </div>
           </div>
 
-          <div className="att-hero-actions">
-            <button
-              type="button"
-              className="att-btn primary"
-              onClick={scrollToUploadSection}
-              style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
-              title="Scroll directly to Upload Official Document form"
-            >
-              <span>📤</span> Upload Document
-            </button>
-          </div>
         </section>
 
         {/* =====================================================
@@ -478,7 +452,7 @@ function EmployeeDocuments() {
         {/* =====================================================
             UPLOAD PANEL (REALISTIC ENTERPRISE DOCUMENT INGESTION)
         ===================================================== */}
-        <section className="doc-upload-card" id="upload-official-document-section" aria-label="Upload Document">
+        <section className="doc-upload-card" id="upload-official-document-section" aria-label="Upload Document" hidden>
           <div className="doc-upload-header">
             <div className="doc-upload-badge-row">
               <span className="doc-section-pill">
@@ -656,10 +630,6 @@ function EmployeeDocuments() {
                     <>
                       <span className="btn-spinner" /> Uploading Document...
                     </>
-                  ) : !form.file ? (
-                    <>
-                      <span>📁</span> Select File to Upload
-                    </>
                   ) : (
                     <>
                       <span>📤</span> Upload & Save Document
@@ -733,7 +703,13 @@ function EmployeeDocuments() {
                       <div className="doc-type-icon">📄</div>
                       <div className="doc-meta-info">
                         <h4>{titleText}</h4>
-                        <p>{doc.description || "Official verified employee record on file."}</p>
+                        <p>
+                          {doc.description ||
+                            doc.requestNote ||
+                            (doc.status === "fulfilled"
+                              ? "The uploaded file is listed separately and awaiting HR review."
+                              : "Official verified employee record on file.")}
+                        </p>
                       </div>
                     </div>
 
@@ -757,6 +733,8 @@ function EmployeeDocuments() {
                         className={`status-chip-badge ${
                           doc.status === "verified"
                             ? "present"
+                            : doc.status === "fulfilled"
+                            ? "present"
                             : doc.status === "rejected"
                             ? "rose"
                             : "late"
@@ -764,6 +742,8 @@ function EmployeeDocuments() {
                       >
                         {doc.status === "verified"
                           ? "✓ Verified"
+                          : doc.status === "fulfilled"
+                          ? "✓ Request Fulfilled"
                           : doc.status === "rejected"
                           ? "✕ Rejected"
                           : "⏳ " + (doc.status || "In Review")}
@@ -783,6 +763,8 @@ function EmployeeDocuments() {
                             hidden
                           />
                         </label>
+                      ) : doc.status === "fulfilled" ? (
+                        <span className="doc-request-fulfilled-note">Uploaded file listed separately</span>
                       ) : (
                         <button
                           type="button"

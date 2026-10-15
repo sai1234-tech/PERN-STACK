@@ -71,6 +71,22 @@ export function updateEmployeeSalary(employeeId, data) {
   return apiRequest(`/payroll/employees/${employeeId}/salary`, { method: "PATCH", body: JSON.stringify(data) });
 }
 
+export function updatePayrollRecord(idOrData, maybeData) {
+  if (maybeData && (typeof idOrData === "string" || typeof idOrData === "number")) {
+    return apiRequest(`/payroll/records/${idOrData}`, {
+      method: "PUT",
+      body: JSON.stringify({ ...maybeData, id: idOrData }),
+    });
+  }
+  const bodyData = maybeData || idOrData;
+  const endpoint = bodyData?.id ? `/payroll/records/${bodyData.id}` : "/payroll/records";
+  return apiRequest(endpoint, {
+    method: "PUT",
+    body: JSON.stringify(bodyData),
+  });
+}
+
+
 export async function downloadRenderedPayslip(element, period) {
   if (!element) {
     throw new Error("The payslip preview is not ready to export.");

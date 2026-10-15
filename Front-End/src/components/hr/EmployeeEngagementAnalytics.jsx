@@ -1,16 +1,8 @@
 import { useState, useEffect } from "react";
 import { getPulseAnalytics } from "../../services/pulseService";
 import Loader from "../common/Loader";
+import { formatPhotoUrl } from "../../utils/photo";
 import "./EmployeeEngagementAnalytics.css";
-
-const formatPhotoUrl = (photo) => {
-  if (!photo || photo.startsWith("blob:")) return photo || "";
-  if (/^https?:\/\//i.test(photo) || photo.startsWith("data:")) return photo;
-  const apiUrl = (String(import.meta.env.VITE_API_URL || "").replace("localhost", "127.0.0.1") || "http://127.0.0.1:5000/api/v1").replace(/\/$/, "");
-  const cleanPhoto = String(photo).replace(/\\/g, "/").replace(/^\/?api(\/v1)?\/?/, "");
-  const baseUrl = apiUrl.replace(/\/api(\/v1)?\/?$/, "");
-  return `${baseUrl}${cleanPhoto.startsWith("/") ? cleanPhoto : `/${cleanPhoto}`}`;
-};
 
 export function EmployeeEngagementAnalytics() {
   const [data, setData] = useState(null);

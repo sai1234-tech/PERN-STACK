@@ -233,9 +233,146 @@
 
 .prof-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
   margin-bottom: 2rem;
+}
+
+.prof-kpi-grid .prof-summary-card {
+  display: flex;
+  min-width: 0;
+  min-height: 228px;
+  flex-direction: column;
+  padding: 1.15rem;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+.prof-kpi-grid .kpi-card-head {
+  min-height: 42px;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.prof-kpi-grid .kpi-title-text {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.prof-kpi-grid .kpi-icon-pod {
+  flex: 0 0 40px;
+}
+
+.prof-summary-facts {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.prof-summary-fact {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.prof-summary-fact-wide {
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.prof-summary-label {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.prof-kpi-grid .prof-summary-value {
+  min-width: 0;
+  flex: 0 1 auto;
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.prof-summary-fact-wide .prof-summary-value {
+  text-align: left;
+}
+
+.prof-summary-fact .kpi-badge-chip {
+  padding: 0.22rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.prof-kpi-grid .kpi-badge-chip {
+  flex: 0 0 auto;
+  line-height: 1.25;
+}
+
+@media (min-width: 1600px) {
+  .prof-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) and (min-width: 601px) {
+  .employee-profile-hub .prof-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .employee-profile-hub .dossier-fields-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .employee-profile-hub .prof-kpi-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .prof-kpi-grid .prof-summary-card {
+    min-height: 200px;
+  }
+
+  .employee-profile-hub .dossier-fields-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+[data-theme="dark"] .employee-profile-hub .prof-kpi-grid .prof-summary-card {
+  border-color: #293548;
+  background: #111827;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .employee-profile-hub .prof-kpi-grid .kpi-title-text,
+[data-theme="dark"] .employee-profile-hub .prof-kpi-grid .kpi-subtext {
+  color: #a8b5c8;
+}
+
+[data-theme="dark"] .employee-profile-hub .prof-kpi-grid .prof-summary-value {
+  color: #f1f5f9;
 }
 
 /* ==========================================================================
@@ -290,7 +427,7 @@
 
 .dossier-sections-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.75rem;
   margin-bottom: 2rem;
 }
@@ -306,6 +443,7 @@
 }
 
 .dossier-section-card {
+  min-width: 0;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
@@ -327,16 +465,21 @@
   border-bottom: 1px solid #f1f5f9;
   flex-wrap: wrap;
   gap: 0.65rem;
+  min-width: 0;
 }
 
 .dossier-head h3 {
+  min-width: 0;
+  flex: 1 1 220px;
   margin: 0;
-  font-size: 1.15rem;
+  font-size: clamp(0.98rem, 1.4vw, 1.15rem);
   font-weight: 800;
   color: #0f172a;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .dossier-head-actions {
@@ -344,6 +487,22 @@
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.employee-profile-hub .meta-pill-tag {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .edit-section-link-btn {
@@ -408,7 +567,7 @@
 
 .dossier-fields-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem 1.75rem;
 }
 
@@ -419,6 +578,7 @@
 }
 
 .dossier-field {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -437,10 +597,12 @@
 }
 
 .dossier-field strong {
+  min-width: 0;
   font-size: 0.94rem;
   font-weight: 700;
   color: #0f172a;
   overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .dossier-field strong.verified {
@@ -480,6 +642,7 @@
   font-size: 0.8rem;
   color: #64748b;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 /* ==========================================================================
@@ -487,12 +650,14 @@
    ========================================================================== */
 
 .prof-skills-cert-container {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
 }
 
 .prof-subsection {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -533,12 +698,13 @@
 
 .cert-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 1rem;
 }
 
 .cert-card-item {
   display: flex;
+  min-width: 0;
   align-items: flex-start;
   gap: 0.85rem;
   background: #f8fafc;
@@ -569,18 +735,21 @@
 }
 
 .cert-details {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
 }
 
 .cert-details strong {
+  overflow-wrap: anywhere;
   font-size: 0.88rem;
   color: #0f172a;
   font-weight: 800;
 }
 
 .cert-details span {
+  overflow-wrap: anywhere;
   font-size: 0.76rem;
   color: #64748b;
 }
@@ -594,7 +763,7 @@
 
 .honor-badges-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 1rem;
 }
 

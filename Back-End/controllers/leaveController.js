@@ -19,6 +19,7 @@ import {
     findEmployeeByCodeOrEmail
 } from "../repositories/employeeRepository.js";
 import { findUserById } from "../repositories/userRepository.js";
+import { provisionEmployeeForUser } from "./authController.js";
 
 // Helper date calculator (excludes Saturdays & Sundays)
 export const calculateLeaveDays = (startDate, endDate) => {
@@ -45,14 +46,20 @@ export const calculateLeaveDays = (startDate, endDate) => {
 const formatLeaveResponse = (leave) => {
     if (!leave) return null;
     return {
+        _id: leave.id,
         id: leave.id,
         employee: {
+            _id: leave.employee_id,
             id: leave.employee_id,
             employeeCode: leave.employee_code || "",
             name: `${leave.employee_first_name || ""} ${leave.employee_last_name || ""}`.trim(),
-            email: leave.employee_email || ""
+            firstName: leave.employee_first_name || "",
+            lastName: leave.employee_last_name || "",
+            email: leave.employee_email || "",
+            reportsTo: leave.reports_to || null
         },
         leaveType: {
+            _id: leave.leave_type_id,
             id: leave.leave_type_id,
             name: leave.leave_type_name || "",
             code: leave.leave_type_code || "",
@@ -65,6 +72,28 @@ const formatLeaveResponse = (leave) => {
         reason: leave.reason,
         status: leave.status,
         appliedAt: leave.applied_at,
+        reportingManager: leave.reporting_manager_first_name ? {
+            name: `${leave.reporting_manager_first_name} ${leave.reporting_manager_last_name || ""}`.trim(),
+            email: leave.reporting_manager_email || ""
+        } : null,
+        assignedHr: {
+            name: `${leave.assigned_hr_first_name || "Lakshmi"} ${leave.assigned_hr_last_name || "Ragula"}`.trim(),
+            email: leave.assigned_hr_email || "lragula@quadratics.com"
+        },
+        managerApprovedBy: leave.manager_approved_by ? {
+            id: leave.manager_approved_by,
+            name: leave.manager_approved_by_name || "Manager",
+            email: leave.manager_approved_by_email || ""
+        } : null,
+        managerApprovedAt: leave.manager_approved_at || null,
+        managerRemarks: leave.manager_remarks || "",
+        hrApprovedBy: leave.hr_approved_by ? {
+            id: leave.hr_approved_by,
+            name: leave.hr_approved_by_name || "HR Admin",
+            email: leave.hr_approved_by_email || ""
+        } : null,
+        hrApprovedAt: leave.hr_approved_at || null,
+        hrRemarks: leave.hr_remarks || "",
         approvedBy: leave.approved_by ? {
             id: leave.approved_by,
             name: leave.approved_by_name || "",
@@ -85,21 +114,7 @@ const ensureEmployeeForUser = async (userId) => {
     if (!employee && userId) {
         const user = await findUserById(userId);
         if (user) {
-            const nameParts = (user.name || "Employee User").trim().split(" ");
-            const firstName = nameParts[0] || "Employee";
-            const lastName = nameParts.slice(1).join(" ") || "User";
-            const empCode = `EMP${String(user.id).padStart(4, "0")}`;
-            try {
-                employee = await createEmployeeRecord({
-                    userId: user.id,
-                    employeeCode: empCode,
-                    firstName,
-                    lastName,
-                    email: user.email
-                });
-            } catch (e) {
-                employee = await findEmployeeByUserId(userId);
-            }
+            employee = await provisionEmployeeForUser(user);
         }
     }
     return employee;
@@ -340,19 +355,26 @@ export const getLeaveBalance = async (req, res) => {
             let userAnnualAllocation = Number(type.annual_allocation || 12);
             const available = Math.max(userAnnualAllocation - used - pending, 0);
 
+            const isSpecialPolicy = type.code === "ML" || type.code === "WFH" || String(type.name).toLowerCase().includes("maternity") || String(type.name).toLowerCase().includes("work from home");
+
             result.push({
                 leaveType: {
                     id: type.id,
                     name: type.name,
                     code: type.code,
                     annualAllocation: userAnnualAllocation,
-                    annual_allocation: userAnnualAllocation
+                    annual_allocation: userAnnualAllocation,
+                    total: userAnnualAllocation,
+                    isSpecial: isSpecialPolicy
                 },
                 annualAllocation: userAnnualAllocation,
                 annual_allocation: userAnnualAllocation,
+                total: userAnnualAllocation,
+                remaining: available,
                 used,
                 pending,
-                available
+                available,
+                isSpecial: isSpecialPolicy
             });
         }
 
@@ -373,9 +395,20 @@ export const getLeaveBalance = async (req, res) => {
 export const getAllLeaves = async (req, res) => {
     try {
         const { status, employee, leaveType, startDate, endDate } = req.query;
+        let reportingManagerId = undefined;
+
+        if (req.user?.role === "manager") {
+            const managerEmp = await findEmployeeByUserId(req.user.userId || req.user.id);
+            if (!managerEmp) {
+                return res.status(200).json({ success: true, count: 0, data: [] });
+            }
+            reportingManagerId = managerEmp.id;
+        }
+
         const leaves = await findAllLeaves({
             status,
             employeeId: employee,
+            reportingManagerId,
             leaveTypeId: leaveType,
             startDate,
             endDate
@@ -400,6 +433,8 @@ export const approveLeave = async (req, res) => {
     try {
         const leaveId = Number(req.params.leaveId);
         const hrUserId = req.user?.userId || req.user?.id;
+        const hrRemarks = req.body?.remarks || req.body?.hrRemarks || "Final approved by HR";
+        const forceOverride = Boolean(req.query?.override === "true" || req.body?.override === true);
         const leave = await findLeaveById(leaveId);
 
         if (!leave) {
@@ -413,6 +448,21 @@ export const approveLeave = async (req, res) => {
             });
         }
 
+        const isPendingManager = ["pending manager", "pending_manager"].includes(
+            String(leave.status || "").toLowerCase()
+        );
+
+        // If employee has a reporting manager and status is still Pending Manager, require manager approval first unless force override
+        if (isPendingManager && leave.reports_to && !forceOverride) {
+            const mgrName = leave.reporting_manager_first_name
+                ? `${leave.reporting_manager_first_name} ${leave.reporting_manager_last_name || ""}`.trim()
+                : "Reporting Manager";
+            return res.status(400).json({
+                success: false,
+                requiresManagerApproval: true,
+                message: `This leave is currently pending review by Reporting Manager (${mgrName}). The manager must approve it first before HR final approval.`
+            });
+        }
 
         const overlapping = await findOverlappingLeave(leave.employee_id, leave.start_date, leave.end_date, leaveId);
         if (overlapping && overlapping.status === "Approved") {
@@ -426,6 +476,7 @@ export const approveLeave = async (req, res) => {
             status: "Approved",
             hr_approved_by: hrUserId,
             hr_approved_at: new Date(),
+            hr_remarks: hrRemarks,
             approved_by: hrUserId,
             approved_at: new Date(),
             rejection_reason: ""

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
+import ExpandableText from "../../components/common/ExpandableText";
 import { usePerformance } from "../../hooks/usePerformance";
 import "./Performance.css";
 
@@ -48,17 +49,18 @@ export default function Performance() {
           {okrs.map(okr => (
             <div key={okr._id} className="okr-card">
               <div className="okr-info">
-                <h4>{okr.objective}</h4>
+                <ExpandableText text={okr.objective} as="h4" />
                 <span className={`status ${okr.result === "Reviewed" ? "reviewed" : ""}`}>{okr.result}</span>
               </div>
               
               <div className="emp-score-box">
                 {okr.score > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <div className="emp-review-summary">
                     <div className="score-badge">Rating: {okr.score}/5</div>
                     {okr.feedback && (
-                      <div className="feedback-badge" style={{ fontSize: '0.85rem', color: '#0f172a', background: '#f1f5f9', padding: '8px', borderRadius: '4px', borderLeft: '3px solid #3b82f6', marginTop: '5px' }}>
-                        <strong>Manager Feedback:</strong> {okr.feedback}
+                    <div className="feedback-badge">
+                        <strong>Manager Feedback:</strong>{" "}
+                        <ExpandableText text={okr.feedback} />
                       </div>
                     )}
                   </div>

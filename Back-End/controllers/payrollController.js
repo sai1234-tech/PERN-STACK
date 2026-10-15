@@ -4,13 +4,17 @@ import {
     findEmployeeByEmail,
     findAllEmployees,
     updateEmployeeRecord,
-    findEmployeeById
+    findEmployeeById,
+    createEmployeeRecord,
 } from "../repositories/employeeRepository.js";
+import { findUserById } from "../repositories/userRepository.js";
 import {
     findPayrollByEmployeeAndMonth,
     upsertPayrollRecord,
     updatePayrollAmounts,
-    findAllPayrollsByMonth
+    findAllPayrollsByMonth,
+    findPayrollById,
+    updatePayrollRecordById
 } from "../repositories/payrollRepository.js";
 
 const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
@@ -75,6 +79,27 @@ const getEmployeeByUser = async (userId, email) => {
         employee = await findEmployeeByEmail(email.trim().toLowerCase());
         if (employee && !employee.user_id) {
             await updateEmployeeRecord(employee.id, { user_id: userId });
+        }
+    }
+
+    if (!employee && userId) {
+        const user = await findUserById(userId);
+        if (user) {
+            const nameParts = (user.name || "Employee User").trim().split(" ");
+            const firstName = nameParts[0] || "Employee";
+            const lastName = nameParts.slice(1).join(" ") || "User";
+            const empCode = `EMP${String(user.id).padStart(4, "0")}`;
+            try {
+                employee = await createEmployeeRecord({
+                    userId: user.id,
+                    employeeCode: empCode,
+                    firstName,
+                    lastName,
+                    email: user.email.toLowerCase().trim()
+                });
+            } catch (e) {
+                employee = await findEmployeeByUserId(userId);
+            }
         }
     }
 
@@ -208,7 +233,7 @@ const buildSalarySummary = (employee, payroll, month = new Date()) => {
         grossSalary: breakdown.monthlyGross,
         netSalary: breakdown.netSalary,
         status: "not_generated",
-        message: "Awaiting payroll run",
+        message: breakdown.monthlyGross > 0 ? "Awaiting payroll run" : "Salary not configured",
         currency: "INR",
     };
 };
@@ -264,7 +289,29 @@ export const viewMySalary = async (req, res) => {
             });
         }
 
-        const payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
+        let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
+
+        if (!payroll) {
+            const empSal = employee?.employment?.salary || employee?.salary;
+            if (empSal && Number(empSal) > 0) {
+                const breakdown = deriveSalaryBreakdown(empSal);
+                const amounts = calculatePayroll({
+                    basicSalary: breakdown.basicSalary,
+                    allowances: breakdown.allowances,
+                    bonus: 0,
+                    tax: breakdown.tax,
+                    pf: breakdown.pf,
+                    deduction: breakdown.deduction,
+                });
+                payroll = await upsertPayrollRecord({
+                    ...amounts,
+                    employeeId: employee.id,
+                    month: monthStr,
+                    generatedBy: employee.user_id || req.user.userId,
+                    status: "generated",
+                });
+            }
+        }
 
         return res.status(200).json({
             success: true,
@@ -306,7 +353,29 @@ export const getMyPayslip = async (req, res, next) => {
             });
         }
 
-        const payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
+        let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
+
+        if (!payroll) {
+            const empSal = employee?.employment?.salary || employee?.salary;
+            if (empSal && Number(empSal) > 0) {
+                const breakdown = deriveSalaryBreakdown(empSal);
+                const amounts = calculatePayroll({
+                    basicSalary: breakdown.basicSalary,
+                    allowances: breakdown.allowances,
+                    bonus: 0,
+                    tax: breakdown.tax,
+                    pf: breakdown.pf,
+                    deduction: breakdown.deduction,
+                });
+                payroll = await upsertPayrollRecord({
+                    ...amounts,
+                    employeeId: employee.id,
+                    month: monthStr,
+                    generatedBy: employee.user_id || req.user.userId,
+                    status: "generated",
+                });
+            }
+        }
 
         if (!payroll) {
             return res.status(200).json({
@@ -575,20 +644,23 @@ export const updateEmployeeSalary = async (req, res, next) => {
         const employee = await updateEmployeeRecord(employeeId, { employment });
 
         const currentMonthStr = parseMonth(new Date().toISOString().slice(0, 7));
-        const existingPayroll = await findPayrollByEmployeeAndMonth(employeeId, currentMonthStr);
+        const breakdown = deriveSalaryBreakdown(annualSalary);
+        const amounts = calculatePayroll({
+            basicSalary: breakdown.basicSalary,
+            allowances: breakdown.allowances,
+            bonus: 0,
+            tax: breakdown.tax,
+            pf: breakdown.pf,
+            deduction: breakdown.deduction,
+        });
 
-        if (existingPayroll) {
-            const breakdown = deriveSalaryBreakdown(annualSalary);
-            const amounts = calculatePayroll({
-                basicSalary: breakdown.basicSalary,
-                allowances: breakdown.allowances,
-                bonus: existingPayroll.bonus || 0,
-                tax: breakdown.tax,
-                pf: breakdown.pf,
-                deduction: breakdown.deduction,
-            });
-            await updatePayrollAmounts(existingPayroll.id, amounts);
-        }
+        await upsertPayrollRecord({
+            ...amounts,
+            employeeId,
+            month: currentMonthStr,
+            generatedBy: req.user?.userId || 1,
+            status: "generated",
+        });
 
         return res.status(200).json({
             success: true,
@@ -642,3 +714,117 @@ export const getPayroll = async (req, res, next) => {
         return next(error);
     }
 };
+
+// =====================================================
+// UPDATE OR UPSERT FULL PAYROLL RECORD (FOR HR)
+// =====================================================
+export const updatePayrollRecord = async (req, res, next) => {
+    try {
+        const id = req.params.id ? Number(req.params.id) : (req.body.id ? Number(req.body.id) : null);
+        let employeeId = Number(
+            req.body.employeeId ||
+            req.body.employee?.id ||
+            req.body.employee?._id ||
+            req.params.employeeId
+        );
+
+        const monthInput = req.body.month || req.query.month;
+        const monthStr = parseMonth(monthInput);
+
+        const basicSalary = Number(req.body.basicSalary ?? 0);
+        const allowances = Number(req.body.allowances ?? 0);
+        const bonus = Number(req.body.bonus ?? 0);
+        const tax = Number(req.body.tax ?? 0);
+        const pf = Number(req.body.pf ?? 0);
+        const deduction = Number(req.body.deduction ?? req.body.otherDeductions ?? 0);
+
+        const grossSalary = req.body.grossSalary !== undefined && req.body.grossSalary !== null && req.body.grossSalary !== ""
+            ? Number(req.body.grossSalary)
+            : roundMoney(basicSalary + allowances + bonus);
+
+        const totalDeductions = req.body.totalDeductions !== undefined && req.body.totalDeductions !== null && req.body.totalDeductions !== ""
+            ? Number(req.body.totalDeductions)
+            : roundMoney(tax + pf + deduction);
+
+        const netSalary = req.body.netSalary !== undefined && req.body.netSalary !== null && req.body.netSalary !== ""
+            ? Number(req.body.netSalary)
+            : roundMoney(grossSalary - totalDeductions);
+
+        const status = req.body.status || "generated";
+
+        let payroll = null;
+
+        if (id && !Number.isNaN(id)) {
+            payroll = await updatePayrollRecordById(id, {
+                basicSalary,
+                allowances,
+                bonus,
+                tax,
+                pf,
+                deduction,
+                grossSalary,
+                totalDeductions,
+                netSalary,
+                status
+            });
+
+            if (payroll && !employeeId) {
+                employeeId = typeof payroll.employee === "object" ? payroll.employee?.id : payroll.employee;
+            }
+        }
+
+        if (!payroll) {
+            if (!employeeId || Number.isNaN(employeeId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "A valid payroll ID or employee ID is required to update payroll",
+                });
+            }
+
+            payroll = await upsertPayrollRecord({
+                employeeId,
+                month: monthStr,
+                basicSalary,
+                allowances,
+                bonus,
+                tax,
+                pf,
+                deduction,
+                grossSalary,
+                totalDeductions,
+                netSalary,
+                generatedBy: req.user.userId,
+                status
+            });
+        }
+
+        if (!payroll) {
+            return res.status(404).json({
+                success: false,
+                message: "Payroll record could not be found or created",
+            });
+        }
+
+        // Synchronize employment salary if needed or requested
+        if (employeeId && grossSalary > 0) {
+            const emp = await findEmployeeById(employeeId);
+            if (emp) {
+                const currentSalary = Number(emp.employment?.salary || 0);
+                if (currentSalary <= 0 || req.body.updateBaseSalary) {
+                    const employment = emp.employment || {};
+                    employment.salary = grossSalary * 12;
+                    await updateEmployeeRecord(employeeId, { employment });
+                }
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Payroll record updated successfully",
+            data: formatPayroll(payroll),
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+

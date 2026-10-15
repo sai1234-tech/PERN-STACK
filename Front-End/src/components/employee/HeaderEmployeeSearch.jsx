@@ -3,9 +3,15 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { normalizeRole } from "../../utils/auth";
-import { getAllEmployees } from "../../services/employeeService";
+import {
+  getAllEmployees,
+  uploadEmployeeProfilePicture,
+  uploadProfilePicture,
+} from "../../services/employeeService";
 import { getAllAttendance } from "../../services/hrService";
-import { WORKFORCE_DIRECTORY } from "../../data/workforceDirectory";
+import { formatDate } from "../../utils/date";
+import { calculateTenure, formatTenure } from "../../utils/tenureUtils";
+import { formatPhotoUrl } from "../../utils/photo";
 import "./HeaderEmployeeSearch.css";
 
 const QUICK_NAVIGATION_COMMANDS = [
@@ -21,9 +27,9 @@ const QUICK_NAVIGATION_COMMANDS = [
 ];
 
 function HeaderEmployeeSearch() {
-  const { user, employee: currentEmployee } = useAuth();
+  const { user, employee: currentEmployee, updateProfilePhoto } = useAuth();
   const navigate = useNavigate();
-  const currentRole = normalizeRole(user);
+  const currentRole = normalizeRole(user, currentEmployee);
   const isHrOrAdmin = currentRole === "hr" || currentRole === "admin";
 
   const [query, setQuery] = useState("");
@@ -31,35 +37,52 @@ function HeaderEmployeeSearch() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedEmp, setSelectedEmp] = useState(null);
   const [copiedContact, setCopiedContact] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   // Real-time backend data
   const [realtimeEmployees, setRealtimeEmployees] = useState([]);
   const [attendanceMap, setAttendanceMap] = useState({});
+  const [workforceError, setWorkforceError] = useState("");
+  const [workforceLoading, setWorkforceLoading] = useState(true);
 
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  const photoInputRef = useRef(null);
 
   // 1. Fetch real-time employees from API
   useEffect(() => {
     let isMounted = true;
     async function fetchRealtimeData() {
       try {
-        const empRes = await getAllEmployees().catch(() => ({ data: [] }));
+        const empRes = await getAllEmployees();
+        if (empRes?.success === false) {
+          throw new Error(empRes.message || "Unable to load the live workforce directory.");
+        }
         const empList = empRes.data || empRes.employees || [];
-        if (isMounted && Array.isArray(empList) && empList.length > 0) {
+        if (!Array.isArray(empList)) {
+          throw new Error("The workforce directory returned an invalid employee list.");
+        }
+        if (isMounted) {
           setRealtimeEmployees(empList);
+          setWorkforceError("");
+          setWorkforceLoading(false);
         }
 
         // If HR/Admin, fetch live attendance statuses
         if (isHrOrAdmin) {
-          const attRes = await getAllAttendance().catch(() => ({ data: [] }));
+          const attRes = await getAllAttendance();
           const attList = attRes.data || attRes.attendance || [];
           if (isMounted && Array.isArray(attList)) {
             const map = {};
             attList.forEach((record) => {
-              const empId = record.employee?._id || record.employeeId || record.employee;
+              const empId =
+                record.employee?.id ||
+                record.employee?._id ||
+                record.employeeId ||
+                record.employee;
               if (empId) {
-                map[empId] = record;
+                map[String(empId)] = record;
               }
             });
             setAttendanceMap(map);
@@ -67,100 +90,122 @@ function HeaderEmployeeSearch() {
         }
       } catch (err) {
         console.error("Real-time workforce search fetch error:", err);
+        if (isMounted) {
+          setWorkforceError(err.message || "Unable to load live workforce data.");
+          setWorkforceLoading(false);
+        }
       }
     }
 
     fetchRealtimeData();
+    const refreshTimer = window.setInterval(fetchRealtimeData, 30000);
+    window.addEventListener("hrms:data_changed", fetchRealtimeData);
     return () => {
       isMounted = false;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("hrms:data_changed", fetchRealtimeData);
     };
   }, [isHrOrAdmin]);
 
-  // 2. Merge backend real-time employees with rich workforce seed directory
+  // Use the backend employee list as the single source of truth.
   const allEmployees = useMemo(() => {
-    const list = [...WORKFORCE_DIRECTORY];
+    const uniqueEmployees = new Map();
+    realtimeEmployees.forEach((apiEmp) => {
+      const id = apiEmp.id ?? apiEmp._id;
+      const code = apiEmp.employeeCode || apiEmp.employeeId || "";
+      const email = (apiEmp.email || "").toLowerCase();
+      const key = email
+        ? `email:${email}`
+        : code
+          ? `code:${code.toUpperCase()}`
+          : id !== undefined
+            ? `id:${id}`
+            : "";
+      if (!key) return;
 
-    if (realtimeEmployees.length > 0) {
-      realtimeEmployees.forEach((apiEmp) => {
-        const code = apiEmp.employeeCode || `QSI-${apiEmp._id?.slice(-4)}`;
-        const existingIdx = list.findIndex(
-          (m) =>
-            m.employeeCode === code ||
-            (apiEmp.email && m.email?.toLowerCase() === apiEmp.email?.toLowerCase())
-        );
+      const reportsToRef = apiEmp.reportsTo;
+      const reportsTo =
+        reportsToRef && typeof reportsToRef === "object"
+          ? reportsToRef.id ?? reportsToRef._id ?? reportsToRef.employeeCode ?? reportsToRef.email ?? null
+          : reportsToRef || null;
+      const department = apiEmp.employment?.department || apiEmp.department || "";
+      const designation = apiEmp.employment?.designation || apiEmp.designation || "";
+      const attendance = attendanceMap[String(id)];
+      const isCheckedIn = Boolean(attendance?.checkIn && !attendance?.checkOut);
 
-        const deptName =
-          apiEmp.employment?.department || apiEmp.department || "Engineering";
-        const designation =
-          apiEmp.employment?.designation || apiEmp.designation || "Staff Specialist";
-        const employmentType =
-          apiEmp.employment?.employmentType || apiEmp.employmentType || "Full Time";
-        const rawStatus = apiEmp.employment?.status || apiEmp.status || "Active";
-
-        // Determine live check-in from attendance map
-        const todayAttendance = attendanceMap[apiEmp._id];
-        const isCheckedIn = !!todayAttendance?.checkIn;
-
-        const dynamicEmp = {
-          id: apiEmp._id || `emp-${code}`,
-          employeeCode: code,
-          name:
-            apiEmp.name ||
-            `${apiEmp.firstName || ""} ${apiEmp.lastName || ""}`.trim() ||
-            "Team Member",
-          firstName: apiEmp.firstName || "Team",
-          lastName: apiEmp.lastName || "Member",
-          designation,
-          department: deptName,
-          band: apiEmp.employment?.band || apiEmp.band || "Not specified",
-          reportsTo: apiEmp.reportsTo?._id || apiEmp.reportsTo || null,
-          reportsToName: typeof apiEmp.reportsTo === "object" && apiEmp.reportsTo !== null
-            ? (apiEmp.reportsTo.name || `${apiEmp.reportsTo.firstName || ""} ${apiEmp.reportsTo.lastName || ""}`.trim())
-            : (apiEmp.reportsTo || "Not assigned"),
-          email: apiEmp.email || "Not provided",
-          phone: apiEmp.phone || "Not provided",
-          status: rawStatus,
-          loginStatus: isCheckedIn ? "Online" : "Active",
-          lastActive: isCheckedIn ? "Checked in today" : "Active Session",
-          location: apiEmp.workLocation || "Not provided",
-          branch: "Hyderabad HQ",
-          workstationPod: "Engineering Pod",
-          shift: "09:30 AM – 06:30 PM (IST)",
-          employmentType,
-          dateOfJoining:
-            apiEmp.employment?.joiningDate || apiEmp.joiningDate || apiEmp.createdAt?.slice(0, 10) || "",
-          experience: "Not recorded",
-          avatarBg: "linear-gradient(135deg, #2563eb, #3b82f6)",
-          summary: `${designation} in ${deptName}`,
-          skills: [
-            "Problem Solving",
-            "Agile Development",
-            "Cross-team Collaboration",
-            deptName,
-            "REST Integration",
-          ],
-        };
-
-        if (existingIdx >= 0) {
-          list[existingIdx] = {
-            ...list[existingIdx],
-            ...dynamicEmp,
-            skills: list[existingIdx].skills || dynamicEmp.skills,
-            summary: list[existingIdx].summary || dynamicEmp.summary,
-            workstationPod: list[existingIdx].workstationPod || dynamicEmp.workstationPod,
-          };
-        } else {
-          list.push(dynamicEmp);
-        }
+      uniqueEmployees.set(key, {
+        id: id ?? key,
+        employeeCode: code,
+        name: apiEmp.name || `${apiEmp.firstName || ""} ${apiEmp.lastName || ""}`.trim() || "Employee",
+        firstName: apiEmp.firstName || "",
+        lastName: apiEmp.lastName || "",
+        designation,
+        department,
+        band: apiEmp.employment?.band || apiEmp.band || "",
+        reportsTo,
+        reportsToName:
+          typeof reportsToRef === "object" && reportsToRef !== null
+            ? reportsToRef.name || `${reportsToRef.firstName || ""} ${reportsToRef.lastName || ""}`.trim()
+            : reportsToRef || "Not assigned",
+        email,
+        phone: apiEmp.phone || apiEmp.personal?.phone || "",
+        status: apiEmp.employment?.status || apiEmp.status || "",
+        loginStatus: isCheckedIn ? "Online" : attendance?.checkIn ? "Present" : "Not checked in",
+        lastActive: isCheckedIn ? "Checked in and on duty" : attendance?.checkIn ? "Checked in today" : "",
+        location:
+          apiEmp.workstationPod ||
+          apiEmp.deskLocation ||
+          apiEmp.employment?.workstationPod ||
+          apiEmp.employment?.deskLocation ||
+          "",
+        branch:
+          apiEmp.branch ||
+          apiEmp.officeBranch ||
+          apiEmp.employment?.officeBranch ||
+          apiEmp.employment?.branch ||
+          apiEmp.workLocation ||
+          apiEmp.work_location ||
+          apiEmp.employment?.workLocation ||
+          apiEmp.address?.city ||
+          "",
+        workstationPod:
+          apiEmp.workstationPod ||
+          apiEmp.deskLocation ||
+          apiEmp.employment?.workstationPod ||
+          apiEmp.employment?.deskLocation ||
+          "",
+        shift: apiEmp.shift || "",
+        employmentType: apiEmp.employment?.employmentType || apiEmp.employmentType || "",
+        dateOfJoining: apiEmp.employment?.joiningDate || apiEmp.joiningDate || "",
+        experience: apiEmp.experience || apiEmp.employment?.experience || "",
+        profilePhoto: apiEmp.profilePhoto || apiEmp.profile_photo || "",
+        avatarBg: "linear-gradient(135deg, #2563eb, #3b82f6)",
+        summary: apiEmp.summary || [designation, department].filter(Boolean).join(" in "),
+        skills: Array.isArray(apiEmp.skills) ? apiEmp.skills : [],
       });
-    }
+    });
+    const list = [...uniqueEmployees.values()];
 
-    // Build direct reports map
+    const employeeLookup = {};
+    list.forEach((employee) => {
+      employeeLookup[String(employee.id)] = employee;
+      if (employee.employeeCode) employeeLookup[employee.employeeCode.toUpperCase()] = employee;
+      if (employee.email) employeeLookup[employee.email.toLowerCase()] = employee;
+    });
+
+    // Build direct reports map from live manager references.
     const reportsMap = {};
     list.forEach((e) => {
       if (e.reportsTo) {
-        if (!reportsMap[e.reportsTo]) reportsMap[e.reportsTo] = [];
-        reportsMap[e.reportsTo].push(e);
+        const managerKey = String(e.reportsTo);
+        const manager =
+          employeeLookup[managerKey] ||
+          employeeLookup[managerKey.toUpperCase()] ||
+          employeeLookup[managerKey.toLowerCase()];
+        if (manager) {
+          if (!reportsMap[String(manager.id)]) reportsMap[String(manager.id)] = [];
+          reportsMap[String(manager.id)].push(e);
+        }
       }
     });
 
@@ -173,8 +218,8 @@ function HeaderEmployeeSearch() {
       return {
         ...e,
         isCurrentUser,
-        directReports: reportsMap[e.id] || [],
-        loginStatus: isCurrentUser ? "Online" : e.loginStatus || "Active",
+        directReports: reportsMap[String(e.id)] || [],
+        loginStatus: isCurrentUser ? "Online" : e.loginStatus,
         lastActive: isCurrentUser ? "Active Now (Current Session)" : e.lastActive,
       };
     });
@@ -298,6 +343,34 @@ function HeaderEmployeeSearch() {
 
   const closeDossier = () => {
     setSelectedEmp(null);
+    setPhotoUploadError("");
+  };
+
+  const handleProfilePhotoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !selectedEmp) return;
+
+    setPhotoUploadError("");
+    setPhotoUploading(true);
+    try {
+      const result = selectedEmp.isCurrentUser
+        ? await uploadProfilePicture(file)
+        : await uploadEmployeeProfilePicture(selectedEmp.id, file);
+      if (!result?.success || !result.profilePhoto) {
+        throw new Error(result?.message || "The profile photo could not be uploaded.");
+      }
+      setSelectedEmp((current) =>
+        current ? { ...current, profilePhoto: result.profilePhoto } : current
+      );
+      if (selectedEmp.isCurrentUser) updateProfilePhoto(result.profilePhoto);
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+    } catch (error) {
+      console.error("Profile photo upload failed:", error);
+      setPhotoUploadError(error.message || "The profile photo could not be uploaded.");
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
   const handleCopyContact = (emp) => {
@@ -488,7 +561,21 @@ function HeaderEmployeeSearch() {
                             className="result-avatar"
                             style={{ background: emp.avatarBg || "linear-gradient(135deg, #1e3a8a, #2563eb)" }}
                           >
-                            <span>{initials}</span>
+                            {emp.profilePhoto && (
+                              <img
+                                className="workforce-result-photo"
+                                src={formatPhotoUrl(emp.profilePhoto)}
+                                alt={`${emp.name} profile`}
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                  const fallback = event.currentTarget.nextElementSibling;
+                                  if (fallback) fallback.style.display = "flex";
+                                }}
+                              />
+                            )}
+                            <span style={{ display: emp.profilePhoto ? "none" : "flex" }}>
+                              {initials}
+                            </span>
                             <span
                               className={`result-status-dot ${getStatusDotClass(emp.loginStatus)}`}
                               title={`Status: ${emp.loginStatus}`}
@@ -523,6 +610,27 @@ function HeaderEmployeeSearch() {
                                     +{emp.skills.length - 4} more
                                   </span>
                                 )}
+                              </div>
+                            )}
+                            {!workforceLoading && filteredEmployees.length === 0 && workforceError && (
+                              <div className="dropdown-section" role="status">
+                                <div className="dropdown-section-title">
+                                  <span>👥 Workforce Directory & Colleagues</span>
+                                </div>
+                                <div className="dropdown-empty-state">
+                                  <h4>Live workforce data unavailable</h4>
+                                  <p>{workforceError}</p>
+                                </div>
+                              </div>
+                            )}
+                            {workforceLoading && filteredEmployees.length === 0 && (
+                              <div className="dropdown-section" role="status">
+                                <div className="dropdown-section-title">
+                                  <span>👥 Workforce Directory & Colleagues</span>
+                                </div>
+                                <div className="dropdown-empty-state">
+                                  <h4>Loading live workforce data…</h4>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -599,19 +707,56 @@ function HeaderEmployeeSearch() {
                 <div className="modal-hero-content">
                   <div className="modal-avatar-frame">
                     <div className="modal-avatar-circle">
-                      {selectedEmp.name
-                        .split(" ")
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map((w) => w[0].toUpperCase())
-                        .join("")}
-                    </div>
-                    <span
-                      className={`modal-live-status-dot ${getStatusDotClass(
-                        selectedEmp.loginStatus
+                        {selectedEmp.profilePhoto ? (
+                          <img
+                            src={formatPhotoUrl(selectedEmp.profilePhoto)}
+                            alt={`${selectedEmp.name} profile`}
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          selectedEmp.name
+                            .split(" ")
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map((w) => w[0].toUpperCase())
+                            .join("")
+                        )}
+                      </div>
+                      {(selectedEmp.isCurrentUser || isHrOrAdmin) && (
+                        <>
+                          <input
+                            ref={photoInputRef}
+                            className="profile-photo-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProfilePhotoUpload}
+                            aria-label="Upload profile photo"
+                          />
+                          <button
+                            type="button"
+                            className="profile-photo-upload-button"
+                            onClick={() => photoInputRef.current?.click()}
+                            disabled={photoUploading}
+                            aria-label={photoUploading ? "Uploading profile photo" : "Upload profile photo"}
+                            title={photoUploading ? "Uploading…" : "Upload profile photo"}
+                          >
+                            {photoUploading ? "…" : "↑"}
+                          </button>
+                        </>
+                      )}
+                      <span
+                        className={`modal-live-status-dot ${getStatusDotClass(
+                          selectedEmp.loginStatus
                       )}`}
                       title={`Real-time Status: ${selectedEmp.loginStatus}`}
                     />
+                    {photoUploadError && (
+                      <span className="profile-photo-upload-error" role="alert">
+                        {photoUploadError}
+                      </span>
+                    )}
                   </div>
 
                   <div className="modal-title-cluster">
@@ -645,7 +790,7 @@ function HeaderEmployeeSearch() {
                           ? "Active Now (Logged in to HRMS)"
                           : selectedEmp.loginStatus === "Away"
                           ? "Away / In Strategic Review"
-                          : "Active Workforce Member"}
+                          : selectedEmp.loginStatus || "Not available"}
                       </strong>
                     </div>
                   </div>
@@ -653,14 +798,14 @@ function HeaderEmployeeSearch() {
                   <div className="telemetry-item">
                     <span className="telemetry-label">Official Work Shift:</span>
                     <strong className="telemetry-text">
-                      {selectedEmp.shift || "09:30 AM – 06:30 PM (IST)"}
+                      {selectedEmp.shift || "Not recorded"}
                     </strong>
                   </div>
 
                   <div className="telemetry-item">
                     <span className="telemetry-label">Employment Status:</span>
                     <strong className="telemetry-text confirmed">
-                      ✓ {selectedEmp.employmentType || "Full Time Permanent"}
+                      {selectedEmp.employmentType || "Not provided"}
                     </strong>
                   </div>
                 </div>
@@ -808,12 +953,12 @@ function HeaderEmployeeSearch() {
                     <div className="location-details-list">
                       <div className="loc-item">
                         <span>Office Branch:</span>
-                        <strong>{selectedEmp.branch || "Hyderabad HQ (Melange Towers)"}</strong>
+                        <strong>{selectedEmp.branch || "Not recorded"}</strong>
                       </div>
 
                       <div className="loc-item">
                         <span>Desk & Pod Location:</span>
-                        <strong>{selectedEmp.location || "Floor 5, Systems Pod 14"}</strong>
+                        <strong>{selectedEmp.workstationPod || "Not recorded"}</strong>
                       </div>
 
                       <div className="loc-item">
@@ -828,7 +973,11 @@ function HeaderEmployeeSearch() {
 
                       <div className="loc-item">
                         <span>Date of Joining:</span>
-                        <strong>{selectedEmp.dateOfJoining} ({selectedEmp.experience || "2+ yrs"})</strong>
+                        <strong>
+                          {formatDate(selectedEmp.dateOfJoining)}
+                          {selectedEmp.dateOfJoining &&
+                            ` (${selectedEmp.experience || formatTenure(calculateTenure(selectedEmp.dateOfJoining))})`}
+                        </strong>
                       </div>
                     </div>
                   </div>

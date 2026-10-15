@@ -4,9 +4,11 @@ import pool from "../config/db.js";
 export const getTeamMemberIds = async (userId, email) => {
     // 1. Find manager employee record
     let managerEmp = null;
+    const cleanEmail = email ? email.trim().toLowerCase() : "";
+    const aliasEmail = (cleanEmail === "vikasguru@gmail.com") ? "gvikas@quadratics.com" : cleanEmail;
     const mgrUserRes = await pool.query(
-        `SELECT * FROM employees WHERE user_id = $1 OR LOWER(email) = LOWER($2) LIMIT 1;`,
-        [userId, email ? email.trim().toLowerCase() : ""]
+        `SELECT * FROM employees WHERE user_id = $1 OR LOWER(email) = LOWER($2) OR LOWER(email) = LOWER($3) LIMIT 1;`,
+        [userId, cleanEmail, aliasEmail]
     );
     if (mgrUserRes.rows.length > 0) {
         managerEmp = mgrUserRes.rows[0];

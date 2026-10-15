@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../../components/auth/AuthLayout";
 import InputField from "../../components/auth/InputField";
-import { setupFirstAdmin } from "../../services/authService";
+import { getFirstAdminSetupStatus, setupFirstAdmin } from "../../services/authService";
 import "./Auth.css";
 
 function AdminSetup() {
@@ -10,7 +10,26 @@ function AdminSetup() {
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [setupState, setSetupState] = useState("");
+  const [checkingSetup, setCheckingSetup] = useState(true);
+  const [setupComplete, setSetupComplete] = useState(false);
+  const [setupCreated, setSetupCreated] = useState(false);
+
+  const checkSetupStatus = async () => {
+    setCheckingSetup(true);
+    setError("");
+    try {
+      const response = await getFirstAdminSetupStatus();
+      setSetupComplete(Boolean(response.setupComplete));
+    } catch (requestError) {
+      setError(requestError.message || "Unable to check administrator setup status.");
+    } finally {
+      setCheckingSetup(false);
+    }
+  };
+
+  useEffect(() => {
+    checkSetupStatus();
+  }, []);
 
   const setField = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -28,10 +47,10 @@ function AdminSetup() {
     try {
       setSaving(true);
       await setupFirstAdmin({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password });
-      setSetupState("created");
+      setSetupCreated(true);
     } catch (requestError) {
       if (requestError.message.includes("already complete")) {
-        setSetupState("already-complete");
+        setSetupComplete(true);
         return;
       }
       setError(requestError.message);
@@ -48,15 +67,22 @@ function AdminSetup() {
       footerLink="/login"
       footerLinkText="Sign in"
     >
-      {setupState ? (
+      {checkingSetup ? (
+        <p role="status">Checking administrator setup status...</p>
+      ) : setupComplete || setupCreated ? (
         <div className="setup-complete">
-          <strong>{setupState === "created" ? "Admin account created." : "Admin setup is already complete."}</strong>
-          <p>{setupState === "created" ? "Your administrator account is ready." : "An administrator account already exists for this workspace."} Sign in to open the admin dashboard.</p>
+          <strong>{setupCreated ? "Admin account created." : "Admin setup is already complete."}</strong>
+          <p>{setupCreated ? "Your administrator account is ready." : "An administrator account already exists for this workspace."} Sign in to open the admin dashboard.</p>
           <button type="button" className="auth-button" onClick={() => navigate("/login")}>Sign in to admin dashboard</button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} noValidate>
           {error && <div className="server-error" role="alert">{error}</div>}
+          {error && (
+            <button type="button" className="auth-button" onClick={checkSetupStatus} disabled={checkingSetup}>
+              Check setup again
+            </button>
+          )}
           <InputField label="Full name" name="name" value={form.name} onChange={setField} placeholder="System Administrator" required autoComplete="name" />
           <InputField label="Admin email" name="email" type="email" value={form.email} onChange={setField} placeholder="admin@company.com" required autoComplete="email" />
           <InputField label="Password" name="password" type="password" value={form.password} onChange={setField} placeholder="At least 6 characters" required minLength={6} autoComplete="new-password" />

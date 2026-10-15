@@ -4,6 +4,8 @@ import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
 import { useTimesheets } from "../../hooks/useTimesheets";
 import { useEmployee } from "../../hooks/useEmployee";
+import { useAttendance } from "../../hooks/useAttendance";
+import { clockOut } from "../../services/attendanceService";
 import { formatDate, formatTime } from "../../utils/date";
 import WeekdayDatePicker from "../../components/common/WeekdayDatePicker";
 import "../../styles/employee/timesheets.css";
@@ -32,6 +34,7 @@ function toLocalDateTime(value) {
 
 function EmployeeTimesheets() {
   const { employee: currentEmp } = useEmployee();
+  const attendanceState = useAttendance();
   const rawJoining = currentEmp?.employment?.joiningDate || currentEmp?.joiningDate || currentEmp?.dateOfJoining || null;
   const joiningDateStr = useMemo(() => {
     if (!rawJoining) return "";
@@ -68,6 +71,7 @@ function EmployeeTimesheets() {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [clockOutBusy, setClockOutBusy] = useState(false);
 
   useEffect(() => {
     if (joiningDateStr && selectedDate < joiningDateStr) {
@@ -109,6 +113,31 @@ function EmployeeTimesheets() {
 
   const selectedDateKey = String(form.date || selectedDate || today).slice(0, 10);
   const isSelectedDateFuture = selectedDateKey > today;
+  const localToday = (() => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  })();
+  const canClockOutFromReconciliation =
+    selectedDateKey === localToday &&
+    activeDayReconciliation.status === "PENDING CLOCKOUT" &&
+    Boolean(activeDayReconciliation.checkIn) &&
+    !activeDayReconciliation.checkOut;
+
+  const handleReconciliationClockOut = async () => {
+    setClockOutBusy(true);
+    setFormError("");
+    setNotice("");
+    try {
+      await clockOut();
+      await Promise.all([reload(selectedDateKey, true), attendanceState.reload(true)]);
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      setNotice("Clock-out recorded. Attendance reconciliation has been refreshed.");
+    } catch (requestError) {
+      setFormError(requestError.message || "Unable to record your clock-out.");
+    } finally {
+      setClockOutBusy(false);
+    }
+  };
 
   const isClockedIn = useMemo(() => {
     if (activeDayReconciliation) {
@@ -477,10 +506,10 @@ function EmployeeTimesheets() {
                     ) : (
                       <div>
                         <div style={{ fontSize: "0.76rem", fontWeight: 800, color: rec.status === "MISMATCH" ? "#e11d48" : rec.status === "MISSING CLOCKOUT" ? "#e11d48" : "#0f766e" }}>
-                          {dayItem.hours.toFixed(1)}h logged
+                          {rec.clockedHours || "0:00"} clocked
                         </div>
                         <div style={{ fontSize: "0.65rem", color: "#64748b" }}>
-                          ({rec.clockedHours || "0:00"} clocked)
+                          {Number(dayItem.hours || 0).toFixed(1)}h timesheet logged
                         </div>
                       </div>
                     )}
@@ -536,17 +565,32 @@ function EmployeeTimesheets() {
               </div>
               <div className="rec-grid-row">
                 <span className="rec-label">Status:</span>
-                <span className={`rec-value bold ${activeDayReconciliation.status === "MISMATCH" ? "text-danger" : "text-success"}`}>
+                <span className={`rec-value bold ${activeDayReconciliation.status === "MISMATCH" || activeDayReconciliation.status === "PENDING CLOCKOUT" ? "text-danger" : "text-success"}`}>
                   {activeDayReconciliation.status}
                 </span>
               </div>
               <div className="rec-grid-row highlight-action">
                 <span className="rec-label">Action:</span>
-                <span className={`rec-value bold-action ${activeDayReconciliation.status === "MISMATCH" ? "action-danger" : "action-success"}`}>
+                <span className={`rec-value bold-action ${activeDayReconciliation.status === "MISMATCH" || activeDayReconciliation.status === "PENDING CLOCKOUT" ? "action-danger" : "action-success"}`}>
                   {activeDayReconciliation.action}
                 </span>
               </div>
             </div>
+            {canClockOutFromReconciliation && (
+              <div className="reconciliation-clockout-action">
+                <p>
+                  Your attendance session is still open. Clock out to complete today’s attendance record.
+                </p>
+                <button
+                  type="button"
+                  className="reconciliation-clockout-button"
+                  onClick={handleReconciliationClockOut}
+                  disabled={clockOutBusy}
+                >
+                  {clockOutBusy ? "Recording clock-out…" : "Clock Out Now"}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

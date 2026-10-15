@@ -3,6 +3,7 @@ import {
   generatePayroll,
   getPayroll,
   updateEmployeeSalary,
+  updatePayrollRecord,
   unwrapPayrollData,
 } from "../services/payrollService";
 import { useSyncRefresh } from "../utils/syncManager";
@@ -47,5 +48,10 @@ export function useHRPayroll(filters) {
     await load(true);
   };
 
-  return { records, loading, error, reload: load, generate, updateSalary };
+  const updateRecord = async (idOrData, maybeData) => {
+    await updatePayrollRecord(idOrData, maybeData);
+    await load(true);
+  };
+
+  return { records, loading, error, reload: load, generate, updateSalary, updateRecord };
 }

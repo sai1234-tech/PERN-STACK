@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
@@ -36,12 +37,13 @@ import { initDepartmentTable } from "./repositories/departmentRepository.js";
 import { initHolidayTable } from "./repositories/holidayRepository.js";
 
 const app = express();
+const backendDir = path.dirname(fileURLToPath(import.meta.url));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static uploaded files
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", express.static(path.join(backendDir, "uploads")));
 
 // Initialize Database Tables
 const initDB = async () => {

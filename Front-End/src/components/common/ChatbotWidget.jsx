@@ -38,9 +38,14 @@ export default function ChatbotWidget() {
     setInput("");
 
     // Process intent
-    setTimeout(() => {
-      const response = processQuery(textToSend);
-      setMessages(prev => [...prev, { sender: "bot", text: response.text, link: response.link, actions: response.actions }]);
+    setTimeout(async () => {
+      try {
+        const response = await processQuery(textToSend);
+        setMessages(prev => [...prev, { sender: "bot", text: response.text, link: response.link, actions: response.actions }]);
+      } catch (error) {
+        console.error("Chatbot failed to process query:", error);
+        setMessages(prev => [...prev, { sender: "bot", text: "I couldn't process that request right now. Please try again." }]);
+      }
     }, 600); // Simulate network latency
   };
 

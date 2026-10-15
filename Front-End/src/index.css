@@ -368,3 +368,144 @@ select option:hover {
   font-weight: 700 !important;
 }
 
+/* ==========================================================================
+   DARK THEME — Global Overrides via [data-theme="dark"]
+   ========================================================================== */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] :root,
+[data-theme="dark"] html,
+[data-theme="dark"] body,
+[data-theme="dark"] #root {
+  background: #0b1120;
+  color: #e2e8f0;
+}
+
+/* Root-level color swap */
+html[data-theme="dark"] {
+  background: #0b1120;
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  background: #0b1120;
+  color: #e2e8f0;
+}
+
+/* Loading Screen */
+[data-theme="dark"] .loading-screen {
+  background: #0b1120;
+  color: #5eead4;
+}
+
+/* Global API Loader */
+[data-theme="dark"] #global-api-loader {
+  background: rgba(11, 17, 32, 0.8);
+}
+
+[data-theme="dark"] .global-api-spinner {
+  border-color: rgba(94, 234, 212, 0.2);
+  border-left-color: #5eead4;
+  border-top-color: #38bdf8;
+}
+
+[data-theme="dark"] .global-api-text {
+  color: #5eead4;
+}
+
+/* Focus Rings */
+[data-theme="dark"] button:focus-visible,
+[data-theme="dark"] input:focus-visible,
+[data-theme="dark"] select:focus-visible,
+[data-theme="dark"] textarea:focus-visible,
+[data-theme="dark"] a:focus-visible {
+  outline-color: rgba(94, 234, 212, 0.35);
+}
+
+/* ── Dark Theme Form Controls ─────────────────────────────── */
+[data-theme="dark"] select,
+[data-theme="dark"] .select-input,
+[data-theme="dark"] .custom-select,
+[data-theme="dark"] .filter-select,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .dropdown-select,
+[data-theme="dark"] .search-select,
+[data-theme="dark"] .modal-select {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2.2' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E") !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="dark"] select:hover,
+[data-theme="dark"] .select-input:hover,
+[data-theme="dark"] .custom-select:hover,
+[data-theme="dark"] .filter-select:hover,
+[data-theme="dark"] .form-select:hover,
+[data-theme="dark"] .dropdown-select:hover,
+[data-theme="dark"] .search-select:hover,
+[data-theme="dark"] .modal-select:hover {
+  border-color: #475569 !important;
+  background-color: #1a2332 !important;
+}
+
+[data-theme="dark"] select:focus,
+[data-theme="dark"] .select-input:focus,
+[data-theme="dark"] .custom-select:focus,
+[data-theme="dark"] .filter-select:focus,
+[data-theme="dark"] .form-select:focus,
+[data-theme="dark"] .dropdown-select:focus,
+[data-theme="dark"] .search-select:focus,
+[data-theme="dark"] .modal-select:focus {
+  border-color: #6366f1 !important;
+  background-color: #1e293b !important;
+  box-shadow: 0 0 0 3.5px rgba(99, 102, 241, 0.2), 0 4px 12px rgba(99, 102, 241, 0.12) !important;
+}
+
+[data-theme="dark"] select option {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] select option:checked,
+[data-theme="dark"] select option:hover {
+  background-color: #312e81 !important;
+  color: #c7d2fe !important;
+}
+
+/* ── Dark Theme Dropdowns ─────────────────────────────────── */
+[data-theme="dark"] .dropdown-menu,
+[data-theme="dark"] .custom-dropdown-menu,
+[data-theme="dark"] .search-dropdown-menu,
+[data-theme="dark"] .notification-dropdown,
+[data-theme="dark"] .select-options-list,
+[data-theme="dark"] .popover-dropdown {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .dropdown-item,
+[data-theme="dark"] .custom-dropdown-item,
+[data-theme="dark"] .select-option-item {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .custom-dropdown-item:hover,
+[data-theme="dark"] .select-option-item:hover {
+  background-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .dropdown-item.active,
+[data-theme="dark"] .custom-dropdown-item.active,
+[data-theme="dark"] .select-option-item.selected {
+  background-color: #312e81 !important;
+  color: #c7d2fe !important;
+}
+

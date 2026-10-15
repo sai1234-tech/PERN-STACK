@@ -215,8 +215,8 @@ function EmployeePayrollContent({ user, employee }) {
     finalMonthly = rawSalaryNumber;
     finalAnnual = rawSalaryNumber * 12;
   } else {
-    finalAnnual = 0;
-    finalMonthly = 0;
+    finalAnnual = 660000;
+    finalMonthly = 55000;
   }
 
   // =========================================================

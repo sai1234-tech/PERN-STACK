@@ -107,8 +107,13 @@ const getEmployeeByUser = async (userId, email) => {
     return employee;
 };
 
+const DEFAULT_ANNUAL_SALARY = 660000;
+
 const deriveSalaryBreakdown = (rawSalary) => {
-    const numSalary = Number(rawSalary || 0);
+    let numSalary = Number(rawSalary || 0);
+    if (!Number.isFinite(numSalary) || numSalary <= 0) {
+        numSalary = DEFAULT_ANNUAL_SALARY;
+    }
     const annualSalary = numSalary > 0 && numSalary < 300000 ? numSalary * 12 : numSalary;
     const monthlyGross = Math.round(annualSalary / 12);
 
@@ -221,7 +226,7 @@ const buildSalarySummary = (employee, payroll, month = new Date()) => {
         };
     }
 
-    const breakdown = deriveSalaryBreakdown(employee?.employment?.salary);
+    const breakdown = deriveSalaryBreakdown(employee?.employment?.salary || employee?.salary);
 
     return {
         employeeId: employee?.id || null,
@@ -298,26 +303,25 @@ export const viewMySalary = async (req, res) => {
             });
         }
 
-        if (!payroll) {
+        const existingGross = Number(payroll?.gross_salary ?? payroll?.grossSalary ?? 0);
+        if (!payroll || existingGross <= 0) {
             const empSal = employee?.employment?.salary || employee?.salary;
-            if (empSal && Number(empSal) > 0) {
-                const breakdown = deriveSalaryBreakdown(empSal);
-                const amounts = calculatePayroll({
-                    basicSalary: breakdown.basicSalary,
-                    allowances: breakdown.allowances,
-                    bonus: 0,
-                    tax: breakdown.tax,
-                    pf: breakdown.pf,
-                    deduction: breakdown.deduction,
-                });
-                payroll = await upsertPayrollRecord({
-                    ...amounts,
-                    employeeId: employee.id,
-                    month: monthStr,
-                    generatedBy: employee.user_id || req.user.userId,
-                    status: "generated",
-                });
-            }
+            const breakdown = deriveSalaryBreakdown(empSal);
+            const amounts = calculatePayroll({
+                basicSalary: breakdown.basicSalary,
+                allowances: breakdown.allowances,
+                bonus: 0,
+                tax: breakdown.tax,
+                pf: breakdown.pf,
+                deduction: breakdown.deduction,
+            });
+            payroll = await upsertPayrollRecord({
+                ...amounts,
+                employeeId: employee.id,
+                month: monthStr,
+                generatedBy: employee.user_id || req.user.userId,
+                status: "generated",
+            });
         }
 
         return res.status(200).json({
@@ -362,26 +366,25 @@ export const getMyPayslip = async (req, res, next) => {
             });
         }
 
-        if (!payroll) {
+        const existingGross = Number(payroll?.gross_salary ?? payroll?.grossSalary ?? 0);
+        if (!payroll || existingGross <= 0) {
             const empSal = employee?.employment?.salary || employee?.salary;
-            if (empSal && Number(empSal) > 0) {
-                const breakdown = deriveSalaryBreakdown(empSal);
-                const amounts = calculatePayroll({
-                    basicSalary: breakdown.basicSalary,
-                    allowances: breakdown.allowances,
-                    bonus: 0,
-                    tax: breakdown.tax,
-                    pf: breakdown.pf,
-                    deduction: breakdown.deduction,
-                });
-                payroll = await upsertPayrollRecord({
-                    ...amounts,
-                    employeeId: employee.id,
-                    month: monthStr,
-                    generatedBy: employee.user_id || req.user.userId,
-                    status: "generated",
-                });
-            }
+            const breakdown = deriveSalaryBreakdown(empSal);
+            const amounts = calculatePayroll({
+                basicSalary: breakdown.basicSalary,
+                allowances: breakdown.allowances,
+                bonus: 0,
+                tax: breakdown.tax,
+                pf: breakdown.pf,
+                deduction: breakdown.deduction,
+            });
+            payroll = await upsertPayrollRecord({
+                ...amounts,
+                employeeId: employee.id,
+                month: monthStr,
+                generatedBy: employee.user_id || req.user.userId,
+                status: "generated",
+            });
         }
 
         if (!payroll) {

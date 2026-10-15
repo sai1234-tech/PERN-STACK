@@ -176,9 +176,15 @@ const formatPayroll = (payroll) => {
     const annualSalary = grossSalary * 12;
 
     const empProfile = typeof payroll.employee === "object" ? payroll.employee : null;
+    const resolvedEmployeeId =
+        payroll.employeeId ||
+        payroll.employee_id ||
+        (empProfile ? (empProfile.id || empProfile._id) : payroll.employee);
 
     return {
+        _id: payroll.id,
         id: payroll.id,
+        employeeId: resolvedEmployeeId,
         employee: empProfile ? formatEmployeeProfile(empProfile) : payroll.employee,
         month: payroll.month,
         annualSalary,
@@ -617,9 +623,22 @@ export const generatePayroll = async (req, res, next) => {
 // =====================================================
 export const updateEmployeeSalary = async (req, res, next) => {
     try {
-        const employeeId = Number(req.params.employeeId);
-        if (!employeeId || Number.isNaN(employeeId)) {
-            return res.status(400).json({ success: false, message: "Invalid employee ID" });
+        const rawParam = req.params.employeeId;
+        const employeeId = Number(rawParam);
+
+        let existingEmp = null;
+        if (employeeId && !Number.isNaN(employeeId)) {
+            existingEmp = await findEmployeeById(employeeId);
+            if (!existingEmp) {
+                existingEmp = await findEmployeeByUserId(employeeId);
+            }
+        }
+        if (!existingEmp && rawParam) {
+            existingEmp = await findEmployeeByCodeOrEmail(String(rawParam));
+        }
+
+        if (!existingEmp) {
+            return res.status(404).json({ success: false, message: "Employee not found" });
         }
 
         const inputSalary = Number(req.body.salary);
@@ -632,32 +651,49 @@ export const updateEmployeeSalary = async (req, res, next) => {
         }
 
         const annualSalary = inputSalary > 0 && inputSalary < 300000 ? inputSalary * 12 : inputSalary;
-
-        const existingEmp = await findEmployeeById(employeeId);
-        if (!existingEmp) {
-            return res.status(404).json({ success: false, message: "Employee not found" });
-        }
+        const resolvedEmpId = existingEmp.id;
 
         const employment = existingEmp.employment || {};
         employment.salary = annualSalary;
 
-        const employee = await updateEmployeeRecord(employeeId, { employment });
+        const employee = await updateEmployeeRecord(resolvedEmpId, { employment });
 
-        const currentMonthStr = parseMonth(new Date().toISOString().slice(0, 7));
-        const breakdown = deriveSalaryBreakdown(annualSalary);
-        const amounts = calculatePayroll({
-            basicSalary: breakdown.basicSalary,
-            allowances: breakdown.allowances,
-            bonus: 0,
-            tax: breakdown.tax,
-            pf: breakdown.pf,
-            deduction: breakdown.deduction,
-        });
+        const targetMonthStr = req.body.month
+            ? parseMonth(req.body.month)
+            : parseMonth(new Date().toISOString().slice(0, 7));
+
+        const existingPayroll = await findPayrollByEmployeeAndMonth(resolvedEmpId, targetMonthStr);
+        const newMonthlyGross = Math.round(annualSalary / 12);
+
+        let amounts;
+        if (existingPayroll && Number(existingPayroll.grossSalary) > 0 && Number(existingPayroll.grossSalary) === newMonthlyGross) {
+            amounts = {
+                basicSalary: Number(existingPayroll.basicSalary),
+                allowances: Number(existingPayroll.allowances),
+                bonus: Number(existingPayroll.bonus || 0),
+                tax: Number(existingPayroll.tax),
+                pf: Number(existingPayroll.pf),
+                deduction: Number(existingPayroll.deduction),
+                grossSalary: newMonthlyGross,
+                totalDeductions: Number(existingPayroll.totalDeductions),
+                netSalary: Number(existingPayroll.netSalary),
+            };
+        } else {
+            const breakdown = deriveSalaryBreakdown(annualSalary);
+            amounts = calculatePayroll({
+                basicSalary: breakdown.basicSalary,
+                allowances: breakdown.allowances,
+                bonus: Number(existingPayroll?.bonus || 0),
+                tax: breakdown.tax,
+                pf: breakdown.pf,
+                deduction: breakdown.deduction,
+            });
+        }
 
         await upsertPayrollRecord({
             ...amounts,
-            employeeId,
-            month: currentMonthStr,
+            employeeId: resolvedEmpId,
+            month: targetMonthStr,
             generatedBy: req.user?.userId || 1,
             status: "generated",
         });

@@ -112,4 +112,55 @@ describe("HR Payroll & Employee Salary Suite", () => {
         // Cleanup
         await pool.query("DELETE FROM employees WHERE employee_code = $1", [empCode]);
     });
+
+    it("updateEmployeeSalary updates salary and syncs payroll record", async () => {
+        const empCode = `TESTSAL${Date.now().toString().slice(-4)}`;
+        const insEmp = await pool.query(
+            `INSERT INTO employees (employee_code, first_name, last_name, email, employment)
+             VALUES ($1, 'Salary', 'Tester', $2, '{"salary": 600000, "status": "Active"}'::jsonb)
+             RETURNING id`,
+            [empCode, `${empCode.toLowerCase()}@test.com`]
+        );
+        const employeeId = insEmp.rows[0].id;
+
+        const { updateEmployeeSalary } = await import("../controllers/payrollController.js");
+        const req = {
+            params: { employeeId: String(employeeId) },
+            body: { salary: 55000, month: "2026-10" },
+            user: { userId: 1, role: "hr" },
+        };
+
+        let resStatus = null;
+        let resData = null;
+        const res = {
+            status: (code) => {
+                resStatus = code;
+                return {
+                    json: (data) => {
+                        resData = data;
+                        return data;
+                    },
+                };
+            },
+        };
+
+        await updateEmployeeSalary(req, res, (err) => {
+            if (err) throw err;
+        });
+
+        assert.equal(resStatus, 200);
+        assert.equal(resData.success, true);
+        assert.equal(resData.data.employment.salary, 660000); // 55000 * 12
+
+        const checkPayroll = await pool.query(
+            "SELECT * FROM payrolls WHERE employee_id = $1 AND month = '2026-10-01'",
+            [employeeId]
+        );
+        assert.equal(checkPayroll.rows.length, 1);
+        assert.equal(Number(checkPayroll.rows[0].gross_salary), 55000);
+
+        // Cleanup
+        await pool.query("DELETE FROM payrolls WHERE employee_id = $1", [employeeId]);
+        await pool.query("DELETE FROM employees WHERE id = $1", [employeeId]);
+    });
 });

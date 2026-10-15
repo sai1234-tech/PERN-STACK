@@ -74,7 +74,12 @@ export async function apiRequest(endpoint, options = {}) {
 
   // If in Standalone Demo Mode (e.g. on Netlify preview with no backend)
   if (isDemo && !normalizedEndpoint.includes("/auth/login")) {
-    return handleDemoApi(normalizedEndpoint, options);
+    const res = handleDemoApi(normalizedEndpoint, options);
+    const m = (options.method || "GET").toUpperCase();
+    if (m !== "GET") {
+      broadcastDataChange(normalizedEndpoint, { method: m, timestamp: Date.now() });
+    }
+    return res;
   }
 
   const headers = buildHeaders(options.headers, options.body instanceof FormData);

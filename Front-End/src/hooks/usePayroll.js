@@ -6,7 +6,7 @@ import {
   updatePayrollRecord,
   unwrapPayrollData,
 } from "../services/payrollService";
-import { useSyncRefresh } from "../utils/syncManager";
+import { useSyncRefresh, broadcastDataChange } from "../utils/syncManager";
 
 function listData(response) {
   const payload = unwrapPayrollData(response, ["payroll", "records", "items"]);
@@ -36,21 +36,24 @@ export function useHRPayroll(filters) {
     load();
   }, [load]);
 
-  useSyncRefresh(load, { interval: 30000, silent: true });
+  useSyncRefresh(load, { interval: 5000, silent: true });
 
   const generate = async (data) => {
     await generatePayroll(data);
     await load(true);
+    broadcastDataChange("payroll");
   };
 
   const updateSalary = async (employeeId, data) => {
     await updateEmployeeSalary(employeeId, data);
     await load(true);
+    broadcastDataChange("payroll");
   };
 
   const updateRecord = async (idOrData, maybeData) => {
     await updatePayrollRecord(idOrData, maybeData);
     await load(true);
+    broadcastDataChange("payroll");
   };
 
   return { records, loading, error, reload: load, generate, updateSalary, updateRecord };

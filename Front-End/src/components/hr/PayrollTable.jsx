@@ -1,6 +1,6 @@
 const money = (value) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(value || 0));
 const employeeName = (record) => `${record.employee?.firstName || record.firstName || ""} ${record.employee?.lastName || record.lastName || ""}`.trim() || record.employee?.name || record.employee?.email || "Employee";
-const employeeId = (record) => record.employee?._id || record.employeeId || record._id;
+const employeeId = (record) => record?.employee?._id || record?.employee?.id || record?.employeeId || record?.id || record?._id;
 const monthlySalary = (record) => Number(record.monthlySalary || record.monthly || record.employee?.monthlySalary || record.employee?.salary || record.employee?.employment?.salary || 0);
 const annualSalary = (record) => Number(record.annualSalary || record.yearlySalary || record.employee?.annualSalary || monthlySalary(record) * 12);
 

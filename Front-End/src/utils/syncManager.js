@@ -14,7 +14,9 @@ export function broadcastDataChange(category = "general", details = {}) {
       detail: { category, details, timestamp },
     });
     window.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent("hrms:data_changed", { detail: { category, details, timestamp } }));
     localStorage.setItem(HRMS_SYNC_EVENT, String(timestamp));
+    localStorage.setItem("hrms_data_last_mutation", String(timestamp));
   } catch {
     // Ignore environments where window/localStorage is unavailable
   }
@@ -112,6 +114,7 @@ export function useSyncRefresh(callback, options = {}) {
 
     window.addEventListener("focus", handleFocus);
     window.addEventListener(HRMS_SYNC_EVENT, handleCustomSync);
+    window.addEventListener("hrms:data_changed", handleCustomSync);
     window.addEventListener("storage", handleStorage);
     document.addEventListener("visibilitychange", handleVisibility);
 
@@ -122,6 +125,7 @@ export function useSyncRefresh(callback, options = {}) {
       isDestroyed = true;
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener(HRMS_SYNC_EVENT, handleCustomSync);
+      window.removeEventListener("hrms:data_changed", handleCustomSync);
       window.removeEventListener("storage", handleStorage);
       document.removeEventListener("visibilitychange", handleVisibility);
       if (timerId) clearTimeout(timerId);

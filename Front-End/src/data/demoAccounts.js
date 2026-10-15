@@ -43,7 +43,7 @@ const KNOWN_ACCOUNTS = {
     department: "Engineering",
     designation: "Software Engineer",
     role: "employee",
-    salary: 600000,
+    salary: 660000,
   },
   "skushangala@quadratics.com": {
     firstName: "SaiKiran",
@@ -215,12 +215,14 @@ export function getDemoFallbackSession(email = "") {
       name: fullName,
       email: cleanEmail || "employee@hrms.com",
       phone: "+91 98000 00000",
+      salary: known?.salary || 660000,
       employment: {
         department: department,
         designation: designation,
         status: "Active",
         employmentType: "Full Time Permanent",
         joiningDate: "2023-01-15",
+        salary: known?.salary || 660000,
       },
     },
   };
@@ -771,18 +773,65 @@ export function handleDemoApi(endpoint, options = {}) {
       const empId = norm.split("/employees/")[1]?.split("/")[0];
       const body = options.body ? JSON.parse(options.body) : {};
       const newSal = Number(body.salary || 0);
+      const b = deriveBreakdown(newSal);
 
       customEmps = customEmps.map((e) => {
         if (String(e._id) === String(empId) || String(e.id) === String(empId) || String(e.employeeCode) === String(empId)) {
           return {
             ...e,
-            salary: newSal,
-            employment: { ...(e.employment || {}), salary: newSal },
+            salary: b.annual,
+            employment: { ...(e.employment || {}), salary: b.annual },
           };
         }
         return e;
       });
       localStorage.setItem("hrms_custom_employees", JSON.stringify(customEmps));
+
+      // Synchronize matching record in customPayrolls
+      const pMonth = body.month || currentPeriod;
+      const updatedPayroll = {
+        _id: `pay-${empId}-${pMonth}`,
+        id: `pay-${empId}-${pMonth}`,
+        employeeId: empId,
+        month: pMonth,
+        basicSalary: b.basic,
+        allowances: b.allow,
+        bonus: 0,
+        tax: b.tax,
+        pf: b.pf,
+        deduction: b.ded,
+        otherDeductions: b.ded,
+        grossSalary: b.monthly,
+        totalDeductions: b.totalDed,
+        netSalary: b.net,
+        status: "generated",
+        generatedAt: new Date().toISOString(),
+        earnings: { basicSalary: b.basic, allowances: b.allow, bonus: 0 },
+        deductions: { tax: b.tax, pf: b.pf, otherDeductions: b.ded },
+      };
+
+      const existingIndex = customPayrolls.findIndex(
+        (p) => String(p.employeeId) === String(empId) && String(p.month).slice(0, 7) === String(pMonth).slice(0, 7)
+      );
+
+      if (existingIndex >= 0) {
+        customPayrolls[existingIndex] = { ...customPayrolls[existingIndex], ...updatedPayroll };
+      } else {
+        customPayrolls.unshift(updatedPayroll);
+      }
+      localStorage.setItem("hrms_custom_payroll", JSON.stringify(customPayrolls));
+
+      // Sync active session employee if it matches this employee
+      try {
+        const storedEmp = JSON.parse(sessionStorage.getItem("hrms_employee") || "null");
+        if (storedEmp && (String(storedEmp.id) === String(empId) || String(storedEmp._id) === String(empId) || String(storedEmp.employeeCode) === String(empId))) {
+          storedEmp.salary = b.annual;
+          if (storedEmp.employment) storedEmp.employment.salary = b.annual;
+          sessionStorage.setItem("hrms_employee", JSON.stringify(storedEmp));
+        }
+      } catch (e) {}
+
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "payroll" } }));
       window.dispatchEvent(new CustomEvent("hrms:data_changed"));
       return { success: true, message: "Salary updated successfully" };
     }

@@ -123,9 +123,16 @@ function EmployeePayrollContent({ user, employee }) {
     {};
 
   const salaryRecord =
-    salary?.salary && typeof salary.salary === "object"
-      ? salary.salary
-      : salary?.compensation || salarySource;
+    (salary?.salary && typeof salary.salary === "object" ? salary.salary : null) ||
+    salary?.compensation ||
+    (salary && typeof salary === "object" && (salary.annualSalary || salary.monthlySalary || salary.grossSalary) ? salary : null) ||
+    (payslip && typeof payslip === "object" && (payslip.annualSalary || payslip.monthlySalary || payslip.grossSalary) ? payslip : null) ||
+    employee?.employment?.salary ||
+    employee?.salary ||
+    employee?.compensation ||
+    user?.salary ||
+    user?.compensation ||
+    {};
 
   const rawAnnualSalary = Number(
     valueOf(salaryRecord, [
@@ -333,17 +340,17 @@ function EmployeePayrollContent({ user, employee }) {
   const rawTds =
     Number(
       valueOf(deductions, ["tds", "incomeTax", "taxWithholding"]) ||
-        valueOf(payslip, ["deduction"]) ||
+        valueOf(payslip, ["tds", "incomeTax"]) ||
         0
-    ) ||
-    Math.max(0, Math.round(displayGrossPay * 0.08));
+    );
   const displayTds = rawTds >= 120000 ? Math.round(rawTds / 12) : rawTds;
 
-  const displayOtherDeductions = Number(
-    valueOf(payslip, ["otherDeductions"]) ||
-      valueOf(deductions, ["otherDeductions", "other"]) ||
+  const rawOtherDed = Number(
+    valueOf(payslip, ["otherDeductions", "deduction"]) ||
+      valueOf(deductions, ["otherDeductions", "deduction", "other"]) ||
       0
   );
+  const displayOtherDeductions = rawOtherDed >= 120000 ? Math.round(rawOtherDed / 12) : rawOtherDed;
 
   const calculatedTotalDeductions =
     displayPf + displayPt + displayTds + displayOtherDeductions;

@@ -14,7 +14,7 @@ const current = new Date();
 const initialPeriod = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;
 const money = (value) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(value || 0));
 const employeeName = (record) => `${record.employee?.firstName || record.firstName || ""} ${record.employee?.lastName || record.lastName || ""}`.trim() || record.employee?.name || record.employee?.email || "Employee";
-const employeeId = (record) => record.employee?._id || record.employeeId || record._id;
+const employeeId = (record) => record?.employee?._id || record?.employee?.id || record?.employeeId || record?.id || record?._id;
 const monthlySalary = (record) => Number(record.monthlySalary || record.monthly || record.employee?.monthlySalary || record.employee?.salary || record.employee?.employment?.salary || 0);
 
 function PayrollManagementContent() {
@@ -55,9 +55,17 @@ function PayrollManagementContent() {
     if (!editing || Number(salary) <= 0) return;
     setActionError("");
     try {
-      await updateSalary(employeeId(editing), { salary: Number(salary), effectiveDate: new Date().toISOString() });
-      setNotice(`Salary updated for ${employeeName(editing)}.`); setEditing(null);
-    } catch (requestError) { setActionError(requestError.message); }
+      const targetEmpId = employeeId(editing);
+      await updateSalary(targetEmpId, {
+        salary: Number(salary),
+        month: period,
+        effectiveDate: new Date().toISOString(),
+      });
+      setNotice(`Salary updated for ${employeeName(editing)}.`);
+      setEditing(null);
+    } catch (requestError) {
+      setActionError(requestError.message);
+    }
   };
 
   const handleOpenEditPayroll = (record) => {

@@ -582,7 +582,8 @@ export const generatePayroll = async (req, res, next) => {
                 continue;
             }
 
-            const breakdown = deriveSalaryBreakdown(employee.employment?.salary);
+            const empSalary = employee.employment?.salary || employee.salary;
+            const breakdown = deriveSalaryBreakdown(empSalary);
 
             const basicSalary = req.body.basicSalary !== undefined ? Number(req.body.basicSalary) : breakdown.basicSalary;
             const allowances = req.body.allowances !== undefined ? Number(req.body.allowances) : breakdown.allowances;
@@ -757,13 +758,25 @@ export const getPayroll = async (req, res, next) => {
 // =====================================================
 export const updatePayrollRecord = async (req, res, next) => {
     try {
-        const id = req.params.id ? Number(req.params.id) : (req.body.id ? Number(req.body.id) : null);
+        const parsedId = Number(req.params.id || req.body.id);
+        const id = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : null;
+
         let employeeId = Number(
             req.body.employeeId ||
             req.body.employee?.id ||
             req.body.employee?._id ||
             req.params.employeeId
         );
+
+        if (!employeeId || Number.isNaN(employeeId)) {
+            const raw = req.body.employeeId || req.params.employeeId || req.body.employee?.employeeCode || req.body.employee?.email || (typeof req.body.employee === "string" ? req.body.employee : null);
+            if (raw) {
+                const found = await findEmployeeByCodeOrEmail(String(raw));
+                if (found) {
+                    employeeId = found.id;
+                }
+            }
+        }
 
         const monthInput = req.body.month || req.query.month;
         const monthStr = parseMonth(monthInput);

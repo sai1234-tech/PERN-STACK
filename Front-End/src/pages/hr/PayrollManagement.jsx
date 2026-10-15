@@ -45,7 +45,12 @@ function PayrollManagementContent() {
 
   const handleGenerate = async () => {
     setGenerating(true); setNotice(""); setActionError("");
-    try { await generate({ month: payrollPeriod(month, year) }); setNotice(`Payroll generated for ${period}.`); }
+    try {
+      await generate({ month: payrollPeriod(month, year) });
+      setNotice(`Payroll generated for ${period}.`);
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "payroll" } }));
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+    }
     catch (requestError) { setActionError(requestError.message); }
     finally { setGenerating(false); }
   };
@@ -63,6 +68,8 @@ function PayrollManagementContent() {
       });
       setNotice(`Salary updated for ${employeeName(editing)}.`);
       setEditing(null);
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "payroll" } }));
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
     } catch (requestError) {
       setActionError(requestError.message);
     }
@@ -162,6 +169,8 @@ function PayrollManagementContent() {
 
       setNotice(`Payroll record and base salary updated successfully for ${employeeName(editingPayroll)}.`);
       setEditingPayroll(null);
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "payroll" } }));
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
     } catch (requestError) {
       setActionError(requestError.message);
     }

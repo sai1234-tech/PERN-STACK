@@ -675,6 +675,71 @@ export function handleDemoApi(endpoint, options = {}) {
       customPayrolls = [];
     }
 
+    let customEmps = [];
+    try {
+      const customEmpsStr = localStorage.getItem("hrms_custom_employees");
+      customEmps = customEmpsStr ? JSON.parse(customEmpsStr) : [];
+    } catch (e) {
+      customEmps = [];
+    }
+
+    const defaultFormatted = WORKFORCE_DIRECTORY.map((emp) => ({
+      _id: emp.id,
+      id: emp.id,
+      employeeCode: emp.employeeCode,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      name: emp.name,
+      email: emp.email,
+      phone: emp.phone,
+      salary: emp.salary || 660000,
+      reportsTo: emp.reportsTo || null,
+      reportsToName: emp.reportsToName || null,
+      employment: {
+        department: emp.department,
+        designation: emp.designation,
+        status: emp.status || "Active",
+        employmentType: emp.employmentType || "Full Time",
+        joiningDate: emp.dateOfJoining,
+        salary: emp.salary || 660000,
+      },
+    }));
+
+    const combinedEmps = [...customEmps];
+    defaultFormatted.forEach((d) => {
+      if (!combinedEmps.some((c) => String(c.id || c._id) === String(d.id) || (c.email && d.email && c.email.toLowerCase() === d.email.toLowerCase()))) {
+        combinedEmps.push(d);
+      }
+    });
+
+    Object.entries(KNOWN_ACCOUNTS).forEach(([accEmail, acc]) => {
+      const exists = combinedEmps.some((c) => c.email && c.email.toLowerCase() === accEmail.toLowerCase());
+      if (!exists) {
+        combinedEmps.push({
+          _id: `acc-${accEmail.replace(/[^a-zA-Z0-9]/g, "-")}`,
+          id: `acc-${accEmail.replace(/[^a-zA-Z0-9]/g, "-")}`,
+          employeeCode: acc.employeeCode || "EMP160",
+          firstName: acc.firstName,
+          lastName: acc.lastName,
+          name: `${acc.firstName} ${acc.lastName}`.trim(),
+          email: accEmail,
+          phone: acc.phone || "+91 98765 43210",
+          salary: acc.salary || 660000,
+          reportsTo: null,
+          employment: {
+            department: acc.department || "Engineering",
+            designation: acc.designation || "Software Engineer",
+            status: "Active",
+            employmentType: "Full Time",
+            joiningDate: acc.joiningDate || "2024-01-15",
+            salary: acc.salary || 660000,
+          },
+        });
+      }
+    });
+
+    customEmps = combinedEmps;
+
     const currentPeriod = new Date().toISOString().slice(0, 7);
 
     const deriveBreakdown = (salaryInput) => {
@@ -900,8 +965,12 @@ export function handleDemoApi(endpoint, options = {}) {
         return record;
       });
 
-      customPayrolls = generated;
+      const otherMonths = customPayrolls.filter(
+        (p) => String(p.month).slice(0, 7) !== String(targetMonth).slice(0, 7)
+      );
+      customPayrolls = [...generated, ...otherMonths];
       localStorage.setItem("hrms_custom_payroll", JSON.stringify(customPayrolls));
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "payroll" } }));
       window.dispatchEvent(new CustomEvent("hrms:data_changed"));
 
       return {
@@ -926,13 +995,22 @@ export function handleDemoApi(endpoint, options = {}) {
       } catch (e) {}
 
       const userEmail = (authUser?.email || "").toLowerCase().trim();
-      const matchedEmp = customEmps.find((e) => e.email?.toLowerCase().trim() === userEmail) || authUser;
+      const matchedEmp = customEmps.find((e) =>
+        (userEmail && e.email?.toLowerCase().trim() === userEmail) ||
+        (authUser?.id && String(e.id || e._id) === String(authUser.id || authUser._id)) ||
+        (authUser?.employeeCode && String(e.employeeCode).toUpperCase() === String(authUser.employeeCode).toUpperCase())
+      ) || authUser;
 
       const requestedMonth = (endpoint.split("month=")[1] || currentPeriod).slice(0, 7);
 
       const existingRecord = customPayrolls.find(
-        (p) => (String(p.employeeId) === String(matchedEmp?._id || matchedEmp?.id) || p.employee?.email === userEmail) &&
-               String(p.month).slice(0, 7) === requestedMonth
+        (p) =>
+          String(p.month).slice(0, 7) === requestedMonth &&
+          (
+            (matchedEmp && (String(p.employeeId) === String(matchedEmp._id || matchedEmp.id) || String(p.employee?.id || p.employee?._id) === String(matchedEmp._id || matchedEmp.id))) ||
+            (userEmail && (p.employee?.email?.toLowerCase() === userEmail || p.email?.toLowerCase() === userEmail)) ||
+            (authUser?.employeeCode && (String(p.employee?.employeeCode).toUpperCase() === String(authUser.employeeCode).toUpperCase() || String(p.employeeCode).toUpperCase() === String(authUser.employeeCode).toUpperCase()))
+          )
       );
 
       if (existingRecord) {
@@ -941,6 +1019,7 @@ export function handleDemoApi(endpoint, options = {}) {
           data: existingRecord,
           payslip: existingRecord,
           payroll: existingRecord,
+          salary: existingRecord,
         };
       }
 
@@ -969,6 +1048,7 @@ export function handleDemoApi(endpoint, options = {}) {
           data: emptyState,
           payslip: emptyState,
           payroll: emptyState,
+          salary: emptyState,
         };
       }
 
@@ -978,6 +1058,8 @@ export function handleDemoApi(endpoint, options = {}) {
         id: `pay-${matchedEmp?._id || "my"}-${requestedMonth}`,
         month: requestedMonth,
         employee: matchedEmp,
+        annualSalary: b.annual,
+        monthlySalary: b.monthly,
         basicSalary: b.basic,
         allowances: b.allow,
         bonus: 0,
@@ -988,8 +1070,8 @@ export function handleDemoApi(endpoint, options = {}) {
         grossSalary: b.monthly,
         totalDeductions: b.totalDed,
         netSalary: b.net,
-        status: "not_generated",
-        message: "Awaiting payroll run",
+        status: "generated",
+        message: "Active salary structure",
         earnings: { basicSalary: b.basic, allowances: b.allow, bonus: 0 },
         deductions: { tax: b.tax, pf: b.pf, otherDeductions: b.ded },
       };
@@ -999,6 +1081,7 @@ export function handleDemoApi(endpoint, options = {}) {
         data: dynamicSummary,
         payslip: dynamicSummary,
         payroll: dynamicSummary,
+        salary: dynamicSummary,
       };
     }
 

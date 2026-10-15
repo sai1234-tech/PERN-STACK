@@ -95,7 +95,7 @@ function numberToWordsINR(amount) {
 
 function EmployeePayrollContent({ user, employee }) {
   const [period, setPeriod] = useState(initialPeriod);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("payslip");
   const [downloading, setDownloading] = useState(false);
   const [actionError, setActionError] = useState("");
   const payslipRef = useRef(null);
@@ -269,9 +269,29 @@ function EmployeePayrollContent({ user, employee }) {
       )
     : "Not Specified";
 
-  const panNumber = profile.pan || profile.panNumber || "N/A";
-  const uanNumber = profile.uan || profile.uanNumber || "N/A";
-  const bankAccount = profile.bankAccount || profile.accountNumber || "N/A";
+  const panNumber =
+    profile.pan ||
+    profile.panNumber ||
+    employee?.pan ||
+    user?.pan ||
+    "N/A";
+
+  const uanNumber =
+    profile.uan ||
+    profile.uanNumber ||
+    profile.pfNumber ||
+    employee?.uan ||
+    user?.uan ||
+    "N/A";
+
+  const bankAccount =
+    profile.banking?.accountNumber
+      ? `${profile.banking.bankName ? `${profile.banking.bankName} - ` : ""}${profile.banking.accountNumber}`
+      : profile.bankAccount ||
+        profile.accountNumber ||
+        (employee?.banking?.accountNumber
+          ? `${employee.banking.bankName ? `${employee.banking.bankName} - ` : ""}${employee.banking.accountNumber}`
+          : "N/A");
 
   // =========================================================
   // PAYSLIP & EARNINGS BREAKDOWN
@@ -680,7 +700,7 @@ function EmployeePayrollContent({ user, employee }) {
             </div>
             <span className="kpi-subtext">
               {hasRealPayslip
-                ? `PF: ${money(displayPf)} • TDS: ${money(displayTds)} • PT: ${money(displayPt)}`
+                ? `PF: ${money(displayPf)} • PT: ${money(displayPt)}${displayTds > 0 ? ` • TDS: ${money(displayTds)}` : ""}${displayOtherDeductions > 0 ? ` • Insurance: ${money(displayOtherDeductions)}` : ""}`
                 : "Deductions calculated upon monthly payroll generation"}
             </span>
           </div>
@@ -764,7 +784,7 @@ function EmployeePayrollContent({ user, employee }) {
             SEGMENTED PORTAL TABS
         ===================================================== */}
         <div className="payroll-nav-wrapper">
-          <div className="payroll-segmented-nav" role="tablist">
+          <div className="payroll-segmented-nav" role="tablist" aria-label="Payroll Sections">
             <button
               type="button"
               role="tab"
@@ -772,7 +792,9 @@ function EmployeePayrollContent({ user, employee }) {
               className={`payroll-tab-btn ${activeTab === "all" ? "active" : ""}`}
               onClick={() => setActiveTab("all")}
             >
-              🌟 Complete View (All Sections)
+              <span className="tab-icon" aria-hidden="true">🌟</span>
+              <span className="tab-label">Complete View</span>
+              <span className="tab-sublabel">(All Sections)</span>
             </button>
 
             <button
@@ -782,7 +804,9 @@ function EmployeePayrollContent({ user, employee }) {
               className={`payroll-tab-btn ${activeTab === "payslip" ? "active" : ""}`}
               onClick={() => setActiveTab("payslip")}
             >
-              📄 Official Payslip & Statement
+              <span className="tab-icon" aria-hidden="true">📄</span>
+              <span className="tab-label">Official Payslip</span>
+              <span className="tab-sublabel">&amp; Statement</span>
             </button>
 
             <button
@@ -792,7 +816,9 @@ function EmployeePayrollContent({ user, employee }) {
               className={`payroll-tab-btn ${activeTab === "ctc" ? "active" : ""}`}
               onClick={() => setActiveTab("ctc")}
             >
-              💼 CTC Architecture & Salary Structure
+              <span className="tab-icon" aria-hidden="true">💼</span>
+              <span className="tab-label">CTC Architecture</span>
+              <span className="tab-sublabel">&amp; Salary Structure</span>
             </button>
 
             <button
@@ -802,7 +828,9 @@ function EmployeePayrollContent({ user, employee }) {
               className={`payroll-tab-btn ${activeTab === "ytd" ? "active" : ""}`}
               onClick={() => setActiveTab("ytd")}
             >
-              📊 Tax Withholding & YTD Analysis
+              <span className="tab-icon" aria-hidden="true">📊</span>
+              <span className="tab-label">Tax Withholding</span>
+              <span className="tab-sublabel">&amp; YTD Analysis</span>
             </button>
           </div>
         </div>
@@ -935,21 +963,27 @@ function EmployeePayrollContent({ user, employee }) {
                     <tbody>
                       <tr>
                         <td>Provident Fund (Employee EPF)</td>
-                        <td className="deduction-text">-{money(displayPf)}</td>
+                        <td className="deduction-text">{displayPf > 0 ? `-${money(displayPf)}` : money(0)}</td>
                       </tr>
                       <tr>
                         <td>Professional Tax (PT)</td>
-                        <td className="deduction-text">-{money(displayPt)}</td>
+                        <td className="deduction-text">{displayPt > 0 ? `-${money(displayPt)}` : money(0)}</td>
                       </tr>
                       <tr>
                         <td>Tax Deducted at Source (TDS)</td>
-                        <td className="deduction-text">-{money(displayTds)}</td>
+                        <td className={displayTds > 0 ? "deduction-text" : ""}>{displayTds > 0 ? `-${money(displayTds)}` : money(0)}</td>
                       </tr>
                       {displayOtherDeductions > 0 && (
-                        <tr>
-                          <td>Other / Insurance Deductions</td>
-                          <td className="deduction-text">-{money(displayOtherDeductions)}</td>
-                        </tr>
+                        <>
+                          <tr>
+                            <td>Group Medical &amp; Health Insurance (GMC)</td>
+                            <td className="deduction-text">-{money(Math.round(displayOtherDeductions * 0.6))}</td>
+                          </tr>
+                          <tr>
+                            <td>Group Term Life &amp; Accident Policy (GPA)</td>
+                            <td className="deduction-text">-{money(displayOtherDeductions - Math.round(displayOtherDeductions * 0.6))}</td>
+                          </tr>
+                        </>
                       )}
                     </tbody>
                     <tfoot>
@@ -981,12 +1015,14 @@ function EmployeePayrollContent({ user, employee }) {
               </div>
 
               {/* In-Words Conversion */}
-              <div className="net-words-row">
-                <strong>Net Amount in Words:</strong> {numberToWordsINR(displayNetPay)}
+              <div className="net-words-wrapper">
+                <div className="net-words-row">
+                  <strong>Net Amount in Words:</strong> {numberToWordsINR(displayNetPay)}
+                </div>
               </div>
 
               {/* Security Stamp & Verification */}
-              <div style={{ padding: "0 2.5rem 1.5rem" }}>
+              <div className="payslip-stamp-wrapper">
                 <div className="payslip-security-stamp">
                   <div className="qr-code-box">🛡️</div>
                   <div className="stamp-text">
@@ -999,33 +1035,33 @@ function EmployeePayrollContent({ user, employee }) {
               </div>
 
               {/* Signatures */}
-              <div className="payslip-signatures-row" style={{ display: "flex", justifyContent: "space-between", marginTop: "4rem" }}>
-                <div className="sign-column" style={{ textAlign: "center", width: "45%" }}>
-                  <div className="digital-signature-box" style={{ padding: "0.5rem", borderBottom: "1px dashed #cbd5e1", marginBottom: "0.5rem", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: "1.8rem", color: "#0f172a", transform: "rotate(-3deg)" }}>
+              <div className="payslip-signatures-row">
+                <div className="sign-column">
+                  <div className="digital-signature-box">
+                    <span className="signature-cursive">
                       {profile.reportsToName || profile.managerName || "HR Manager"}
                     </span>
-                    <div style={{ fontSize: "0.6rem", color: "#166534", background: "#dcfce7", padding: "2px 6px", borderRadius: "4px", marginTop: "4px" }}>
+                    <div className="signature-verified-badge">
                       ✓ DIGITALLY SIGNED
                     </div>
                   </div>
-                  <span style={{ fontWeight: "600", fontSize: "0.9rem" }}>Employer Authorized Signatory</span>
-                  <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                  <span className="signatory-title">Employer Authorized Signatory</span>
+                  <div className="signatory-org">
                     Quadratic Systems Inc
                   </div>
                 </div>
 
-                <div className="sign-column" style={{ textAlign: "center", width: "45%" }}>
-                  <div className="digital-signature-box" style={{ padding: "0.5rem", borderBottom: "1px dashed #cbd5e1", marginBottom: "0.5rem", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                     <span style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: "1.8rem", color: "#0f172a", transform: "rotate(-2deg)" }}>
+                <div className="sign-column">
+                  <div className="digital-signature-box">
+                    <span className="signature-cursive">
                       {employeeName}
                     </span>
-                    <div style={{ fontSize: "0.6rem", color: "#166534", background: "#dcfce7", padding: "2px 6px", borderRadius: "4px", marginTop: "4px" }}>
+                    <div className="signature-verified-badge">
                       ✓ VERIFIED
                     </div>
                   </div>
-                  <span style={{ fontWeight: "600", fontSize: "0.9rem" }}>Employee Signature Acknowledgement</span>
-                  <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                  <span className="signatory-title">Employee Signature Acknowledgement</span>
+                  <div className="signatory-org">
                     {employeeName} ({employeeCode})
                   </div>
                 </div>
@@ -1144,6 +1180,12 @@ function EmployeePayrollContent({ user, employee }) {
                   <strong>{money(Math.round(ctcBasic * 12 * 0.0481))}</strong>
                   <small>4.81% of Basic (Accrued Annually)</small>
                 </div>
+
+                <div className="ctc-tile-box">
+                  <span>Group Health &amp; Term Insurance</span>
+                  <strong>{money((displayOtherDeductions || Math.round(finalMonthly * 0.08)) * 12)}</strong>
+                  <small>{money(displayOtherDeductions || Math.round(finalMonthly * 0.08))} / month (Comprehensive Cover)</small>
+                </div>
               </div>
 
               <div className="tax-advisory-box" style={{ marginTop: "1.75rem" }}>
@@ -1173,7 +1215,7 @@ function EmployeePayrollContent({ user, employee }) {
         ===================================================== */}
         {(activeTab === "all" || activeTab === "ytd") && (
           hasSalaryConfigured || hasRealPayslip ? (
-            <article>
+            <article className="tax-intelligence-card" style={{ marginBottom: "2.5rem" }}>
               <div className="tax-hero-card">
                 <div className="tax-hero-title">
                   <h3>Income Tax & Year-to-Date (YTD) Intelligence</h3>
@@ -1219,6 +1261,18 @@ function EmployeePayrollContent({ user, employee }) {
                   <div className="tax-item-row">
                     <span>Professional Tax Paid YTD</span>
                     <strong>{money(displayPt * 6)}</strong>
+                  </div>
+
+                  {displayOtherDeductions > 0 && (
+                    <div className="tax-item-row">
+                      <span>Group Insurance &amp; Health Policy YTD</span>
+                      <strong>{money(displayOtherDeductions * 6)}</strong>
+                    </div>
+                  )}
+
+                  <div className="tax-item-row">
+                    <span>Total Cumulative Deductions YTD</span>
+                    <strong style={{ color: "#e11d48" }}>{money(displayTotalDeductions * 6)}</strong>
                   </div>
 
                   <div className="tax-item-row">

@@ -152,6 +152,10 @@ const formatEmployeeProfile = (employee) => {
         name: employee.name || `${fName} ${lName}`.trim(),
         email: employee.email || "",
         phone: employee.phone || "",
+        pan: employee.pan || employee.panNumber || "",
+        uan: employee.uan || employee.uanNumber || "",
+        banking: employee.banking || {},
+        bankAccount: employee.banking?.accountNumber || employee.bankAccount || "",
         reportsTo: employee.reports_to || employee.reportsTo || null,
         reportsToName: mgrName,
         employment: {
@@ -361,6 +365,7 @@ export const getMyPayslip = async (req, res, next) => {
 
         const formatted = formatPayroll(payroll);
         if (formatted) {
+            formatted.employee = formatEmployeeProfile(employee);
             formatted.isBeforeJoining = isBeforeJoiningMonth(employee, monthStr);
         }
 

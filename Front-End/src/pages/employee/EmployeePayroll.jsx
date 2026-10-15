@@ -95,7 +95,7 @@ function numberToWordsINR(amount) {
 
 function EmployeePayrollContent({ user, employee }) {
   const [period, setPeriod] = useState(initialPeriod);
-  const [activeTab, setActiveTab] = useState("payslip");
+  const [activeTab, setActiveTab] = useState("all");
   const [downloading, setDownloading] = useState(false);
   const [actionError, setActionError] = useState("");
   const payslipRef = useRef(null);
@@ -503,23 +503,12 @@ function EmployeePayrollContent({ user, employee }) {
     }
   };
 
-  if (loading && !salary && !payslip) {
+  if (loading && !salary && !payslip && !user && !employee) {
     return (
       <>
         <EmployeeHeader />
         <main className="employee-payroll-hub" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
           <Loader label="Loading official payroll records and compensation breakdown..." />
-        </main>
-      </>
-    );
-  }
-
-  if (error && !salary && !payslip) {
-    return (
-      <>
-        <EmployeeHeader />
-        <main className="employee-payroll-hub" style={{ padding: "2rem" }}>
-          <ErrorMessage message={error} onRetry={() => reload(false)} />
         </main>
       </>
     );
@@ -740,42 +729,52 @@ function EmployeePayrollContent({ user, employee }) {
         )}
 
         {/* =====================================================
-            JOINING DATE RESTRICTION NOTICE
+            JOINING DATE RESTRICTION NOTICE (INFORMATIVE BANNER)
         ===================================================== */}
-        {isPeriodBeforeJoining ? (
-          <section className="dash-panel-card" style={{ padding: "2rem", margin: "1.5rem 0", background: "#f8fafc", border: "1px solid #cbd5e1" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
-              <div style={{ fontSize: "2rem" }}>🛑</div>
-              <div>
-                <h3 style={{ margin: "0 0 0.5rem", color: "#0f172a", fontSize: "1.15rem" }}>
-                  Payroll Not Applicable Prior to Date of Joining
-                </h3>
-                <p style={{ margin: "0 0 1rem", color: "#475569", fontSize: "0.92rem", lineHeight: 1.5 }}>
-                  You joined Quadratic Systems on <strong>{joiningYearMonth ? formatPeriod(joiningYearMonth) : "a later date"}</strong>.
-                  Payroll records, monthly payslips, and statutory salary statements are not generated or accessible for pay periods prior to your official date of joining.
-                </p>
-                <div style={{ display: "flex", gap: "0.75rem" }}>
-                  <button
-                    type="button"
-                    className="hero-btn primary"
-                    onClick={() => {
-                      setActionError("");
-                      setPeriod(joiningYearMonth || initialPeriod);
-                    }}
-                  >
-                    Go to Joining Month ({joiningYearMonth ? formatPeriod(joiningYearMonth) : "Current"})
-                  </button>
+        {isPeriodBeforeJoining && (
+          <section className="dash-panel-card" style={{ padding: "1.25rem 1.75rem", margin: "0 0 1.5rem", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <span style={{ fontSize: "1.5rem" }}>ℹ️</span>
+                <div>
+                  <h4 style={{ margin: "0 0 0.25rem", color: "#0f172a", fontSize: "0.95rem" }}>
+                    Historical Pay Period ({formatPeriod(period)})
+                  </h4>
+                  <p style={{ margin: 0, color: "#475569", fontSize: "0.85rem" }}>
+                    This pay cycle precedes your recorded date of joining ({joiningYearMonth ? formatPeriod(joiningYearMonth) : "Current"}). Displaying your active compensation package below.
+                  </p>
                 </div>
               </div>
+              <button
+                type="button"
+                className="hero-btn secondary"
+                style={{ fontSize: "0.82rem", padding: "0.4rem 0.85rem" }}
+                onClick={() => {
+                  setActionError("");
+                  setPeriod(initialPeriod);
+                }}
+              >
+                Jump to Current Cycle ({formatPeriod(initialPeriod)})
+              </button>
             </div>
           </section>
-        ) : (
-          <>
-            {/* =====================================================
-                SEGMENTED PORTAL TABS
-            ===================================================== */}
+        )}
+
+        {/* =====================================================
+            SEGMENTED PORTAL TABS
+        ===================================================== */}
         <div className="payroll-nav-wrapper">
           <div className="payroll-segmented-nav" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "all"}
+              className={`payroll-tab-btn ${activeTab === "all" ? "active" : ""}`}
+              onClick={() => setActiveTab("all")}
+            >
+              🌟 Complete View (All Sections)
+            </button>
+
             <button
               type="button"
               role="tab"
@@ -811,9 +810,9 @@ function EmployeePayrollContent({ user, employee }) {
         {/* =====================================================
             TAB 1: OFFICIAL PAYSLIP & STATEMENT
         ===================================================== */}
-        {activeTab === "payslip" && (
+        {(activeTab === "all" || activeTab === "payslip") && (
           (hasRealPayslip || hasSalaryConfigured) ? (
-            <article className="payslip-modern-card" ref={payslipRef}>
+            <article className="payslip-modern-card" ref={payslipRef} style={{ marginBottom: activeTab === "all" ? "2.5rem" : "0" }}>
               {/* Corporate Header */}
               <div className="payslip-corp-header">
                 <div className="corp-brand-block">
@@ -1060,9 +1059,9 @@ function EmployeePayrollContent({ user, employee }) {
         {/* =====================================================
             TAB 2: CTC ARCHITECTURE & SALARY STRUCTURE
         ===================================================== */}
-        {activeTab === "ctc" && (
+        {(activeTab === "all" || activeTab === "ctc") && (
           hasSalaryConfigured ? (
-            <article className="ctc-structure-card">
+            <article className="ctc-structure-card" style={{ marginBottom: activeTab === "all" ? "2.5rem" : "0" }}>
               <div className="ctc-structure-head">
                 <div>
                   <h2>Annual Compensation Architecture (CTC)</h2>
@@ -1172,7 +1171,7 @@ function EmployeePayrollContent({ user, employee }) {
         {/* =====================================================
             TAB 3: TAX WITHHOLDING & YTD ANALYSIS
         ===================================================== */}
-        {activeTab === "ytd" && (
+        {(activeTab === "all" || activeTab === "ytd") && (
           hasSalaryConfigured || hasRealPayslip ? (
             <article>
               <div className="tax-hero-card">
@@ -1286,8 +1285,6 @@ function EmployeePayrollContent({ user, employee }) {
               </div>
             </section>
           )
-        )}
-          </>
         )}
       </main>
     </>

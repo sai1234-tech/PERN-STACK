@@ -254,7 +254,7 @@ function AppSidebar() {
                 </NavLink>
                 <NavLink to="/employee/payroll" end className="sidebar-nav-link" title="My Compensation & Payslips">
                   <span className="nav-item-icon">💰</span>
-                  {!isCollapsed && <span className="nav-item-label">My Payslips</span>}
+                  {!isCollapsed && <span className="nav-item-label">My Payroll</span>}
                 </NavLink>
                 <NavLink to="/employee/calendar" end className="sidebar-nav-link" title="Corporate Holiday Calendar">
                   <span className="nav-item-icon">🗓️</span>
@@ -351,7 +351,7 @@ function AppSidebar() {
                 </NavLink>
                 <NavLink to="/employee/payroll" end className="sidebar-nav-link" title="My Compensation">
                   <span className="nav-item-icon">💰</span>
-                  {!isCollapsed && <span className="nav-item-label">My Payslips</span>}
+                  {!isCollapsed && <span className="nav-item-label">My Payroll</span>}
                 </NavLink>
                 <NavLink to="/employee/dashboard" end className="sidebar-nav-link" title="My Personal Self-Service Dashboard">
                   <span className="nav-item-icon">👤</span>
@@ -433,6 +433,10 @@ function AppSidebar() {
                 <NavLink to="/employee/documents" end className="sidebar-nav-link" title="My Documents">
                   <span className="nav-item-icon">📁</span>
                   {!isCollapsed && <span className="nav-item-label">My Documents</span>}
+                </NavLink>
+                <NavLink to="/employee/payroll" end className="sidebar-nav-link" title="My Compensation & Payslips">
+                  <span className="nav-item-icon">💰</span>
+                  {!isCollapsed && <span className="nav-item-label">My Payroll</span>}
                 </NavLink>
               </div>
             </>

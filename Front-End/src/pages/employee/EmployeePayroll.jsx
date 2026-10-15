@@ -453,9 +453,10 @@ function EmployeePayrollContent({ user, employee }) {
   }, [joiningDateRaw]);
 
   const isPeriodBeforeJoining = Boolean(
-    payslip?.isBeforeJoining ||
-    salary?.isBeforeJoining ||
-    (joiningYearMonth && period < joiningYearMonth)
+    !hasRealPayslip &&
+      (payslip?.isBeforeJoining ||
+        salary?.isBeforeJoining ||
+        (joiningYearMonth && period < joiningYearMonth))
   );
 
   // Navigation handlers
@@ -501,6 +502,28 @@ function EmployeePayrollContent({ user, employee }) {
       setDownloading(false);
     }
   };
+
+  if (loading && !salary && !payslip) {
+    return (
+      <>
+        <EmployeeHeader />
+        <main className="employee-payroll-hub" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+          <Loader label="Loading official payroll records and compensation breakdown..." />
+        </main>
+      </>
+    );
+  }
+
+  if (error && !salary && !payslip) {
+    return (
+      <>
+        <EmployeeHeader />
+        <main className="employee-payroll-hub" style={{ padding: "2rem" }}>
+          <ErrorMessage message={error} onRetry={() => reload(false)} />
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

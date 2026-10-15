@@ -282,7 +282,9 @@ export const viewMySalary = async (req, res) => {
 
         const monthStr = parseMonth(req.query.month);
 
-        if (isBeforeJoiningMonth(employee, monthStr)) {
+        let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
+
+        if (!payroll && isBeforeJoiningMonth(employee, monthStr)) {
             return res.status(200).json({
                 success: true,
                 data: {
@@ -295,8 +297,6 @@ export const viewMySalary = async (req, res) => {
                 },
             });
         }
-
-        let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
 
         if (!payroll) {
             const empSal = employee?.employment?.salary || employee?.salary;
@@ -346,7 +346,9 @@ export const getMyPayslip = async (req, res, next) => {
                 .json({ success: false, message: "Employee profile not found" });
         }
 
-        if (isBeforeJoiningMonth(employee, monthStr)) {
+        let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
+
+        if (!payroll && isBeforeJoiningMonth(employee, monthStr)) {
             return res.status(200).json({
                 success: true,
                 data: {
@@ -359,8 +361,6 @@ export const getMyPayslip = async (req, res, next) => {
                 },
             });
         }
-
-        let payroll = await findPayrollByEmployeeAndMonth(employee.id, monthStr);
 
         if (!payroll) {
             const empSal = employee?.employment?.salary || employee?.salary;

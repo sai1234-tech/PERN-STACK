@@ -367,7 +367,8 @@
   text-transform: uppercase;
 }
 
-.badge-mismatch {
+.badge-mismatch,
+.badge-absent {
   background: #ffe4e6;
   color: #e11d48;
   border: 1px solid #fecdd3;

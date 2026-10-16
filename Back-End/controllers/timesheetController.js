@@ -43,12 +43,17 @@ const formatDateKey = (dateInput) => {
     return `${year}-${month}-${day}`;
 };
 
-const computeReconciliationData = (attendanceRecord, timesheetHoursSum, standardRequiredHours = 8.0) => {
+const computeReconciliationData = (attendanceRecord, timesheetHoursSum, standardRequiredHours = 8.0, dateStr = null) => {
     let clockedHours = 0;
     let isMissingClockout = false;
     let isPendingClockout = false;
+    const hasClockedIn = Boolean(
+        attendanceRecord &&
+        (attendanceRecord.check_in || attendanceRecord.checkIn || Number(attendanceRecord.working_hours || attendanceRecord.workingHours || 0) > 0) &&
+        attendanceRecord.status !== "absent"
+    );
 
-    if (attendanceRecord) {
+    if (attendanceRecord && hasClockedIn) {
         const workingHours = Number(attendanceRecord.working_hours || attendanceRecord.workingHours || 0);
         const checkIn = attendanceRecord.check_in || attendanceRecord.checkIn;
         const checkOut = attendanceRecord.check_out || attendanceRecord.checkOut;
@@ -77,7 +82,13 @@ const computeReconciliationData = (attendanceRecord, timesheetHoursSum, standard
     let status = "MATCHED";
     let action = "Ready for Submission";
 
-    if (isMissingClockout) {
+    const isPastOrToday = !dateStr || dateStr <= formatDateKey(new Date());
+    const isWorkDay = standardRequiredHours > 0;
+
+    if (!hasClockedIn && isWorkDay && isPastOrToday) {
+        status = "ABSENT";
+        action = "Marked Absent - No Clock-in Recorded";
+    } else if (isMissingClockout) {
         status = "MISSING CLOCKOUT";
         action = "HR Clock-Out Correction Required";
     } else if (isPendingClockout && clockedHours < standardRequiredHours) {
@@ -102,10 +113,10 @@ const computeReconciliationData = (attendanceRecord, timesheetHoursSum, standard
         difference: formatHoursToHHMM(diffDecimal),
         status,
         action,
-        hasAttendance: !!attendanceRecord,
+        hasAttendance: hasClockedIn,
         isMissingClockout,
-        checkIn: attendanceRecord?.check_in || attendanceRecord?.checkIn || null,
-        checkOut: attendanceRecord?.check_out || attendanceRecord?.checkOut || null,
+        checkIn: hasClockedIn ? (attendanceRecord?.check_in || attendanceRecord?.checkIn || null) : null,
+        checkOut: hasClockedIn ? (attendanceRecord?.check_out || attendanceRecord?.checkOut || null) : null,
     };
 };
 
@@ -493,10 +504,15 @@ export const getMyWeek = async (req, res) => {
         const startStr = formatDateKey(start);
         const endStr = formatDateKey(end);
 
-        let timesheets = await findTimesheetsInDateRange(employee.id, startStr, endStr);
+        const [timesheets, attendanceRecords] = await Promise.all([
+            findTimesheetsInDateRange(employee.id, startStr, endStr),
+            findAttendanceHistoryByEmployee(employee.user_id || employee.id),
+        ]);
 
-        // If no timesheets exist for an active or past work week, provision realistic enterprise tasks
-        if (timesheets.length === 0) {
+        let effectiveTimesheets = timesheets;
+
+        // If no timesheets exist for an active or past work week, provision realistic enterprise tasks ONLY if user clocked in
+        if (effectiveTimesheets.length === 0) {
             const todayStr = formatDateKey(new Date());
             if (startStr <= todayStr) {
                 const realisticSchedule = [
@@ -512,6 +528,21 @@ export const getMyWeek = async (req, res) => {
                     taskDate.setDate(start.getDate() + t.dayOffset);
                     const taskDateStr = formatDateKey(taskDate);
                     if (taskDateStr > todayStr) continue;
+
+                    // STRICT RULE: If user has NOT clocked in on taskDateStr, mark as absent and DO NOT autofill!
+                    const dayAttendance = attendanceRecords.find(
+                        (a) => formatDateKey(new Date(a.date)) === taskDateStr
+                    );
+                    const hasClockedIn = Boolean(
+                        dayAttendance &&
+                        (dayAttendance.check_in || dayAttendance.checkIn || Number(dayAttendance.working_hours || dayAttendance.workingHours || 0) > 0) &&
+                        dayAttendance.status !== "absent"
+                    );
+
+                    if (!hasClockedIn) {
+                        // User has not clocked in on this date -> DO NOT AUTOFILL!
+                        continue;
+                    }
 
                     const startTime = `${taskDateStr}T04:00:00.000Z`;
                     const endTime = t.hours === 4.5 ? `${taskDateStr}T09:00:00.000Z` : `${taskDateStr}T12:45:00.000Z`;
@@ -537,11 +568,9 @@ export const getMyWeek = async (req, res) => {
                     }
                 }
 
-                timesheets = await findTimesheetsInDateRange(employee.id, startStr, endStr);
+                effectiveTimesheets = await findTimesheetsInDateRange(employee.id, startStr, endStr);
             }
         }
-
-        const attendanceRecords = await findAttendanceHistoryByEmployee(employee.user_id || employee.id);
 
         const dailyTotals = [];
         for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
@@ -554,7 +583,7 @@ export const getMyWeek = async (req, res) => {
             });
         }
 
-        const entries = timesheets.map((timesheet) => {
+        const entries = effectiveTimesheets.map((timesheet) => {
             const dateKey = formatDateKey(new Date(timesheet.date));
             const dailyTotal = dailyTotals.find((item) => item.date === dateKey);
 
@@ -585,11 +614,12 @@ export const getMyWeek = async (req, res) => {
             dailyTotal.reconciliation = computeReconciliationData(
                 attRecord,
                 dailyTotal.hours,
-                reqHours
+                reqHours,
+                dailyTotal.date
             );
         });
 
-        const totalHours = timesheets.reduce(
+        const totalHours = effectiveTimesheets.reduce(
             (total, item) => total + Number(item.hours || 0),
             0
         );
@@ -690,7 +720,8 @@ export const getAttendanceReconciliation = async (req, res) => {
         const reconciliation = computeReconciliationData(
             attendance,
             timesheetHoursSum,
-            reqHours
+            reqHours,
+            dateStr
         );
 
         return res.status(200).json({

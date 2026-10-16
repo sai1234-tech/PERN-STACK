@@ -289,18 +289,91 @@ function EmployeeTimesheets() {
   const rawEntries = entries || [];
 
   const displayEntries = useMemo(() => {
-    if (rawEntries && rawEntries.length > 0) {
-      return rawEntries;
-    }
-    return DEFAULT_REALISTIC_ENTRIES;
-  }, [rawEntries]);
+    const base = rawEntries && rawEntries.length > 0 ? rawEntries : DEFAULT_REALISTIC_ENTRIES;
+    const attList = attendanceState?.attendance || [];
+
+    // Filter out entries on dates where user was absent / did NOT clock in
+    return base.filter((entry) => {
+      const dStr = String(entry.date || "").slice(0, 10);
+      if (!dStr) return true;
+
+      // 1. Check dailyTotals from timesheets backend
+      if (dailyTotals && dailyTotals.length > 0) {
+        const dMatch = dailyTotals.find((d) => String(d.date).slice(0, 10) === dStr);
+        if (dMatch && dMatch.reconciliation?.status === "ABSENT") {
+          return false;
+        }
+      }
+
+      // 2. Check attendanceState records
+      if (attList.length > 0) {
+        const att = attList.find((a) => String(a.date || "").slice(0, 10) === dStr);
+        if (att) {
+          const clocked = Boolean(
+            (att.check_in || att.checkIn || Number(att.working_hours || att.workingHours || 0) > 0) &&
+            att.status !== "absent"
+          );
+          if (!clocked) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [rawEntries, dailyTotals, attendanceState?.attendance]);
 
   const effectiveDailyTotals = useMemo(() => {
-    if (dailyTotals && dailyTotals.length > 0) {
-      return dailyTotals;
-    }
-    return DEFAULT_DAILY_TOTALS;
-  }, [dailyTotals]);
+    const base = dailyTotals && dailyTotals.length > 0 ? dailyTotals : DEFAULT_DAILY_TOTALS;
+    const attList = attendanceState?.attendance || [];
+
+    return base.map((dayItem) => {
+      const dateKey = String(dayItem.date).slice(0, 10);
+      const parts = dateKey.split("-");
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const isPastOrToday = dateKey <= today;
+
+      // Check attendance for this date
+      let hasClockIn = false;
+      const att = attList.find((a) => String(a.date || "").slice(0, 10) === dateKey);
+      if (att) {
+        hasClockIn = Boolean(
+          (att.check_in || att.checkIn || Number(att.working_hours || att.workingHours || 0) > 0) &&
+          att.status !== "absent"
+        );
+      } else if (dayItem.reconciliation) {
+        hasClockIn = Boolean(
+          (dayItem.reconciliation.checkIn || dayItem.reconciliation.clockedHoursDecimal > 0) &&
+          dayItem.reconciliation.status !== "ABSENT"
+        );
+      }
+
+      // If past/today weekday and NOT clocked in -> Mark as ABSENT and 0 hours (DO NOT autofill)
+      if (!isWeekend && isPastOrToday && !hasClockIn) {
+        return {
+          ...dayItem,
+          hours: 0,
+          entries: 0,
+          reconciliation: {
+            requiredHours: "8:00",
+            clockedHours: "0:00",
+            timesheetHours: "0:00",
+            difference: "0:00",
+            differenceDecimal: 0,
+            status: "ABSENT",
+            action: "Marked Absent - No Clock-in Recorded",
+            hasAttendance: false,
+            checkIn: null,
+            checkOut: null,
+            clockedHoursDecimal: 0,
+          },
+        };
+      }
+
+      return dayItem;
+    });
+  }, [dailyTotals, attendanceState?.attendance, today]);
 
   const activeDayReconciliation = useMemo(() => {
     const selectedKey = String(form.date || selectedDate || today).slice(0, 10);
@@ -317,15 +390,15 @@ function EmployeeTimesheets() {
 
     return {
       requiredHours: "8:00",
-      clockedHours: "4:30",
-      timesheetHours: "4:30",
+      clockedHours: "0:00",
+      timesheetHours: "0:00",
       difference: "0:00",
       differenceDecimal: 0.0,
-      status: "MATCHED",
-      action: "Active Session — In Progress",
-      hasAttendance: true,
-      checkIn: "09:30 AM",
-      clockedHoursDecimal: 4.5,
+      status: "ABSENT",
+      action: "Marked Absent - No Clock-in Recorded",
+      hasAttendance: false,
+      checkIn: null,
+      clockedHoursDecimal: 0,
     };
   }, [effectiveDailyTotals, form.date, selectedDate, reconciliation]);
 
@@ -359,6 +432,7 @@ function EmployeeTimesheets() {
 
   const isClockedIn = useMemo(() => {
     if (activeDayReconciliation) {
+      if (activeDayReconciliation.status === "ABSENT") return false;
       if (activeDayReconciliation.hasAttendance) {
         return !!(activeDayReconciliation.checkIn || activeDayReconciliation.clockedHoursDecimal > 0);
       }
@@ -370,28 +444,23 @@ function EmployeeTimesheets() {
   const pendingEntries = displayEntries.filter(e => ["draft", "rejected"].includes(e.status));
   const submittedEntries = displayEntries.filter(e => ["submitted", "approved"].includes(e.status));
 
-  // Calculated metrics
+  // Calculated metrics: sum only entries for days user clocked in
   const calculatedTotalHours = useMemo(() => {
-    if (totalHours > 0) return totalHours;
     const sum = displayEntries.reduce((acc, curr) => acc + Number(curr.hours || 0), 0);
-    if (sum > 0) return sum;
-    return 36.5;
-  }, [totalHours, displayEntries]);
+    return Number(sum.toFixed(1));
+  }, [displayEntries]);
 
   const draftCount = useMemo(() => {
-    const count = displayEntries.filter((e) => e.status === "draft").length;
-    return count > 0 ? count : (rawEntries.length === 0 ? 1 : 0);
-  }, [displayEntries, rawEntries.length]);
+    return displayEntries.filter((e) => e.status === "draft").length;
+  }, [displayEntries]);
 
   const submittedCount = useMemo(() => {
-    const count = displayEntries.filter((e) => e.status === "submitted").length;
-    return count > 0 ? count : (rawEntries.length === 0 ? 1 : 0);
-  }, [displayEntries, rawEntries.length]);
+    return displayEntries.filter((e) => e.status === "submitted").length;
+  }, [displayEntries]);
 
   const approvedCount = useMemo(() => {
-    const count = displayEntries.filter((e) => e.status === "approved").length;
-    return count > 0 ? count : (rawEntries.length === 0 ? 3 : 0);
-  }, [displayEntries, rawEntries.length]);
+    return displayEntries.filter((e) => e.status === "approved").length;
+  }, [displayEntries]);
 
   const isWeekend = (dateStr) => {
     if (!dateStr) return false;
@@ -730,10 +799,15 @@ function EmployeeTimesheets() {
                       <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#94a3b8" }}>OFF</span>
                     ) : dayItem.date > today ? (
                       <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#94a3b8" }}>UPCOMING</span>
-                    ) : !rec.hasAttendance && !rec.checkIn && (!rec.clockedHoursDecimal || rec.clockedHoursDecimal === 0) ? (
-                      <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#e11d48", background: "#fff1f2", padding: "2px 4px", borderRadius: "4px" }}>
-                        NOT CLOCKED IN
-                      </span>
+                    ) : rec.status === "ABSENT" || (!rec.hasAttendance && !rec.checkIn && (!rec.clockedHoursDecimal || rec.clockedHoursDecimal === 0)) ? (
+                      <div>
+                        <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", padding: "2px 6px", borderRadius: "4px", display: "inline-block" }}>
+                          ABSENT
+                        </span>
+                        <div style={{ fontSize: "0.65rem", color: "#94a3b8", marginTop: "2px" }}>
+                          No clock-in
+                        </div>
+                      </div>
                     ) : (
                       <div>
                         <div style={{ fontSize: "0.76rem", fontWeight: 800, color: rec.status === "MISMATCH" ? "#e11d48" : rec.status === "MISSING CLOCKOUT" ? "#e11d48" : "#0f766e" }}>
@@ -770,7 +844,7 @@ function EmployeeTimesheets() {
                   </span>
                 </div>
               </div>
-              <div className={`rec-status-badge ${activeDayReconciliation.status === "MISMATCH" ? "badge-mismatch" : activeDayReconciliation.status === "PENDING CLOCKOUT" ? "badge-pending" : "badge-matched"}`}>
+              <div className={`rec-status-badge ${activeDayReconciliation.status === "MISMATCH" || activeDayReconciliation.status === "ABSENT" ? "badge-absent" : activeDayReconciliation.status === "PENDING CLOCKOUT" ? "badge-pending" : "badge-matched"}`}>
                 {activeDayReconciliation.status}
               </div>
             </div>
@@ -796,13 +870,13 @@ function EmployeeTimesheets() {
               </div>
               <div className="rec-grid-row">
                 <span className="rec-label">Status:</span>
-                <span className={`rec-value bold ${activeDayReconciliation.status === "MISMATCH" || activeDayReconciliation.status === "PENDING CLOCKOUT" ? "text-danger" : "text-success"}`}>
+                <span className={`rec-value bold ${activeDayReconciliation.status === "MISMATCH" || activeDayReconciliation.status === "PENDING CLOCKOUT" || activeDayReconciliation.status === "ABSENT" ? "text-danger" : "text-success"}`}>
                   {activeDayReconciliation.status}
                 </span>
               </div>
               <div className="rec-grid-row highlight-action">
                 <span className="rec-label">Action:</span>
-                <span className={`rec-value bold-action ${activeDayReconciliation.status === "MISMATCH" || activeDayReconciliation.status === "PENDING CLOCKOUT" ? "action-danger" : "action-success"}`}>
+                <span className={`rec-value bold-action ${activeDayReconciliation.status === "MISMATCH" || activeDayReconciliation.status === "PENDING CLOCKOUT" || activeDayReconciliation.status === "ABSENT" ? "action-danger" : "action-success"}`}>
                   {activeDayReconciliation.action}
                 </span>
               </div>
@@ -881,7 +955,7 @@ function EmployeeTimesheets() {
               </div>
             ) : !isClockedIn ? (
               <div style={{ padding: "0.85rem 1rem", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "10px", color: "#e11d48", fontWeight: 600, fontSize: "0.85rem", marginBottom: "1.25rem" }}>
-                🚫 <strong>Not Clocked In:</strong> You did not clock in for attendance on {form.date || selectedDate}. Timesheet entries cannot be filled until you clock in for attendance on this date.
+                🚫 <strong>Marked Absent:</strong> You did not clock in for attendance on {form.date || selectedDate}. Timesheet entries cannot be filled for days where you are absent.
               </div>
             ) : null}
 

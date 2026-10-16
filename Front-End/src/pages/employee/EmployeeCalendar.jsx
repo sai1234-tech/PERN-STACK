@@ -695,28 +695,29 @@ export default function EmployeeCalendar() {
                     </div>
                   </div>
 
-                  <div className="holiday-cards-grid">
-                    {holidays.length > 0 ? (
-                      holidays.map((h, idx) => {
-                        const d = parseLocalDate(h.date);
-                        const monthShort = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-                        const dayNum = d.getDate();
-                        const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "short" });
-                        const formattedDateStr = d.toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        });
+                  <div className="holiday-cards-scroll-container">
+                    <div className="holiday-cards-grid">
+                      {holidays.length > 0 ? (
+                        holidays.map((h, idx) => {
+                          const d = parseLocalDate(h.date);
+                          const monthShort = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+                          const dayNum = d.getDate();
+                          const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "short" });
+                          const formattedDateStr = d.toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          });
 
-                        return (
-                          <div key={h.id || h._id || idx} className="holiday-list-card">
-                            <div className="holiday-card-date-badge">
-                              <span className="h-month">{monthShort}</span>
-                              <span className="h-day-num">{dayNum}</span>
-                              <span className="h-day">{dayOfWeek}</span>
-                            </div>
-                            <div className="holiday-card-info">
-                              <div className="holiday-card-title-row">
+                          return (
+                            <div key={h.id || h._id || idx} className="holiday-list-card">
+                              <div className="holiday-card-date-badge">
+                                <span className="h-month">{monthShort}</span>
+                                <span className="h-day-num">{dayNum}</span>
+                                <span className="h-day">{dayOfWeek}</span>
+                              </div>
+                              <div className="holiday-card-info">
+                                <div className="holiday-card-title-row">
                                 <h4>{h.title || h.name}</h4>
                                 <span className="h-date">{formattedDateStr}</span>
                               </div>
@@ -741,6 +742,7 @@ export default function EmployeeCalendar() {
                       </div>
                     )}
                   </div>
+                </div>
                 </div>
               )}
             </div>

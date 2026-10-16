@@ -441,6 +441,30 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.upcoming-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.upcoming-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.upcoming-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.upcoming-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .upcoming-item {
@@ -1814,6 +1838,33 @@
   border-radius: 20px;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.holiday-cards-scroll-container {
+  max-height: 650px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 10px 16px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.holiday-cards-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.holiday-cards-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.holiday-cards-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+
+.holiday-cards-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .holiday-cards-grid {

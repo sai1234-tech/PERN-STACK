@@ -186,6 +186,22 @@ export default function EmployeeCalendar() {
     setSelectedDate(now);
   };
 
+  const prevDay = (e) => {
+    e?.preventDefault();
+    const prev = new Date(selectedDate);
+    prev.setDate(prev.getDate() - 1);
+    setSelectedDate(prev);
+    setCurrentDate(prev);
+  };
+
+  const nextDay = (e) => {
+    e?.preventDefault();
+    const next = new Date(selectedDate);
+    next.setDate(next.getDate() + 1);
+    setSelectedDate(next);
+    setCurrentDate(next);
+  };
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -485,24 +501,26 @@ export default function EmployeeCalendar() {
           <div className="calendar-workspace">
             {/* Left Panel: Grid View OR Timeline View */}
             <div className="calendar-grid-panel">
-              <div className="calendar-controls">
-                <div className="calendar-month-title-wrap">
-                  <h2>
-                    {monthNames[month]} <span className="year-highlight">{year}</span>
-                  </h2>
+              {viewMode === "grid" && (
+                <div className="calendar-controls">
+                  <div className="calendar-month-title-wrap">
+                    <h2>
+                      {monthNames[month]} <span className="year-highlight">{year}</span>
+                    </h2>
+                  </div>
+                  <div className="calendar-nav-btns">
+                    <button type="button" onClick={prevMonth} className="nav-btn" title="Previous Month">
+                      &larr; Prev
+                    </button>
+                    <button type="button" onClick={goToToday} className="nav-btn today-btn" title="Go to Today">
+                      Today
+                    </button>
+                    <button type="button" onClick={nextMonth} className="nav-btn" title="Next Month">
+                      Next &rarr;
+                    </button>
+                  </div>
                 </div>
-                <div className="calendar-nav-btns">
-                  <button type="button" onClick={prevMonth} className="nav-btn" title="Previous Month">
-                    &larr; Prev
-                  </button>
-                  <button type="button" onClick={goToToday} className="nav-btn today-btn" title="Go to Today">
-                    Today
-                  </button>
-                  <button type="button" onClick={nextMonth} className="nav-btn" title="Next Month">
-                    Next &rarr;
-                  </button>
-                </div>
-              </div>
+              )}
 
               {viewMode === "grid" ? (
                 /* Month Grid View */
@@ -583,22 +601,37 @@ export default function EmployeeCalendar() {
                 /* Interactive Shift Timeline View */
                 <div className="timeline-view-container">
                   <div className="timeline-view-header">
-                    <h3>
-                      ⏱️ Daily Schedule Timeline for{" "}
-                      {selectedDate.toLocaleDateString("en-IN", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </h3>
-                    <button
-                      type="button"
-                      className="open-planner-btn"
-                      onClick={() => setShowDayDetailModal(true)}
-                    >
-                      🔍 Full Day Planner
-                    </button>
+                    <div className="timeline-header-left">
+                      <h3>⏱️ Daily Schedule Timeline</h3>
+                      <span className="timeline-selected-date-str">
+                        {selectedDate.toLocaleDateString("en-IN", {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <div className="timeline-header-actions">
+                      <div className="timeline-day-nav">
+                        <button type="button" onClick={prevDay} className="nav-btn" title="Previous Day">
+                          &larr; Prev Day
+                        </button>
+                        <button type="button" onClick={goToToday} className="nav-btn today-btn" title="Go to Today">
+                          Today
+                        </button>
+                        <button type="button" onClick={nextDay} className="nav-btn" title="Next Day">
+                          Next Day &rarr;
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="open-planner-btn"
+                        onClick={() => setShowDayDetailModal(true)}
+                      >
+                        🔍 Full Day Planner
+                      </button>
+                    </div>
                   </div>
 
                   <div className="timeline-axis-bar">
@@ -650,18 +683,25 @@ export default function EmployeeCalendar() {
               ) : (
                 /* Corporate Holiday List View */
                 <div className="holiday-list-view-container">
-                  <div className="timeline-view-header">
-                    <h3>🏖️ Official Corporate Holidays ({year})</h3>
-                    <span className="event-duration-pill">
-                      Total: <strong>{holidays.length} Gazetted & Restricted Holidays</strong>
-                    </span>
+                  <div className="holiday-list-header">
+                    <div>
+                      <h3>🏖️ Official Corporate Holidays ({year})</h3>
+                      <p className="holiday-list-subtitle">Annual company declared holidays, gazetted observances, and restricted leaves.</p>
+                    </div>
+                    <div className="holiday-list-stats">
+                      <span className="holiday-count-badge">
+                        Total: <strong>{holidays.length} Holidays</strong>
+                      </span>
+                    </div>
                   </div>
 
                   <div className="holiday-cards-grid">
                     {holidays.length > 0 ? (
                       holidays.map((h, idx) => {
                         const d = parseLocalDate(h.date);
-                        const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
+                        const monthShort = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+                        const dayNum = d.getDate();
+                        const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "short" });
                         const formattedDateStr = d.toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "long",
@@ -671,14 +711,18 @@ export default function EmployeeCalendar() {
                         return (
                           <div key={h.id || h._id || idx} className="holiday-list-card">
                             <div className="holiday-card-date-badge">
-                              <span className="h-day">{dayOfWeek || "Holiday"}</span>
-                              <span className="h-date">{formattedDateStr}</span>
+                              <span className="h-month">{monthShort}</span>
+                              <span className="h-day-num">{dayNum}</span>
+                              <span className="h-day">{dayOfWeek}</span>
                             </div>
                             <div className="holiday-card-info">
-                              <h4>{h.title || h.name}</h4>
+                              <div className="holiday-card-title-row">
+                                <h4>{h.title || h.name}</h4>
+                                <span className="h-date">{formattedDateStr}</span>
+                              </div>
                               <p>{h.description || "Official company holiday"}</p>
                               <div className="holiday-card-tags">
-                                <span className={`holiday-type-pill ${h.type?.toLowerCase() || "gazetted"}`}>
+                                <span className={`holiday-type-pill ${(h.type || "gazetted").toLowerCase().replace(/\s+/g, "-")}`}>
                                   {h.type || "Gazetted"}
                                 </span>
                                 {h.mandatory ? (

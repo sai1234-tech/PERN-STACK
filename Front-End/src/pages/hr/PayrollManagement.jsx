@@ -222,6 +222,24 @@ function PayrollManagementContent() {
             </button>
           </div>
 
+          {/* 👤 Personal & Contact Details Card */}
+          <div className="payroll-employee-personal-card">
+            <div className="payroll-employee-personal-header">
+              <span className="payroll-edit-col-title">👤 Personal & Contact Details</span>
+              <span className="kpi-badge-chip positive" style={{ fontSize: "0.72rem" }}>✓ Active Employee</span>
+            </div>
+            <div className="payroll-employee-personal-grid">
+              <div><span>Employee Name</span> <strong>{employeeName(editingPayroll)}</strong></div>
+              <div><span>Employee ID</span> <strong>{editingPayroll.employee?.employeeCode || editingPayroll.employeeCode || editingPayroll.employee?.id || "N/A"}</strong></div>
+              <div><span>Corporate Email</span> <strong>{editingPayroll.employee?.email || editingPayroll.email || "N/A"}</strong></div>
+              <div><span>Contact Phone</span> <strong>{editingPayroll.employee?.phone || editingPayroll.phone || "N/A"}</strong></div>
+              <div><span>Department</span> <strong>{editingPayroll.employee?.employment?.department || editingPayroll.department || "Engineering"}</strong></div>
+              <div><span>Designation</span> <strong>{editingPayroll.employee?.employment?.designation || editingPayroll.designation || "Staff"}</strong></div>
+              <div><span>PAN Number</span> <strong>{editingPayroll.employee?.pan || editingPayroll.pan || "N/A"}</strong></div>
+              <div><span>Bank & Account</span> <strong>{editingPayroll.employee?.bankAccount || editingPayroll.bankAccount || (editingPayroll.employee?.banking?.accountNumber ? `${editingPayroll.employee?.banking?.bankName ? `${editingPayroll.employee?.banking?.bankName} - ` : ""}${editingPayroll.employee?.banking?.accountNumber}` : "N/A")}</strong></div>
+            </div>
+          </div>
+
           <div className="payroll-edit-grid">
             <div className="payroll-edit-col">
               <h4 className="payroll-edit-col-title">Earnings components (₹)</h4>

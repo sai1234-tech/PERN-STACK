@@ -100,6 +100,17 @@ function EmployeePayrollContent({ user, employee }) {
   const [actionError, setActionError] = useState("");
   const payslipRef = useRef(null);
 
+  // Personal & Contact Details Modal State
+  const [showPersonalModal, setShowPersonalModal] = useState(false);
+  const [personalNotice, setPersonalNotice] = useState("");
+  const [savingPersonal, setSavingPersonal] = useState(false);
+  const [personalForm, setPersonalForm] = useState({
+    phone: "",
+    personalEmail: "",
+    altPhone: "",
+    address: "",
+  });
+
   const [year, month] = period.split("-");
 
   const {
@@ -224,6 +235,53 @@ function EmployeePayrollContent({ user, employee }) {
   // =========================================================
 
   const profile = payslip?.employee || employee || user || {};
+
+  // Sync personal form when modal opens or profile loads
+  useEffect(() => {
+    let saved = {};
+    try {
+      const stored = localStorage.getItem("hrms_employee_profile_edits");
+      if (stored) saved = JSON.parse(stored);
+    } catch {}
+    setPersonalForm({
+      phone: saved.phone || profile.phone || user?.phone || "",
+      personalEmail: saved.personalEmail || profile.personalEmail || user?.personalEmail || "",
+      altPhone: saved.altPhone || profile.altPhone || "",
+      address: saved.address || profile.address || user?.address || "",
+    });
+  }, [profile, user, showPersonalModal]);
+
+  const handleSavePersonalModal = (e) => {
+    e.preventDefault();
+    setSavingPersonal(true);
+    try {
+      let existing = {};
+      try {
+        const stored = localStorage.getItem("hrms_employee_profile_edits");
+        if (stored) existing = JSON.parse(stored);
+      } catch {}
+
+      const updated = {
+        ...existing,
+        phone: personalForm.phone.trim(),
+        personalEmail: personalForm.personalEmail.trim(),
+        altPhone: personalForm.altPhone.trim(),
+        address: personalForm.address.trim(),
+      };
+      localStorage.setItem("hrms_employee_profile_edits", JSON.stringify(updated));
+      setPersonalNotice("Personal & Contact Details updated successfully!");
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "profile" } }));
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      setTimeout(() => {
+        setPersonalNotice("");
+        setShowPersonalModal(false);
+      }, 900);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingPersonal(false);
+    }
+  };
 
   const employeeName =
     profile.name ||
@@ -864,6 +922,19 @@ function EmployeePayrollContent({ user, employee }) {
                 </div>
               </div>
 
+              {/* Employee Metadata Header */}
+              <div className="payslip-meta-header">
+                <span className="payslip-meta-heading-title">👤 Personal & Contact Details</span>
+                <button
+                  type="button"
+                  className="payslip-edit-link-btn"
+                  onClick={() => setShowPersonalModal(true)}
+                  title="View and edit personal and contact details"
+                >
+                  ✏️ Edit
+                </button>
+              </div>
+
               {/* Employee Metadata Grid */}
               <div className="payslip-meta-grid">
                 <div className="payslip-meta-item">
@@ -1343,6 +1414,156 @@ function EmployeePayrollContent({ user, employee }) {
               </div>
             </section>
           )
+        )}
+
+        {/* =====================================================
+            👤 PERSONAL & CONTACT DETAILS EDIT MODAL
+        ===================================================== */}
+        {showPersonalModal && (
+          <div
+            className="payroll-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowPersonalModal(false);
+            }}
+          >
+            <div
+              className="payroll-modal edit-payroll-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Personal and Contact Details"
+            >
+              <div className="payroll-modal-heading">
+                <div>
+                  <span className="page-kicker">Employee Dossier</span>
+                  <h2>👤 Personal & Contact Details</h2>
+                  <p>{employeeName} · {employeeCode || "Official Profile"}</p>
+                </div>
+                <button
+                  type="button"
+                  className="modal-close"
+                  aria-label="Close dialog"
+                  onClick={() => setShowPersonalModal(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePersonalModal} style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ margin: "1rem 1.75rem 0.25rem", padding: "0.85rem 1.15rem", background: "#fffbeb", border: "1px solid #fef3c7", borderRadius: "10px", fontSize: "0.82rem", color: "#92400e", lineHeight: 1.45 }}>
+                  <strong style={{ color: "#78350f" }}>🔒 Statutory Payroll Records Protected:</strong> Name, ID, PAN, Bank Details, and Department are verified by Quadratic HR & Payroll. Contact credentials can be updated below.
+                </div>
+
+                {personalNotice && (
+                  <div style={{ margin: "0.75rem 1.75rem 0", padding: "0.75rem 1rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", color: "#166534", fontSize: "0.85rem", fontWeight: "600" }}>
+                    ✓ {personalNotice}
+                  </div>
+                )}
+
+                <div className="payroll-edit-grid" style={{ paddingBottom: "1rem" }}>
+                  <div className="payroll-edit-col">
+                    <h4 className="payroll-edit-col-title">Identity & Work Placement</h4>
+                    <div className="payroll-edit-field">
+                      <label>Full Legal Name</label>
+                      <input type="text" disabled value={employeeName} style={{ background: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }} />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label>Employee ID / Code</label>
+                      <input type="text" disabled value={employeeCode} style={{ background: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }} />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label>Corporate Work Email</label>
+                      <input type="email" disabled value={employeeEmail} style={{ background: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }} />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label>Department & Designation</label>
+                      <input type="text" disabled value={`${department} · ${designation}`} style={{ background: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }} />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label>Date of Joining</label>
+                      <input type="text" disabled value={dateOfJoining} style={{ background: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }} />
+                    </div>
+                  </div>
+
+                  <div className="payroll-edit-col">
+                    <h4 className="payroll-edit-col-title">Personal Contact Credentials</h4>
+                    <div className="payroll-edit-field">
+                      <label htmlFor="p-phone">Mobile Phone</label>
+                      <input
+                        id="p-phone"
+                        type="tel"
+                        value={personalForm.phone}
+                        onChange={(e) => setPersonalForm({ ...personalForm, phone: e.target.value })}
+                        placeholder="+91 98765 43210"
+                      />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label htmlFor="p-email">Personal Email Address</label>
+                      <input
+                        id="p-email"
+                        type="email"
+                        value={personalForm.personalEmail}
+                        onChange={(e) => setPersonalForm({ ...personalForm, personalEmail: e.target.value })}
+                        placeholder="name@personal.com"
+                      />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label htmlFor="p-altphone">Alternate Phone</label>
+                      <input
+                        id="p-altphone"
+                        type="tel"
+                        value={personalForm.altPhone}
+                        onChange={(e) => setPersonalForm({ ...personalForm, altPhone: e.target.value })}
+                        placeholder="+91 ..."
+                      />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label>PAN / Bank Reference</label>
+                      <input type="text" disabled value={`PAN: ${panNumber} | Bank: ${bankAccount}`} style={{ background: "#f1f5f9", color: "#64748b", cursor: "not-allowed", fontSize: "0.82rem" }} />
+                    </div>
+                    <div className="payroll-edit-field">
+                      <label htmlFor="p-address">Residential Address</label>
+                      <input
+                        id="p-address"
+                        type="text"
+                        value={personalForm.address}
+                        onChange={(e) => setPersonalForm({ ...personalForm, address: e.target.value })}
+                        placeholder="Current residential city / address"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-actions" style={{ padding: "1rem 1.75rem 1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem", borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    type="button"
+                    className="quiet-action"
+                    onClick={() => setShowPersonalModal(false)}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingPersonal}
+                    style={{
+                      height: "44px",
+                      padding: "0 1.5rem",
+                      border: 0,
+                      borderRadius: "10px",
+                      background: "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",
+                      color: "#ffffff",
+                      fontSize: "0.88rem",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(13, 148, 136, 0.3)",
+                    }}
+                  >
+                    {savingPersonal ? "Saving..." : "💾 Save Contact Details"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </main>
     </>

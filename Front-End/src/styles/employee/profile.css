@@ -965,6 +965,34 @@
   color: #0f172a;
 }
 
+.read-only-field-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.form-input-disabled {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+  border-color: #e2e8f0 !important;
+  font-weight: 600;
+  padding-right: 110px !important;
+}
+
+.field-tag-badge {
+  position: absolute;
+  right: 8px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .edit-modal-footer {
   display: flex;
   align-items: center;

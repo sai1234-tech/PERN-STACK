@@ -1181,7 +1181,7 @@ function EmployeeProfile() {
           >
             <div className="edit-modal-head">
               <div className="edit-modal-title">
-                <h3>✏️ Edit Personal & Emergency Dossier</h3>
+                <h3>✏️ Edit 👤 Personal & Contact Details</h3>
                 <p>Self-service updates for personal contact details and emergency response directives</p>
               </div>
               <button
@@ -1204,6 +1204,36 @@ function EmployeeProfile() {
               </div>
 
               <div className="edit-form-grid">
+                <div className="form-section-separator full-width" style={{ borderTop: "none", paddingTop: 0 }}>
+                  <span>👤 Personal & Contact Details</span>
+                </div>
+
+                <div className="form-group-item">
+                  <label>Full Legal Name</label>
+                  <div className="read-only-field-wrap">
+                    <input
+                      type="text"
+                      disabled
+                      value={fullName}
+                      className="form-input-disabled"
+                    />
+                    <span className="field-tag-badge">Official Record</span>
+                  </div>
+                </div>
+
+                <div className="form-group-item">
+                  <label>Corporate Work Email</label>
+                  <div className="read-only-field-wrap">
+                    <input
+                      type="email"
+                      disabled
+                      value={corporateEmail}
+                      className="form-input-disabled"
+                    />
+                    <span className="field-tag-badge">Corporate Verified</span>
+                  </div>
+                </div>
+
                 <div className="form-group-item">
                   <label>Personal Email Address</label>
                   <input

@@ -31,7 +31,9 @@ function EmployeeDashboard() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [dismissedDocRequests, setDismissedDocRequests] = useState(() => {
     try {
-      return JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+      const session = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+      const local = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+      return Array.from(new Set([...(Array.isArray(session) ? session : []), ...(Array.isArray(local) ? local : [])]));
     } catch {
       return [];
     }
@@ -82,9 +84,25 @@ function EmployeeDashboard() {
         const res = await getMyDocuments();
         const docs = res?.data || res?.documents || res || [];
         if (mounted && Array.isArray(docs)) {
-          const reqs = docs.filter(
-            (d) => d.status === "requested" || d.status === "rejected"
-          );
+          let dismissed = [];
+          try {
+            const s = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+            const l = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+            dismissed = Array.from(new Set([...(Array.isArray(s) ? s : []), ...(Array.isArray(l) ? l : [])]));
+          } catch {}
+          const reqs = docs.filter((d) => {
+            const id = String(d._id || d.id);
+            const status = String(d.status || "").toLowerCase();
+            const rawStatus = String(d.status || "");
+            const isTarget = status === "requested" || status === "rejected";
+            const isDismissed =
+              dismissed.includes(id) ||
+              dismissed.includes(`${id}:${rawStatus}`) ||
+              dismissed.includes(`${id}:${status}`) ||
+              dismissed.includes(`${id}:requested`) ||
+              dismissed.includes(`${id}:rejected`);
+            return isTarget && !isDismissed;
+          });
           setRequestedDocs(reqs);
         }
       } catch (e) {}
@@ -92,12 +110,21 @@ function EmployeeDashboard() {
 
     fetchRequested();
     const handleSync = () => fetchRequested();
+    const handleDismissSync = (e) => {
+      const docId = e?.detail?.docId;
+      if (docId) {
+        setRequestedDocs((prev) => prev.filter((d) => String(d._id || d.id) !== String(docId)));
+        setDismissedDocRequests((prev) => Array.from(new Set([...prev, String(docId), `${docId}:requested`, `${docId}:rejected`])));
+      }
+    };
     window.addEventListener("hrms:data_changed", handleSync);
     window.addEventListener("storage", handleSync);
+    window.addEventListener("hrms_notification_dismissed", handleDismissSync);
     return () => {
       mounted = false;
       window.removeEventListener("hrms:data_changed", handleSync);
       window.removeEventListener("storage", handleSync);
+      window.removeEventListener("hrms_notification_dismissed", handleDismissSync);
     };
   }, []);
 
@@ -122,7 +149,27 @@ function EmployeeDashboard() {
       const res = await getMyDocuments();
       const docs = res?.data || res?.documents || res || [];
       if (Array.isArray(docs)) {
-        setRequestedDocs(docs.filter((d) => d.status === "requested" || d.status === "rejected"));
+        let dismissed = [];
+        try {
+          const s = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+          const l = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+          dismissed = Array.from(new Set([...(Array.isArray(s) ? s : []), ...(Array.isArray(l) ? l : [])]));
+        } catch {}
+        setRequestedDocs(
+          docs.filter((d) => {
+            const id = String(d._id || d.id);
+            const status = String(d.status || "").toLowerCase();
+            const rawStatus = String(d.status || "");
+            const isTarget = status === "requested" || status === "rejected";
+            const isDismissed =
+              dismissed.includes(id) ||
+              dismissed.includes(`${id}:${rawStatus}`) ||
+              dismissed.includes(`${id}:${status}`) ||
+              dismissed.includes(`${id}:requested`) ||
+              dismissed.includes(`${id}:rejected`);
+            return isTarget && !isDismissed;
+          })
+        );
       }
     } catch (err) {
       alert(err.message || "Failed to upload document.");
@@ -133,12 +180,37 @@ function EmployeeDashboard() {
   };
 
   const dismissDocRequest = (reqDoc) => {
-    const requestKey = `${reqDoc._id || reqDoc.id}:${reqDoc.status}`;
+    const docId = String(reqDoc._id || reqDoc.id || "");
+    const status = String(reqDoc.status || "").toLowerCase();
+    const rawStatus = String(reqDoc.status || "");
+    const keysToAdd = [
+      docId,
+      `${docId}:${rawStatus}`,
+      `${docId}:${status}`,
+      `${docId}:requested`,
+      `${docId}:rejected`,
+    ].filter(Boolean);
+
+    // 1. Immediately hide the notification from the page by removing from local state
+    setRequestedDocs((prev) => prev.filter((d) => String(d._id || d.id) !== docId));
+
+    // 2. Persist to dismissedDocRequests state and both sessionStorage & localStorage
     setDismissedDocRequests((current) => {
-      const next = current.includes(requestKey) ? current : [...current, requestKey];
-      sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(next));
+      const next = Array.from(new Set([...current, ...keysToAdd]));
+      try {
+        sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(next));
+        localStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(next));
+      } catch {}
       return next;
     });
+
+    // 3. Inform header notifications to also clear doc notification if present
+    try {
+      const clearedStored = JSON.parse(localStorage.getItem("hrms_cleared_notifications") || "[]");
+      const updatedCleared = Array.from(new Set([...clearedStored, `doc-${docId}`, docId]));
+      localStorage.setItem("hrms_cleared_notifications", JSON.stringify(updatedCleared));
+      window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: `doc-${docId}`, docId } }));
+    } catch {}
   };
 
   // Greeting based on current time
@@ -473,8 +545,53 @@ function EmployeeDashboard() {
         {/* =====================================================
             HR DOCUMENT REQUEST ALERT BANNERS
         ===================================================== */}
+        {uploadNotice && (
+          <div
+            className="doc-request-alert"
+            style={{
+              backgroundColor: "#f0fdf4",
+              borderColor: "#bbf7d0",
+              color: "#166534",
+            }}
+            role="status"
+          >
+            <div className="doc-request-alert-message">
+              <div className="doc-request-alert-icon" style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}>
+                ✓
+              </div>
+              <div className="doc-request-alert-copy">
+                <strong style={{ color: "#15803d" }}>Upload Submitted</strong>
+                <span style={{ color: "#166534" }}>{uploadNotice}</span>
+              </div>
+            </div>
+            <div className="doc-request-alert-actions">
+              <button
+                type="button"
+                onClick={() => setUploadNotice("")}
+                aria-label="Dismiss upload notification"
+                title="Dismiss alert"
+                className="doc-request-dismiss"
+                style={{ color: "#166534" }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
         {requestedDocs
-          .filter((reqDoc) => !dismissedDocRequests.includes(`${reqDoc._id || reqDoc.id}:${reqDoc.status}`))
+          .filter((reqDoc) => {
+            const id = String(reqDoc._id || reqDoc.id);
+            const status = String(reqDoc.status || "").toLowerCase();
+            const rawStatus = String(reqDoc.status || "");
+            return (
+              !dismissedDocRequests.includes(id) &&
+              !dismissedDocRequests.includes(`${id}:${rawStatus}`) &&
+              !dismissedDocRequests.includes(`${id}:${status}`) &&
+              !dismissedDocRequests.includes(`${id}:requested`) &&
+              !dismissedDocRequests.includes(`${id}:rejected`)
+            );
+          })
           .map((reqDoc) => (
           <div
             key={reqDoc._id || reqDoc.id}
@@ -514,7 +631,11 @@ function EmployeeDashboard() {
               </Link>
               <button
                 type="button"
-                onClick={() => dismissDocRequest(reqDoc)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dismissDocRequest(reqDoc);
+                }}
                 aria-label="Dismiss HR document request alert"
                 title="Dismiss alert"
                 className="doc-request-dismiss"

@@ -92,9 +92,24 @@ function EmployeeHeader() {
         if (mounted && docsRes.status === "fulfilled") {
           const docs = docsRes.value?.data || docsRes.value?.documents || docsRes.value || [];
           if (Array.isArray(docs)) {
-            const reqs = docs.filter(
-              (d) => d.status === "requested" || d.status === "rejected"
-            );
+            let dismissed = [];
+            try {
+              const s = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+              const l = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+              dismissed = Array.from(new Set([...(Array.isArray(s) ? s : []), ...(Array.isArray(l) ? l : [])]));
+            } catch {}
+            const reqs = docs.filter((d) => {
+              const id = String(d._id || d.id);
+              const status = String(d.status || "").toLowerCase();
+              const isTarget = status === "requested" || status === "rejected";
+              const isDismissed =
+                dismissed.includes(id) ||
+                dismissed.includes(`${id}:${d.status}`) ||
+                dismissed.includes(`${id}:${status}`) ||
+                dismissed.includes(`${id}:requested`) ||
+                dismissed.includes(`${id}:rejected`);
+              return isTarget && !isDismissed;
+            });
             setRequestedDocs(reqs);
           }
         }
@@ -301,6 +316,24 @@ function EmployeeHeader() {
     };
   }, []);
 
+  // Listen for notification dismissals fired across the app (e.g. from EmployeeDashboard)
+  useEffect(() => {
+    const handleDismissedSync = (e) => {
+      const { id, docId } = e?.detail || {};
+      if (id) {
+        setClearedNotificationIds((prev) => Array.from(new Set([...prev, String(id)])));
+        setLiveNotifications((prev) => prev.filter((n) => String(n.id) !== String(id)));
+      }
+      if (docId) {
+        setRequestedDocs((prev) => prev.filter((d) => String(d._id || d.id) !== String(docId)));
+      }
+    };
+    window.addEventListener("hrms_notification_dismissed", handleDismissedSync);
+    return () => {
+      window.removeEventListener("hrms_notification_dismissed", handleDismissedSync);
+    };
+  }, []);
+
   const notifications = useMemo(() => {
     return rawNotifications.filter(
       (item) => !clearedNotificationIds.includes(String(item.id))
@@ -312,8 +345,22 @@ function EmployeeHeader() {
     const allIds = rawNotifications.map((item) => String(item.id));
     const newCleared = Array.from(new Set([...clearedNotificationIds, ...allIds]));
     setClearedNotificationIds(newCleared);
+    setLiveNotifications([]);
+
     try {
       localStorage.setItem("hrms_cleared_notifications", JSON.stringify(newCleared));
+      const docIds = rawNotifications
+        .filter((item) => String(item.id).startsWith("doc-"))
+        .map((item) => String(item.id).replace(/^doc-/, ""));
+      if (docIds.length > 0) {
+        const storedDismissed = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+        const nextDismissed = Array.from(new Set([...storedDismissed, ...docIds]));
+        localStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
+        sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
+        docIds.forEach((id) => {
+          window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: `doc-${id}`, docId: id } }));
+        });
+      }
     } catch {}
   };
 
@@ -322,6 +369,28 @@ function EmployeeHeader() {
     const itemIdStr = String(item.id);
     const newCleared = Array.from(new Set([...clearedNotificationIds, itemIdStr]));
     setClearedNotificationIds(newCleared);
+
+    // Immediately remove from liveNotifications if present
+    setLiveNotifications((prev) => prev.filter((n) => String(n.id) !== itemIdStr));
+
+    // If it's a doc request notification, dismiss from requestedDocs and sync across page
+    if (itemIdStr.startsWith("doc-")) {
+      const docId = itemIdStr.replace(/^doc-/, "");
+      try {
+        const storedDismissed = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
+        const nextDismissed = Array.from(new Set([...storedDismissed, docId, `${docId}:requested`, `${docId}:rejected`]));
+        localStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
+        sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
+        window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: itemIdStr, docId } }));
+      } catch {}
+      setRequestedDocs((prev) => prev.filter((d) => String(d._id || d.id) !== docId));
+    } else if (itemIdStr.startsWith("leave-")) {
+      const leaveId = itemIdStr.replace(/^leave-/, "");
+      setMyLeaves((prev) => prev.filter((l) => String(l._id || l.id) !== leaveId));
+    } else if (itemIdStr.startsWith("att-late-")) {
+      setTodayAtt(null);
+    }
+
     try {
       localStorage.setItem("hrms_cleared_notifications", JSON.stringify(newCleared));
     } catch {}
@@ -461,7 +530,11 @@ function EmployeeHeader() {
                           <strong>{item.title}</strong>
                           <button
                             type="button"
-                            onClick={(e) => handleClearItem(e, item)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleClearItem(e, item);
+                            }}
                             title="Dismiss notification"
                             style={{
                               background: "none",

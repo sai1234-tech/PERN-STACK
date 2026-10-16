@@ -107,7 +107,7 @@ export const getAdminSummary = async (_req, res) => {
 export const provisionEmployeeForUser = async (user) => {
     if (!user) return null;
 
-    // Do not provision employee profiles for system/admin/demo managerial accounts
+    // Do not provision employee profiles for system/admin/demo/test accounts
     const excludedEmails = [
         "admin@company.com",
         "admin@example.com",
@@ -115,13 +115,29 @@ export const provisionEmployeeForUser = async (user) => {
         "hr@company.com",
         "hr@hrms.com",
         "manager@company.com",
-        "manager@hrms.com"
+        "manager@hrms.com",
+        "employee@hrms.com",
+        "sarah.smith@company.com",
+        "saikumarr@gmail.com"
     ];
     const userEmail = (user.email || "").toLowerCase().trim();
     const cleanName = (user.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     if (
         excludedEmails.includes(userEmail) ||
-        ["systemadmin", "adminuser", "admindemo", "hrmanager", "teammanager", "johnmanager", "hradmin"].includes(cleanName)
+        userEmail.startsWith("emp_") ||
+        [
+            "systemadmin",
+            "adminuser",
+            "admindemo",
+            "hrmanager",
+            "teammanager",
+            "johnmanager",
+            "hradmin",
+            "employeedemo",
+            "testemployeeuser",
+            "sarahsmith",
+            "saikumarr"
+        ].includes(cleanName)
     ) {
         return null;
     }

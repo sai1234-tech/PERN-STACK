@@ -20,7 +20,7 @@ const DEPARTMENT_COLORS = {
 
 const INITIAL_COLLAPSED_NODES = {};
 
-// Accounts excluded from Organization Chart (SystemAdmin, AdminUser, AdminDemo, HRManager, Team Manager, John Manager, HR Admin)
+// Accounts excluded from Organization Chart (SystemAdmin, AdminUser, AdminDemo, HRManager, Team Manager, John Manager, HR Admin, EmployeeDemo, TestEmployeeUser, Sarah Smith, SaiKumarr)
 const EXCLUDED_ORG_NAMES = new Set([
   "systemadmin",
   "system admin",
@@ -36,6 +36,14 @@ const EXCLUDED_ORG_NAMES = new Set([
   "john manager",
   "hradmin",
   "hr admin",
+  "employeedemo",
+  "employee demo",
+  "testemployeeuser",
+  "test employee user",
+  "sarahsmith",
+  "sarah smith",
+  "saikumarr",
+  "sai kumarr",
 ]);
 
 const EXCLUDED_ORG_EMAILS = new Set([
@@ -46,16 +54,24 @@ const EXCLUDED_ORG_EMAILS = new Set([
   "hr@hrms.com",
   "manager@company.com",
   "manager@hrms.com",
+  "employee@hrms.com",
+  "sarah.smith@company.com",
+  "saikumarr@gmail.com",
 ]);
 
 const EXCLUDED_ORG_CODES = new Set([
   "EMP0003",
+  "EMP009",
   "EMP010",
   "EMP011",
+  "EMP013",
   "EMP014",
+  "EMP015",
+  "EMP016",
   "EMP017",
   "EMP018",
   "EMP019",
+  "EMP020",
 ]);
 
 const isExcludedFromOrgChart = (emp) => {
@@ -65,7 +81,7 @@ const isExcludedFromOrgChart = (emp) => {
   if (EXCLUDED_ORG_NAMES.has(fullName) || EXCLUDED_ORG_NAMES.has(cleanName)) return true;
 
   const email = (emp.email || "").trim().toLowerCase();
-  if (EXCLUDED_ORG_EMAILS.has(email)) return true;
+  if (EXCLUDED_ORG_EMAILS.has(email) || (email.startsWith("emp_") && email.endsWith("@hrms.com"))) return true;
 
   const code = (emp.employeeCode || emp.code || "").trim().toUpperCase();
   if (EXCLUDED_ORG_CODES.has(code)) return true;

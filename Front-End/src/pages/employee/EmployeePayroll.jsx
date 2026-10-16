@@ -908,44 +908,46 @@ function EmployeePayrollContent({ user, employee }) {
                   <h3>
                     Earnings <span>Gross Additions</span>
                   </h3>
-                  <table className="ledger-table">
-                    <thead>
-                      <tr>
-                        <th>Pay Component</th>
-                        <th>Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Basic Salary</td>
-                        <td>{money(displayBasicSalary)}</td>
-                      </tr>
-                      <tr>
-                        <td>House Rent Allowance (HRA)</td>
-                        <td>{money(displayHra)}</td>
-                      </tr>
-                      <tr>
-                        <td>Special / City Allowance</td>
-                        <td>{money(displaySpecial)}</td>
-                      </tr>
-                      <tr>
-                        <td>Conveyance & Medical Allowance</td>
-                        <td>{money(displayConveyance)}</td>
-                      </tr>
-                      {displayBonus > 0 && (
+                  <div className="ledger-table-wrap">
+                    <table className="ledger-table">
+                      <thead>
                         <tr>
-                          <td>Performance Bonus / Incentive</td>
-                          <td>{money(displayBonus)}</td>
+                          <th>Pay Component</th>
+                          <th>Amount</th>
                         </tr>
-                      )}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <th>Total Gross Earnings (A)</th>
-                        <th>{money(displayGrossPay)}</th>
-                      </tr>
-                    </tfoot>
-                  </table>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Basic Salary</td>
+                          <td>{money(displayBasicSalary)}</td>
+                        </tr>
+                        <tr>
+                          <td>House Rent Allowance (HRA)</td>
+                          <td>{money(displayHra)}</td>
+                        </tr>
+                        <tr>
+                          <td>Special / City Allowance</td>
+                          <td>{money(displaySpecial)}</td>
+                        </tr>
+                        <tr>
+                          <td>Conveyance & Medical Allowance</td>
+                          <td>{money(displayConveyance)}</td>
+                        </tr>
+                        {displayBonus > 0 && (
+                          <tr>
+                            <td>Performance Bonus / Incentive</td>
+                            <td>{money(displayBonus)}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <th>Total Gross Earnings (A)</th>
+                          <th>{money(displayGrossPay)}</th>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Deductions Column */}
@@ -953,46 +955,48 @@ function EmployeePayrollContent({ user, employee }) {
                   <h3>
                     Deductions <span>Withheld & Statutory</span>
                   </h3>
-                  <table className="ledger-table">
-                    <thead>
-                      <tr>
-                        <th>Deduction Component</th>
-                        <th>Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Provident Fund (Employee EPF)</td>
-                        <td className="deduction-text">{displayPf > 0 ? `-${money(displayPf)}` : money(0)}</td>
-                      </tr>
-                      <tr>
-                        <td>Professional Tax (PT)</td>
-                        <td className="deduction-text">{displayPt > 0 ? `-${money(displayPt)}` : money(0)}</td>
-                      </tr>
-                      <tr>
-                        <td>Tax Deducted at Source (TDS)</td>
-                        <td className={displayTds > 0 ? "deduction-text" : ""}>{displayTds > 0 ? `-${money(displayTds)}` : money(0)}</td>
-                      </tr>
-                      {displayOtherDeductions > 0 && (
-                        <>
-                          <tr>
-                            <td>Group Medical &amp; Health Insurance (GMC)</td>
-                            <td className="deduction-text">-{money(Math.round(displayOtherDeductions * 0.6))}</td>
-                          </tr>
-                          <tr>
-                            <td>Group Term Life &amp; Accident Policy (GPA)</td>
-                            <td className="deduction-text">-{money(displayOtherDeductions - Math.round(displayOtherDeductions * 0.6))}</td>
-                          </tr>
-                        </>
-                      )}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <th>Total Deductions (B)</th>
-                        <th className="deduction-text">-{money(displayTotalDeductions)}</th>
-                      </tr>
-                    </tfoot>
-                  </table>
+                  <div className="ledger-table-wrap">
+                    <table className="ledger-table">
+                      <thead>
+                        <tr>
+                          <th>Deduction Component</th>
+                          <th>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Provident Fund (Employee EPF)</td>
+                          <td className="deduction-text">{displayPf > 0 ? `-${money(displayPf)}` : money(0)}</td>
+                        </tr>
+                        <tr>
+                          <td>Professional Tax (PT)</td>
+                          <td className="deduction-text">{displayPt > 0 ? `-${money(displayPt)}` : money(0)}</td>
+                        </tr>
+                        <tr>
+                          <td>Tax Deducted at Source (TDS)</td>
+                          <td className={displayTds > 0 ? "deduction-text" : ""}>{displayTds > 0 ? `-${money(displayTds)}` : money(0)}</td>
+                        </tr>
+                        {displayOtherDeductions > 0 && (
+                          <>
+                            <tr>
+                              <td>Group Medical &amp; Health Insurance (GMC)</td>
+                              <td className="deduction-text">-{money(Math.round(displayOtherDeductions * 0.6))}</td>
+                            </tr>
+                            <tr>
+                              <td>Group Term Life &amp; Accident Policy (GPA)</td>
+                              <td className="deduction-text">-{money(displayOtherDeductions - Math.round(displayOtherDeductions * 0.6))}</td>
+                            </tr>
+                          </>
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <th>Total Deductions (B)</th>
+                          <th className="deduction-text">-{money(displayTotalDeductions)}</th>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
               </div>
 

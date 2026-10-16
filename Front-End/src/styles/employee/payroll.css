@@ -596,13 +596,15 @@
   gap: 1.75rem;
   padding: 1.75rem 2rem;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   align-items: start;
 }
 
 .ledger-column {
-  min-width: 0;
-  width: 100%;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
   box-sizing: border-box;
 }
 
@@ -623,9 +625,19 @@
   color: #64748b;
 }
 
+.ledger-table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  box-sizing: border-box;
+}
+
 .ledger-table {
-  width: 100%;
-  table-layout: fixed;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid #e2e8f0;
@@ -646,13 +658,13 @@
 
 .ledger-table th:first-child,
 .ledger-table td:first-child {
-  width: 63%;
+  width: 58%;
   text-align: left;
 }
 
 .ledger-table th:last-child,
 .ledger-table td:last-child {
-  width: 37%;
+  width: 42%;
   text-align: right;
   font-weight: 700;
   white-space: nowrap;
@@ -2174,8 +2186,8 @@ main.payroll-page {
   }
 
   .payslip-ledger-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 1rem;
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
     padding: 1rem 1.25rem;
   }
 

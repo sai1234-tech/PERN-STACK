@@ -123,7 +123,6 @@ canvas {
 .modern-emp-table,
 .timesheet-hr-table,
 .modern-ts-table,
-.ledger-table,
 .modern-doc-table,
 .department-modern-table,
 .acct-data-table,
@@ -131,6 +130,20 @@ canvas {
 .modern-attendance-table,
 .payroll-table-wrap table {
   min-width: 620px;
+}
+
+/* Payslip Earnings & Deductions ledger tables must fit cleanly inside their columns without overflowing or overlapping */
+.ledger-table {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.ledger-table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
 }
 
 .recent-punch-table {
@@ -750,6 +763,7 @@ canvas {
   .dossier-sections-grid,
   .timesheet-workspace-grid,
   .payslip-dual-columns,
+  .payslip-ledger-grid,
   .department-layout {
     grid-template-columns: 1fr !important;
     gap: 1.5rem !important;

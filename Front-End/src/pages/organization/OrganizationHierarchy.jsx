@@ -20,6 +20,59 @@ const DEPARTMENT_COLORS = {
 
 const INITIAL_COLLAPSED_NODES = {};
 
+// Accounts excluded from Organization Chart (SystemAdmin, AdminUser, AdminDemo, HRManager, Team Manager, John Manager, HR Admin)
+const EXCLUDED_ORG_NAMES = new Set([
+  "systemadmin",
+  "system admin",
+  "adminuser",
+  "admin user",
+  "admindemo",
+  "admin demo",
+  "hrmanager",
+  "hr manager",
+  "teammanager",
+  "team manager",
+  "johnmanager",
+  "john manager",
+  "hradmin",
+  "hr admin",
+]);
+
+const EXCLUDED_ORG_EMAILS = new Set([
+  "admin@company.com",
+  "admin@example.com",
+  "admin@hrms.com",
+  "hr@company.com",
+  "hr@hrms.com",
+  "manager@company.com",
+  "manager@hrms.com",
+]);
+
+const EXCLUDED_ORG_CODES = new Set([
+  "EMP0003",
+  "EMP010",
+  "EMP011",
+  "EMP014",
+  "EMP017",
+  "EMP018",
+  "EMP019",
+]);
+
+const isExcludedFromOrgChart = (emp) => {
+  if (!emp) return false;
+  const fullName = (emp.name || `${emp.firstName || ""} ${emp.lastName || ""}`).trim().toLowerCase();
+  const cleanName = fullName.replace(/[^a-z0-9]/g, "");
+  if (EXCLUDED_ORG_NAMES.has(fullName) || EXCLUDED_ORG_NAMES.has(cleanName)) return true;
+
+  const email = (emp.email || "").trim().toLowerCase();
+  if (EXCLUDED_ORG_EMAILS.has(email)) return true;
+
+  const code = (emp.employeeCode || emp.code || "").trim().toUpperCase();
+  if (EXCLUDED_ORG_CODES.has(code)) return true;
+
+  return false;
+};
+
 const resolveEmployeeReference = (employeeMap, reference) => {
   const candidates =
     reference && typeof reference === "object"
@@ -71,6 +124,7 @@ function OrganizationHierarchy() {
       if (Array.isArray(apiEmpList) && apiEmpList.length > 0) {
         const merged = [];
         apiEmpList.forEach((apiEmp) => {
+          if (isExcludedFromOrgChart(apiEmp)) return;
           const code = apiEmp.employeeCode || `QSI-${apiEmp._id?.slice(-4)}`;
           const deptName = apiEmp.employment?.department || apiEmp.department || "Engineering";
 

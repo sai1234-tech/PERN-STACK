@@ -107,6 +107,25 @@ export const getAdminSummary = async (_req, res) => {
 export const provisionEmployeeForUser = async (user) => {
     if (!user) return null;
 
+    // Do not provision employee profiles for system/admin/demo managerial accounts
+    const excludedEmails = [
+        "admin@company.com",
+        "admin@example.com",
+        "admin@hrms.com",
+        "hr@company.com",
+        "hr@hrms.com",
+        "manager@company.com",
+        "manager@hrms.com"
+    ];
+    const userEmail = (user.email || "").toLowerCase().trim();
+    const cleanName = (user.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (
+        excludedEmails.includes(userEmail) ||
+        ["systemadmin", "adminuser", "admindemo", "hrmanager", "teammanager", "johnmanager", "hradmin"].includes(cleanName)
+    ) {
+        return null;
+    }
+
     // 1. Check if employee already linked by user_id
     let empRecord = await findEmployeeByUserId(user.id);
     if (empRecord) return empRecord;

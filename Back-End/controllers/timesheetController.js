@@ -544,8 +544,8 @@ export const getMyWeek = async (req, res) => {
                         continue;
                     }
 
-                    const startTime = `${taskDateStr}T04:00:00.000Z`;
-                    const endTime = t.hours === 4.5 ? `${taskDateStr}T09:00:00.000Z` : `${taskDateStr}T12:45:00.000Z`;
+                    const startTime = `${taskDateStr} 09:30:00`;
+                    const endTime = t.hours === 4.5 ? `${taskDateStr} 14:30:00` : `${taskDateStr} 18:15:00`;
 
                     try {
                         await createTimesheetRecord({

@@ -55,11 +55,69 @@ export function formatDate(value) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(d);
 }
 
-export function formatTime(value) {
-  if (!value) return "Not provided";
+export function formatTime(value, fallback = "Not provided") {
+  if (!value) return fallback;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    // 1. Already formatted AM/PM (e.g. '09:30 AM', '9:30 am', '6:15 PM')
+    const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM|am|pm)$/i);
+    if (ampmMatch) {
+      let hours = parseInt(ampmMatch[1], 10);
+      const minutes = ampmMatch[2];
+      const meridiem = ampmMatch[3].toUpperCase();
+      return `${String(hours).padStart(2, "0")}:${minutes} ${meridiem}`;
+    }
+
+    // 2. Plain time string like '09:30:00', '09:30', '18:15:00', '18:15'
+    const timeOnlyMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (timeOnlyMatch) {
+      let hours = parseInt(timeOnlyMatch[1], 10);
+      const minutes = timeOnlyMatch[2];
+      const meridiem = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      return `${String(hours).padStart(2, "0")}:${minutes} ${meridiem}`;
+    }
+
+    // 3. String like '2026-10-16 09:30:00' or '2026-10-16 09:30' (space separated)
+    const sqlDateTimeMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (sqlDateTimeMatch) {
+      let hours = parseInt(sqlDateTimeMatch[1], 10);
+      const minutes = sqlDateTimeMatch[2];
+      const meridiem = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      return `${String(hours).padStart(2, "0")}:${minutes} ${meridiem}`;
+    }
+
+    // 4. ISO string without timezone offset (e.g. '2026-10-16T09:30:00')
+    const localIsoMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}T(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (localIsoMatch) {
+      let hours = parseInt(localIsoMatch[1], 10);
+      const minutes = localIsoMatch[2];
+      const meridiem = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      return `${String(hours).padStart(2, "0")}:${minutes} ${meridiem}`;
+    }
+  }
+
   const d = new Date(value);
-  if (isNaN(d.getTime())) return "Not provided";
-  return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(d);
+  if (isNaN(d.getTime())) return fallback;
+
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+  } catch {
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const meridiem = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${String(hours).padStart(2, "0")}:${minutes} ${meridiem}`;
+  }
 }
 
 export function parseLocalDate(value) {

@@ -9,6 +9,7 @@ import { getLeaves } from "../../services/leaveService";
 import { getTodayAttendance } from "../../services/attendanceService";
 import { normalizeRole } from "../../utils/auth";
 import { formatPhotoUrl } from "../../utils/photo";
+import { formatTime } from "../../utils/date";
 import HeaderEmployeeSearch from "./HeaderEmployeeSearch";
 import "./EmployeeHeader.css";
 
@@ -279,7 +280,8 @@ function EmployeeHeader() {
 
     // 3. Real attendance notification (Late check-in today)
     if (todayAtt && (todayAtt.is_late || todayAtt.status === "late")) {
-      const clockInVal = todayAtt.clockIn || todayAtt.checkInTime || todayAtt.clock_in || "past 10:00 AM";
+      const rawClockIn = todayAtt.checkIn || todayAtt.clockIn || todayAtt.checkInTime || todayAtt.clock_in;
+      const clockInVal = rawClockIn ? formatTime(rawClockIn) : "past 10:00 AM";
       list.push({
         id: `att-late-${todayAtt.id || "today"}`,
         title: "⚠️ Shift Late Arrival Logged",

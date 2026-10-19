@@ -20,6 +20,7 @@ import {
     calculateOvertime,
     getLiveAttendanceStatus
 } from "../utils/attendanceUtils.js";
+import { broadcastBackendChange } from "../services/sseService.js";
 
 // =====================================================
 // HELPER RESPONSES
@@ -97,6 +98,12 @@ export const checkIn = async (req, res) => {
                 status: existingAttendance.status === "half-day" ? "present" : (existingAttendance.status || "present")
             });
 
+            broadcastBackendChange("attendance", {
+                action: "check-in",
+                mode: "resumed",
+                employeeId: user.id
+            });
+
             return res.status(200).json({
                 success: true,
                 message: "Shift resumed successfully. Clocked back in.",
@@ -119,6 +126,12 @@ export const checkIn = async (req, res) => {
             status,
             isLate,
             lateMinutes
+        });
+
+        broadcastBackendChange("attendance", {
+            action: "check-in",
+            mode: "new",
+            employeeId: user.id
         });
 
         return res.status(201).json({
@@ -196,6 +209,11 @@ export const checkOut = async (req, res) => {
             working_hours: workingHours,
             overtime_hours: overtimeHours,
             status
+        });
+
+        broadcastBackendChange("attendance", {
+            action: "check-out",
+            employeeId: user.id
         });
 
         return res.status(200).json({

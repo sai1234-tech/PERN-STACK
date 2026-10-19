@@ -116,3 +116,22 @@
     width: 50%;
   }
 }
+
+/* Dark theme support */
+[data-theme="dark"] .initial-loader-wrapper {
+  background: linear-gradient(135deg, #0b1120 0%, #080d18 100%);
+}
+
+[data-theme="dark"] .initial-loader-container {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(51, 65, 85, 0.6);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .loading-text {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .loading-subtext {
+  color: #94a3b8;
+}

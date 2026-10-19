@@ -13,6 +13,7 @@ import {
     submitWeekTimesheets,
     findAllTimesheetsAdmin
 } from "../repositories/timesheetRepository.js";
+import { broadcastBackendChange } from "../services/sseService.js";
 
 // =====================================================
 // HELPERS
@@ -1355,6 +1356,14 @@ export const reviewTimesheet = async (req, res) => {
         }
 
         const updated = await updateTimesheetRecord(timesheet.id, updateFields);
+
+        broadcastBackendChange("timesheets", {
+            action: finalStatus,
+            status: finalStatus,
+            timesheetId: timesheet.id,
+            employeeId: timesheet.employee_id || timesheet.employeeId,
+            message: successMessage
+        });
 
         return res.status(200).json({
             success: true,

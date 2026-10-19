@@ -649,6 +649,14 @@ function EmployeePayrollContent({ user, employee }) {
               Access official tax-compliant payslips, detailed earnings breakdowns,
               statutory deductions ledger, and full-year CTC architecture.
             </p>
+
+            <div className="emp-meta-pills">
+              <span className="meta-pill-tag">🆔 {fullEmployee?.employeeId || employee?.employeeId || "EMP"}</span>
+              <span className="meta-pill-tag">💼 {fullEmployee?.employment?.employmentType || "Full-Time Regular"}</span>
+              <span className="meta-pill-tag">💰 Currency: INR (₹)</span>
+              <span className="meta-pill-tag">🏦 Bank Direct Deposit</span>
+              <span className="meta-pill-tag">📜 Tax Form 16 Compliant</span>
+            </div>
           </div>
 
           <div className="hero-actions-cluster">

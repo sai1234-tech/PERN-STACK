@@ -19,6 +19,7 @@ import eventRoutes from "./routes/eventRoutes.js";
 import managerRoutes from "./routes/managerRoutes.js";
 import clearanceRoutes from "./routes/clearanceRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { sseStreamHandler, sseBroadcastMiddleware } from "./services/sseService.js";
 
 import { initUserTable } from "./repositories/userRepository.js";
 import { initEmployeeTable } from "./repositories/employeeRepository.js";
@@ -90,6 +91,13 @@ const handleHealth = (req, res) => {
 };
 app.get("/api/health", handleHealth);
 app.get("/api/v1/health", handleHealth);
+
+// Real-Time Server-Sent Events (SSE) Live Synchronization Stream
+app.get("/api/sync/stream", sseStreamHandler);
+app.get("/api/v1/sync/stream", sseStreamHandler);
+
+// Universal real-time mutation broadcast middleware (detects all successful POST/PUT/PATCH/DELETE)
+app.use(sseBroadcastMiddleware);
 
 // Route mapping configuration supporting both singular and plural prefixes under /api and /api/v1
 const routeMappings = [

@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import AppFooter from "./AppFooter";
 import CommandPalette from "../common/CommandPalette";
+import LiveSyncHUD from "../common/LiveSyncHUD";
 import { useSidebar } from "../../context/SidebarContext";
 import "./DashboardLayout.css";
 
@@ -16,6 +17,7 @@ function DashboardLayout() {
         <AppFooter />
       </div>
       <CommandPalette />
+      <LiveSyncHUD />
     </div>
   );
 }

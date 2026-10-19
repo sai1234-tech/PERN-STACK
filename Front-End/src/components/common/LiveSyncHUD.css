@@ -1,0 +1,140 @@
+/* ==========================================================================
+   QUADRATIC HRMS — REAL-TIME LIVE SYNC HUD TOAST PILL
+   Visual notification when backend updates without requiring page refresh
+   ========================================================================== */
+
+.live-sync-hud-toast {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 1.15rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(13, 148, 136, 0.35);
+  box-shadow: 
+    0 16px 36px -10px rgba(13, 148, 136, 0.22),
+    0 4px 12px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  max-width: 380px;
+  animation: liveSyncSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+[data-theme="dark"] .live-sync-hud-toast {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(45, 212, 191, 0.35);
+  box-shadow: 
+    0 20px 40px -10px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(13, 148, 136, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.live-sync-icon-pod {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.live-pulse-ring {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.25);
+  animation: liveRingPulse 1.8s ease-out infinite;
+}
+
+.live-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
+.live-sync-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.live-sync-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .live-sync-title {
+  color: #f8fafc;
+}
+
+.live-sync-desc {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #0f766e;
+  line-height: 1.25;
+}
+
+[data-theme="dark"] .live-sync-desc {
+  color: #5eead4;
+}
+
+.live-sync-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 4px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.live-sync-close:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+@keyframes liveSyncSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes liveRingPulse {
+  0% { transform: scale(0.8); opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@media (max-width: 600px) {
+  .live-sync-hud-toast {
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
+}

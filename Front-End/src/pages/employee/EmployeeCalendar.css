@@ -14,17 +14,33 @@
 
 /* ── Hero Banner ──────────────────────────────────────────── */
 .calendar-hero-banner {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border-radius: 20px;
-  padding: 2rem 3rem;
+  background: linear-gradient(135deg, #042426 0%, #06393b 25%, #0d5450 60%, #0e7490 100%);
+  border-radius: 16px;
+  padding: 1.15rem 1.75rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
   color: white;
-  box-shadow: 0 15px 35px -10px rgba(15, 23, 42, 0.4);
+  box-shadow: 0 10px 28px -6px rgba(6, 46, 48, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  min-height: 185px;
+}
+
+.calendar-hero-banner::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -8%;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.26) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .hero-kicker-pill {
@@ -56,16 +72,17 @@
 }
 
 .calendar-hero-left h1 {
-  margin: 0 0 10px 0;
-  font-size: 2.2rem;
+  margin: 0.15rem 0 0.35rem 0;
+  font-size: clamp(20px, 2.2vw, 25px);
   font-weight: 800;
   line-height: 1.2;
 }
 
 .calendar-hero-left p {
-  margin: 0;
+  margin: 0 0 0.45rem 0;
   color: #94a3b8;
-  font-size: 1rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
 }
 
 /* ── Workspace Layout ─────────────────────────────────────── */
@@ -2116,45 +2133,45 @@
 .calendar-hero-stats-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 1.25rem;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
 }
 
 .hero-stat-card {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(8px);
-  padding: 10px 16px;
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
   transition: all 0.2s ease;
 }
 
 .hero-stat-card:hover {
-  background: rgba(255, 255, 255, 0.14);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .hero-stat-card .stat-num {
-  font-size: 1.45rem;
-  font-weight: 900;
-  color: #ffffff;
-  line-height: 1.1;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #38bdf8;
+  line-height: 1;
 }
 
 .hero-stat-card .stat-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #e2e8f0;
   letter-spacing: 0.02em;
 }
 
 .hero-stat-card.next-celebration {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%);
-  border: 1px solid rgba(52, 211, 153, 0.4);
-  min-width: 200px;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.35);
 }
 
 .next-holiday-kicker {

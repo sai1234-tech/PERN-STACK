@@ -20,6 +20,7 @@ import {
 } from "../repositories/employeeRepository.js";
 import { findUserById } from "../repositories/userRepository.js";
 import { provisionEmployeeForUser } from "./authController.js";
+import { broadcastBackendChange } from "../services/sseService.js";
 
 // Helper date calculator (excludes Saturdays & Sundays)
 export const calculateLeaveDays = (startDate, endDate) => {
@@ -483,6 +484,14 @@ export const approveLeave = async (req, res) => {
         });
 
         const updatedLeave = await findLeaveById(leaveId);
+        broadcastBackendChange("leaves", {
+            action: "approved",
+            leaveId,
+            employeeId: leave.employee_id,
+            status: "Approved",
+            message: "Leave final approved by HR",
+            leaveType: updatedLeave?.leave_type_name || "Leave"
+        });
         return res.status(200).json({
             success: true,
             message: "Leave final approved by HR",
@@ -517,6 +526,15 @@ export const rejectLeave = async (req, res) => {
         });
 
         const updatedLeave = await findLeaveById(leaveId);
+        broadcastBackendChange("leaves", {
+            action: "rejected",
+            leaveId,
+            employeeId: leave.employee_id,
+            status: "Rejected",
+            message: "Leave request declined by HR",
+            rejectionReason: rejectionReason.trim(),
+            leaveType: updatedLeave?.leave_type_name || "Leave"
+        });
         return res.status(200).json({
             success: true,
             message: "Leave rejected successfully",

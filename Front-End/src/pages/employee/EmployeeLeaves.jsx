@@ -621,6 +621,20 @@ function EmployeeLeaves() {
               </span>
             </div>
           </div>
+
+          <div className="leave-hero-actions">
+            <button
+              type="button"
+              className="leave-hero-btn"
+              onClick={() => {
+                const el = document.getElementById("leave-form-card");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              title="Apply for paid leave or WFH days"
+            >
+              <span>🌴</span> Request Time Off / WFH
+            </button>
+          </div>
         </section>
 
         {/* =====================================================

@@ -83,14 +83,14 @@ export default function HRResignationManagement() {
     <>
       <EmployeeHeader />
       <main className="hr-dashboard-next fade-in" style={{ padding: "2rem", minHeight: "calc(100vh - 70px)" }}>
-        <section className="hr-hero-banner" style={{ borderRadius: "16px", padding: "2.5rem", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.2)" }}>
+        <section className="hr-hero-banner" style={{ borderRadius: "16px", padding: "1.15rem 1.75rem", minHeight: "185px", boxSizing: "border-box", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.2)" }}>
           <div className="hr-hero-left">
-            <div className="hero-kicker-pill" style={{ display: "inline-flex", background: "rgba(255,255,255,0.1)", padding: "0.25rem 0.75rem", borderRadius: "20px", fontSize: "0.8rem", marginBottom: "1rem", border: "1px solid rgba(255,255,255,0.2)" }}>
-              <span className="pulsing-live-dot" style={{ background: "#10b981", width: "8px", height: "8px", borderRadius: "50%", marginRight: "8px", alignSelf: "center", boxShadow: "0 0 0 0 rgba(16, 185, 129, 0.7)", animation: "livePulse 2s infinite" }} />
+            <div className="hero-kicker-pill" style={{ display: "inline-flex", background: "rgba(255,255,255,0.1)", padding: "0.2rem 0.55rem", borderRadius: "20px", fontSize: "0.72rem", marginBottom: "0.35rem", border: "1px solid rgba(255,255,255,0.2)" }}>
+              <span className="pulsing-live-dot" style={{ background: "#10b981", width: "7px", height: "7px", borderRadius: "50%", marginRight: "6px", alignSelf: "center", boxShadow: "0 0 0 0 rgba(16, 185, 129, 0.7)", animation: "livePulse 2s infinite" }} />
               HR Command Center
             </div>
-            <h1 style={{ margin: "0 0 0.5rem 0", fontSize: "2.2rem" }}>Resignation Management</h1>
-            <p style={{ margin: 0, color: "#94a3b8", fontSize: "1.05rem" }}>Review, process, and track employee exit requests securely.</p>
+            <h1 style={{ margin: "0.15rem 0 0.35rem 0", fontSize: "clamp(20px, 2.2vw, 25px)", fontWeight: 800, lineHeight: 1.2 }}>Resignation Management</h1>
+            <p style={{ margin: "0 0 0.45rem 0", color: "#94a3b8", fontSize: "0.86rem", lineHeight: 1.4 }}>Review, process, and track employee exit requests securely.</p>
           </div>
           <div className="hr-hero-actions" style={{ display: "flex", gap: "15px" }}>
             <select 

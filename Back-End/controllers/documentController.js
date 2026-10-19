@@ -15,6 +15,7 @@ import {
     findEmployeeByCodeOrEmail
 } from "../repositories/employeeRepository.js";
 import { findUserById } from "../repositories/userRepository.js";
+import { broadcastBackendChange } from "../services/sseService.js";
 
 // Ensure uploads/documents directory exists
 const uploadDirectory = path.join(process.cwd(), "uploads", "documents");
@@ -457,6 +458,14 @@ export const updateDocumentStatus = async (req, res, next) => {
         });
 
         const updated = await findDocumentById(docId);
+
+        broadcastBackendChange("documents", {
+            action: status,
+            status,
+            docId,
+            documentName: updated?.document_name || "Document",
+            employeeId: updated?.employee_id
+        });
 
         return res.status(200).json({
             success: true,

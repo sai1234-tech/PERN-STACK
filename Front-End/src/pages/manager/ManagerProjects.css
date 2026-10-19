@@ -1,5 +1,5 @@
 .manager-projects-container {
-  padding: 2rem 2.5rem;
+  padding: 1.5rem 2rem 3rem;
   width: 100%;
   max-width: 1400px;
   box-sizing: border-box;
@@ -10,26 +10,41 @@
    HERO BANNER HEADER
    ===================================================== */
 .manager-projects-header {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  background: linear-gradient(135deg, #090d16 0%, #111a33 30%, #1e2952 65%, #1d4ed8 100%);
   color: #ffffff;
-  border-radius: 20px;
-  padding: 2.25rem 2.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 12px 30px -8px rgba(15, 23, 42, 0.3), 0 4px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.15rem 1.75rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  border: 1px solid rgba(59, 130, 246, 0.32);
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
+  min-height: 185px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.manager-projects-header::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: -8%;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, transparent 65%);
+  pointer-events: none;
 }
 
 .manager-projects-header::after {
   content: "";
   position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(99, 102, 241, 0) 70%);
+  top: -40%;
+  right: -5%;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -37,18 +52,18 @@
 .header-badge-capsule {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 0.35rem 0.85rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 99px;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: #38bdf8;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.25rem;
 }
 
 .live-sprint-dot {
@@ -60,47 +75,48 @@
 }
 
 .manager-projects-header h2 {
-  font-size: 2.1rem;
+  font-size: clamp(20px, 2.2vw, 25px);
   font-weight: 800;
   color: #ffffff;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.25rem 0;
   letter-spacing: -0.025em;
+  line-height: 1.2;
 }
 
 .manager-projects-header p {
   color: #94a3b8;
-  font-size: 1rem;
-  margin: 0 0 1.5rem 0;
+  font-size: 0.86rem;
+  margin: 0 0 0.75rem 0;
   max-width: 680px;
-  line-height: 1.55;
+  line-height: 1.4;
 }
 
 .projects-hero-metrics {
   display: flex;
-  gap: 1.25rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
 }
 
 .hero-metric-pill {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 0.75rem 1.25rem;
-  border-radius: 14px;
+  padding: 0.45rem 0.95rem;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  min-width: 140px;
+  gap: 0.15rem;
+  min-width: 120px;
   backdrop-filter: blur(6px);
 }
 
 .metric-num {
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #38bdf8;
 }
 
 .metric-lbl {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: #cbd5e1;
   font-weight: 600;
   text-transform: uppercase;
@@ -522,12 +538,12 @@
   }
 
   .manager-projects-header {
-    padding: 1.5rem 1.25rem;
+    padding: 1rem 1.15rem;
     border-radius: 14px;
   }
 
   .manager-projects-header h2 {
-    font-size: 1.6rem;
+    font-size: 1.25rem;
   }
 
   .projects-control-bar {

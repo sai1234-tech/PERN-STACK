@@ -165,22 +165,30 @@ button:disabled {
 }
 
 /* Global API Loader Overlay */
+/* ==========================================================================
+   GLOBAL ENTERPRISE PROCESSING OVERLAY
+   ========================================================================== */
 #global-api-loader {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(241, 244, 246, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 99999;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 999999;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+[data-theme="light"] #global-api-loader {
+  background: rgba(241, 244, 246, 0.55);
 }
 
 #global-api-loader.visible {
@@ -188,33 +196,160 @@ button:disabled {
   pointer-events: all;
 }
 
-.global-api-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(23, 107, 112, 0.2);
-  border-left-color: #176b70;
-  border-top-color: #00d2ff;
+.global-api-glass-pod {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.15rem;
+  padding: 2rem 2.5rem;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 24px;
+  box-shadow: 
+    0 25px 60px -15px rgba(15, 23, 42, 0.18),
+    0 4px 16px -2px rgba(13, 148, 136, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  transform: scale(0.92);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#global-api-loader.visible .global-api-glass-pod {
+  transform: scale(1);
+}
+
+[data-theme="dark"] .global-api-glass-pod {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(51, 65, 85, 0.85);
+  box-shadow: 
+    0 30px 70px -15px rgba(0, 0, 0, 0.7),
+    0 0 35px rgba(13, 148, 136, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Orbital Spinner Pod */
+.global-orbital-chassis {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.global-ring {
+  position: absolute;
   border-radius: 50%;
-  animation: global-spinner-anim 1s linear infinite;
-  margin-bottom: 1rem;
+  box-sizing: border-box;
+}
+
+.global-ring-outer {
+  width: 58px;
+  height: 58px;
+  border: 3px solid transparent;
+  border-top-color: #00d2ff;
+  border-right-color: #0d9488;
+  animation: orbitalSpinClockwise 1.3s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
+}
+
+.global-ring-inner {
+  width: 42px;
+  height: 42px;
+  border: 2.5px solid transparent;
+  border-bottom-color: #10b981;
+  border-left-color: #06b6d4;
+  animation: orbitalSpinCounter 0.95s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+.global-core-pod {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00d2ff 0%, #0d9488 50%, #10b981 100%);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.5);
+  z-index: 2;
+  animation: corePulse 1.8s ease-in-out infinite;
+}
+
+/* Typography Group */
+.global-api-message-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .global-api-text {
-  font-weight: 600;
-  color: #176b70;
-  font-size: 1.1rem;
-  letter-spacing: 0.5px;
-  animation: pulse-text 1.5s ease-in-out infinite;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
-@keyframes global-spinner-anim {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+[data-theme="dark"] .global-api-text {
+  color: #f1f5f9;
 }
 
-@keyframes pulse-text {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
+.global-api-subtext {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+[data-theme="dark"] .global-api-subtext {
+  color: #94a3b8;
+}
+
+/* Stream Track */
+.global-api-stream-bar {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.8);
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="dark"] .global-api-stream-bar {
+  background: rgba(51, 65, 85, 0.8);
+}
+
+.global-api-stream-beam {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #00d2ff, #0d9488, #10b981, transparent);
+  animation: shimmerBeamSlide 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (max-width: 480px) {
+  .global-api-glass-pod {
+    padding: 1.5rem 1.25rem;
+    max-width: calc(100vw - 32px);
+    gap: 0.95rem;
+  }
+
+  .global-api-text {
+    font-size: 0.96rem;
+  }
+
+  .global-api-subtext {
+    font-size: 0.74rem;
+  }
 }
 
 /* ==========================================================================
@@ -508,4 +643,147 @@ html[data-theme="dark"] #root {
   background-color: #312e81 !important;
   color: #c7d2fe !important;
 }
+
+/* ==========================================================================
+   UNIVERSAL GRADIENT SYSTEM & AESTHETIC POLISH UTILITIES
+   Employee (Aurora Emerald), HR (Royal Sapphire), Manager (Cobalt), Admin (Cyber Cyan)
+   ========================================================================== */
+
+.gradient-text-aurora {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-sapphire {
+  background: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-cobalt {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-cyber {
+  background: linear-gradient(135deg, #06b6d4 0%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Glassmorphism card sheen helper */
+.glass-glow-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+[data-theme="dark"] .glass-glow-card {
+  background: rgba(15, 23, 42, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Glowing outline hover animation */
+.glow-on-hover {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
+}
+
+.glow-on-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   INSTANTANEOUS THEME SWITCHING ENGINE
+   Freezes transitions across the entire DOM tree during theme change
+   so all components, sidebars, headers, cards, and text snap simultaneously.
+   ========================================================================== */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
+}
+
+/* ==========================================================================
+   GLOBAL STANDARDIZED MODULE HERO BANNER ARCHITECTURE
+   Enforces exact visual height, consistent padding, uniform border-radius,
+   and harmonious vertical alignment across all modules in the application.
+   ========================================================================== */
+.doc-hero-banner,
+.att-hero-banner,
+.leave-hero-banner,
+.timesheet-hero-banner,
+.time-hero-banner,
+.prof-hero-banner,
+.payroll-hero-banner,
+.emp-hero-banner,
+.calendar-hero-banner,
+.hr-hero-banner,
+.manager-hero-banner,
+.manager-projects-header,
+.acct-hero-banner,
+.admin-dashboard-heading,
+.roster-banner,
+.resource-banner,
+.helpdesk-banner {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  border-radius: 16px !important;
+  padding: 1.15rem 1.75rem !important;
+  margin-bottom: 1.25rem !important;
+  position: relative !important;
+}
+
+@media (min-width: 992px) {
+  .doc-hero-banner,
+  .att-hero-banner,
+  .leave-hero-banner,
+  .timesheet-hero-banner,
+  .time-hero-banner,
+  .prof-hero-banner,
+  .payroll-hero-banner,
+  .emp-hero-banner,
+  .calendar-hero-banner,
+  .manager-projects-header,
+  .acct-hero-banner,
+  .admin-dashboard-heading,
+  .roster-banner,
+  .resource-banner,
+  .helpdesk-banner {
+    min-height: 185px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .hr-hero-banner {
+    min-height: 185px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 0.75rem !important;
+  }
+
+  .manager-hero-banner {
+    min-height: 185px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+
+  .manager-hero-banner .hero-main-row {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+}
+
+
 

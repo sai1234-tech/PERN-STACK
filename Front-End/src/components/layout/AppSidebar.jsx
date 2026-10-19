@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
@@ -12,8 +12,23 @@ function AppSidebar() {
   const { employee: hookEmployee } = useEmployee();
   const employee = hookEmployee || authEmployee;
   const profile = employee || user || {};
-  const { isCollapsed, isMobileOpen, toggleCollapse, closeMobile } = useSidebar();
+  const { isCollapsed: isDesktopCollapsed, isMobileOpen, toggleCollapse, closeMobile } = useSidebar();
   const location = useLocation();
+
+  const [isMobileScreen, setIsMobileScreen] = useState(() => {
+    return typeof window !== "undefined" ? window.innerWidth <= 992 : false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth <= 992);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // On mobile (drawer open or screen width <= 992px), sidebar is NEVER collapsed; module names are ALWAYS visible
+  const isCollapsed = isDesktopCollapsed && !isMobileOpen && !isMobileScreen;
 
   // Close mobile drawer on route change
   useEffect(() => {

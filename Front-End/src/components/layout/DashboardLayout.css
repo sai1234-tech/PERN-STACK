@@ -40,13 +40,19 @@
   margin-left: 76px;
 }
 
-/* ── Dark Theme Overrides ─────────────────────────────────── */
-[data-theme="dark"] .hrms-dashboard-shell {
-  background: #0b1120;
+/* ── Theme Overrides ─────────────────────────────────────── */
+[data-theme="dark"] .hrms-dashboard-shell,
+html[data-theme="dark"] .hrms-dashboard-shell,
+[data-theme="dark"] .hrms-main-viewport,
+html[data-theme="dark"] .hrms-main-viewport {
+  background: #0b1120 !important;
 }
 
-[data-theme="dark"] .hrms-main-viewport {
-  background: #0b1120;
+[data-theme="light"] .hrms-dashboard-shell,
+html[data-theme="light"] .hrms-dashboard-shell,
+[data-theme="light"] .hrms-main-viewport,
+html[data-theme="light"] .hrms-main-viewport {
+  background: #f1f4f6 !important;
 }
 
 @media (max-width: 992px) {

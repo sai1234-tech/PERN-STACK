@@ -672,11 +672,20 @@ canvas {
 
   .doc-hero-banner h1,
   .att-hero-banner h1,
+  .leave-hero-banner h1,
   .timesheet-hero-banner h1,
+  .time-hero-banner h1,
   .prof-identity-info h1,
   .payroll-hero-banner h1,
-  .emp-hero-left h1 {
-    font-size: 2.5rem;
+  .emp-hero-left h1,
+  .calendar-hero-left h1,
+  .manager-hero-banner .hero-title,
+  .manager-projects-header h2,
+  .roster-banner h1,
+  .resource-banner h1,
+  .helpdesk-banner h1,
+  .admin-dashboard-heading h1 {
+    font-size: clamp(20px, 2.2vw, 25px);
   }
 }
 
@@ -684,12 +693,21 @@ canvas {
 @media (max-width: 1200px) {
   .doc-hero-banner,
   .att-hero-banner,
+  .leave-hero-banner,
   .timesheet-hero-banner,
+  .time-hero-banner,
   .prof-hero-banner,
   .payroll-hero-banner,
   .emp-hero-banner,
-  .acct-hero-banner {
-    padding: 2rem 2.25rem;
+  .calendar-hero-banner,
+  .acct-hero-banner,
+  .manager-hero-banner,
+  .manager-projects-header,
+  .admin-dashboard-heading,
+  .roster-banner,
+  .resource-banner,
+  .helpdesk-banner {
+    padding: 1.15rem 1.75rem;
   }
 
   .doc-kpi-grid,
@@ -724,15 +742,25 @@ canvas {
   /* Hero Banners Stacking */
   .doc-hero-banner,
   .att-hero-banner,
+  .leave-hero-banner,
   .timesheet-hero-banner,
+  .time-hero-banner,
   .prof-hero-banner,
   .payroll-hero-banner,
   .emp-hero-banner,
-  .acct-hero-banner {
+  .calendar-hero-banner,
+  .acct-hero-banner,
+  .manager-hero-banner,
+  .manager-projects-header,
+  .admin-dashboard-heading,
+  .roster-banner,
+  .resource-banner,
+  .helpdesk-banner {
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 1.5rem !important;
-    padding: 1.75rem 1.5rem !important;
+    gap: 1rem !important;
+    padding: 1.15rem 1.25rem !important;
+    min-height: auto !important;
   }
 
   .doc-hero-left,
@@ -810,12 +838,21 @@ canvas {
 
   .doc-hero-banner h1,
   .att-hero-banner h1,
+  .leave-hero-banner h1,
   .timesheet-hero-banner h1,
+  .time-hero-banner h1,
   .prof-identity-info h1,
   .payroll-hero-banner h1,
   .emp-hero-banner h1,
-  .acct-hero-banner h1 {
-    font-size: clamp(22px, 5.5vw, 28px) !important;
+  .calendar-hero-left h1,
+  .acct-hero-banner h1,
+  .manager-hero-banner .hero-title,
+  .manager-projects-header h2,
+  .roster-banner h1,
+  .resource-banner h1,
+  .helpdesk-banner h1,
+  .admin-dashboard-heading h1 {
+    font-size: clamp(19px, 4.5vw, 23px) !important;
   }
 
   /* 1-Column KPI Grids for Crisp Scannability */
@@ -896,14 +933,24 @@ canvas {
 
   .doc-hero-banner,
   .att-hero-banner,
+  .leave-hero-banner,
   .timesheet-hero-banner,
+  .time-hero-banner,
   .prof-hero-banner,
   .payroll-hero-banner,
   .emp-hero-banner,
+  .calendar-hero-banner,
   .acct-hero-banner,
+  .manager-hero-banner,
+  .manager-projects-header,
+  .admin-dashboard-heading,
+  .roster-banner,
+  .resource-banner,
+  .helpdesk-banner,
   .department-heading {
-    padding: 1.25rem 1rem !important;
-    border-radius: 16px !important;
+    padding: 0.95rem 1rem !important;
+    border-radius: 14px !important;
+    min-height: auto !important;
   }
 
   .kpi-big-num {
@@ -955,12 +1002,15 @@ canvas {
 
   .doc-hero-banner,
   .att-hero-banner,
+  .leave-hero-banner,
   .timesheet-hero-banner,
   .prof-hero-banner,
   .payroll-hero-banner,
   .emp-hero-banner,
-  .acct-hero-banner {
-    padding: 1.1rem 0.85rem !important;
+  .acct-hero-banner,
+  .manager-hero-banner,
+  .manager-projects-header {
+    padding: 0.85rem 0.85rem !important;
     border-radius: 12px !important;
   }
 

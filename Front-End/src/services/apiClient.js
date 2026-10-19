@@ -14,7 +14,7 @@ const API_BASE_URL = (
 let activeRequests = 0;
 let loaderFailsafeTimer = null;
 
-function toggleGlobalLoader(isLoading) {
+function toggleGlobalLoader(isLoading, customText = "Updating Workspace...") {
   if (isLoading) {
     activeRequests++;
   } else {
@@ -27,9 +27,23 @@ function toggleGlobalLoader(isLoading) {
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.id = "global-api-loader";
+      overlay.setAttribute("role", "status");
+      overlay.setAttribute("aria-live", "polite");
       overlay.innerHTML = `
-        <div class="global-api-spinner"></div>
-        <div class="global-api-text">Processing...</div>
+        <div class="global-api-glass-pod">
+          <div class="global-orbital-chassis">
+            <div class="global-ring global-ring-outer"></div>
+            <div class="global-ring global-ring-inner"></div>
+            <div class="global-core-pod">QSI</div>
+          </div>
+          <div class="global-api-message-group">
+            <span class="global-api-text">${customText}</span>
+            <span class="global-api-subtext">Applying real-time backend updates</span>
+          </div>
+          <div class="global-api-stream-bar">
+            <div class="global-api-stream-beam"></div>
+          </div>
+        </div>
       `;
       document.body.appendChild(overlay);
     }

@@ -337,6 +337,22 @@ function EmployeeDocuments() {
             </div>
           </div>
 
+          <div className="doc-hero-actions">
+            <button
+              type="button"
+              className="doc-hero-btn"
+              onClick={() => {
+                const el = document.getElementById("upload-official-document-section");
+                if (el) {
+                  el.hidden = false;
+                  el.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              title="Upload official verification documents"
+            >
+              <span>📤</span> Upload Document
+            </button>
+          </div>
         </section>
 
         {/* =====================================================

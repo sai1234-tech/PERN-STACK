@@ -207,3 +207,104 @@
     align-items: flex-start;
   }
 }
+
+/* ==========================================================================
+   Footer Dark & Light Theme Harmonization
+   ========================================================================== */
+[data-theme="light"] .hrms-app-footer,
+html[data-theme="light"] .hrms-app-footer {
+  background: #ffffff !important;
+  color: #475569 !important;
+  border-top: 1px solid #e2e8f0 !important;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] .footer-company-name,
+[data-theme="light"] .footer-col-title,
+html[data-theme="light"] .footer-company-name,
+html[data-theme="light"] .footer-col-title {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .footer-subtitle,
+html[data-theme="light"] .footer-subtitle {
+  color: #0f766e !important;
+}
+
+[data-theme="light"] .footer-tagline,
+[data-theme="light"] .footer-links-list a,
+html[data-theme="light"] .footer-tagline,
+html[data-theme="light"] .footer-links-list a {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .footer-links-list a:hover,
+html[data-theme="light"] .footer-links-list a:hover {
+  color: #0d9488 !important;
+}
+
+[data-theme="light"] .footer-badge,
+html[data-theme="light"] .footer-badge {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .footer-badge.live,
+html[data-theme="light"] .footer-badge.live {
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+  color: #15803d !important;
+}
+
+[data-theme="light"] .footer-bottom-bar,
+html[data-theme="light"] .footer-bottom-bar {
+  border-top-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+[data-theme="light"] .node-pill,
+[data-theme="light"] .ping-pill,
+html[data-theme="light"] .node-pill,
+html[data-theme="light"] .ping-pill {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .ping-pill,
+html[data-theme="light"] .ping-pill {
+  color: #15803d !important;
+}
+
+[data-theme="dark"] .hrms-app-footer,
+html[data-theme="dark"] .hrms-app-footer {
+  background: #080d1a !important;
+  color: #94a3b8 !important;
+  border-top: 1px solid #1e293b !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="dark"] .footer-company-name,
+[data-theme="dark"] .footer-col-title,
+html[data-theme="dark"] .footer-company-name,
+html[data-theme="dark"] .footer-col-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .footer-subtitle,
+html[data-theme="dark"] .footer-subtitle {
+  color: #5eead4 !important;
+}
+
+[data-theme="dark"] .footer-tagline,
+[data-theme="dark"] .footer-links-list a,
+html[data-theme="dark"] .footer-tagline,
+html[data-theme="dark"] .footer-links-list a {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .footer-links-list a:hover,
+html[data-theme="dark"] .footer-links-list a:hover {
+  color: #2dd4bf !important;
+}

@@ -241,50 +241,85 @@ export const updateTeamLeaveRepo = async (id, status, remarks, managerUserId) =>
 // ==========================================
 // 4. GET TEAM TIMESHEETS DATA
 // ==========================================
-export const getTeamTimesheetsRepo = async (userId, email) => {
+export const getTeamTimesheetsRepo = async (userId, email, statusQuery = "submitted") => {
     const { teamIds } = await getTeamMemberIds(userId, email);
 
     if (teamIds.length === 0) return [];
 
-    const queryText = `
+    let queryText = `
         SELECT 
             t.*,
-            e.id AS emp_id, e.first_name, e.last_name, e.profile_photo, e.employee_code
+            e.id AS emp_id, e.first_name, e.last_name, e.profile_photo, e.employee_code,
+            u.name AS reviewer_user_name,
+            m.first_name AS reviewer_first_name,
+            m.last_name AS reviewer_last_name
         FROM timesheets t
         JOIN employees e ON t.employee_id = e.id
+        LEFT JOIN users u ON t.reviewed_by = u.id
+        LEFT JOIN employees m ON u.id = m.user_id
         WHERE t.employee_id = ANY($1::int[])
-          AND LOWER(t.status) = 'submitted'
-        ORDER BY t.date DESC;
     `;
+    const values = [teamIds];
 
-    const { rows } = await pool.query(queryText, [teamIds]);
+    if (statusQuery && statusQuery !== "all") {
+        if (["pending", "submitted"].includes(statusQuery.toLowerCase())) {
+            queryText += ` AND LOWER(t.status) = 'submitted'`;
+        } else {
+            queryText += ` AND LOWER(t.status) = $2`;
+            values.push(statusQuery.toLowerCase());
+        }
+    }
 
-    return rows.map((r) => ({
-        _id: r.id,
-        id: r.id,
-        employee: {
-            _id: r.emp_id,
-            id: r.emp_id,
-            firstName: r.first_name,
-            lastName: r.last_name || "",
-            profilePhoto: r.profile_photo || "",
-            employeeCode: r.employee_code
-        },
-        date: r.date,
-        project: r.project || "",
-        client: r.client || "",
-        costCenter: r.cost_center || "",
-        task: r.task || "",
-        description: r.description || "",
-        startTime: r.start_time,
-        endTime: r.end_time,
-        breakMinutes: Number(r.break_minutes || 0),
-        entryMode: r.entry_mode || "manual",
-        billable: r.billable !== false,
-        hours: Number(r.hours || 0),
-        status: r.status,
-        submittedAt: r.submitted_at
-    }));
+    queryText += ` ORDER BY t.date DESC;`;
+
+    const { rows } = await pool.query(queryText, values);
+
+    return rows.map((r) => {
+        let revName = null;
+        if (r.reviewer_first_name || r.reviewer_last_name) {
+            revName = `${r.reviewer_first_name || ''} ${r.reviewer_last_name || ''}`.trim() + " (Team Manager)";
+        } else if (r.reviewer_user_name) {
+            revName = r.reviewer_user_name;
+        }
+
+        return {
+            _id: r.id,
+            id: r.id,
+            employee: {
+                _id: r.emp_id,
+                id: r.emp_id,
+                firstName: r.first_name,
+                lastName: r.last_name || "",
+                profilePhoto: r.profile_photo || "",
+                employeeCode: r.employee_code
+            },
+            date: r.date,
+            project: r.project || "",
+            client: r.client || "",
+            costCenter: r.cost_center || "",
+            task: r.task || "",
+            description: r.description || "",
+            startTime: r.start_time,
+            endTime: r.end_time,
+            breakMinutes: Number(r.break_minutes || 0),
+            entryMode: r.entry_mode || "manual",
+            billable: r.billable !== false,
+            hours: Number(r.hours || 0),
+            status: r.status,
+            submittedAt: r.submitted_at,
+            reviewedBy: r.reviewed_by,
+            reviewedAt: r.reviewed_at,
+            reviewer: revName,
+            reviewComment: r.review_comment || "",
+            rejectionReason: r.review_comment || "",
+            managerApprovedBy: r.manager_approved_by,
+            managerApprovedAt: r.manager_approved_at,
+            managerRemarks: r.manager_remarks || "",
+            hrApprovedBy: r.hr_approved_by,
+            hrApprovedAt: r.hr_approved_at,
+            hrRemarks: r.hr_remarks || ""
+        };
+    });
 };
 
 // ==========================================
@@ -301,25 +336,46 @@ export const updateTeamTimesheetRepo = async (id, status, reviewComment, manager
         return { error: "FORBIDDEN" };
     }
 
-    const queryText = `
-        UPDATE timesheets
-        SET status = $1,
-            review_comment = $2,
-            reviewed_by = $3,
-            reviewed_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4
-        RETURNING *;
-    `;
+    const isApproveAction = ["approved", "Approved", "pending_hr", "Pending HR"].includes(status);
+    const finalStatus = isApproveAction ? "pending_hr" : "rejected";
+    const comment = reviewComment || (isApproveAction ? "Approved by Manager, forwarded to HR" : "Rejected by Manager");
 
-    const { rows } = await pool.query(queryText, [
-        status,
-        reviewComment || `Timesheet ${status} by Manager`,
-        managerUserId,
-        id
-    ]);
+    let queryText = "";
+    let values = [];
 
+    if (isApproveAction) {
+        queryText = `
+            UPDATE timesheets
+            SET status = $1,
+                review_comment = $2,
+                reviewed_by = $3,
+                reviewed_at = CURRENT_TIMESTAMP,
+                manager_approved_by = $3,
+                manager_approved_at = CURRENT_TIMESTAMP,
+                manager_remarks = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $4
+            RETURNING *;
+        `;
+        values = [finalStatus, comment, managerUserId, id];
+    } else {
+        queryText = `
+            UPDATE timesheets
+            SET status = $1,
+                review_comment = $2,
+                reviewed_by = $3,
+                reviewed_at = CURRENT_TIMESTAMP,
+                manager_remarks = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $4
+            RETURNING *;
+        `;
+        values = [finalStatus, comment, managerUserId, id];
+    }
+
+    const { rows } = await pool.query(queryText, values);
     const updated = rows[0];
+
     return {
         data: {
             _id: updated.id,
@@ -333,8 +389,16 @@ export const updateTeamTimesheetRepo = async (id, status, reviewComment, manager
             status: updated.status,
             reviewComment: updated.review_comment,
             reviewedBy: updated.reviewed_by,
-            reviewedAt: updated.reviewed_at
-        }
+            reviewedAt: updated.reviewed_at,
+            managerApprovedBy: updated.manager_approved_by,
+            managerApprovedAt: updated.manager_approved_at,
+            managerRemarks: updated.manager_remarks,
+            hrApprovedBy: updated.hr_approved_by,
+            hrApprovedAt: updated.hr_approved_at,
+            hrRemarks: updated.hr_remarks,
+            isApproveAction
+        },
+        isApproveAction
     };
 };
 

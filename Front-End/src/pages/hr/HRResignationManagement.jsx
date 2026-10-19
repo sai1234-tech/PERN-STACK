@@ -82,8 +82,8 @@ export default function HRResignationManagement() {
   return (
     <>
       <EmployeeHeader />
-      <main className="hr-dashboard-next fade-in" style={{ padding: "2rem", background: "#f1f5f9", minHeight: "calc(100vh - 70px)" }}>
-        <section className="hr-hero-banner" style={{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", borderRadius: "16px", padding: "2.5rem", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.2)" }}>
+      <main className="hr-dashboard-next fade-in" style={{ padding: "2rem", minHeight: "calc(100vh - 70px)" }}>
+        <section className="hr-hero-banner" style={{ borderRadius: "16px", padding: "2.5rem", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.2)" }}>
           <div className="hr-hero-left">
             <div className="hero-kicker-pill" style={{ display: "inline-flex", background: "rgba(255,255,255,0.1)", padding: "0.25rem 0.75rem", borderRadius: "20px", fontSize: "0.8rem", marginBottom: "1rem", border: "1px solid rgba(255,255,255,0.2)" }}>
               <span className="pulsing-live-dot" style={{ background: "#10b981", width: "8px", height: "8px", borderRadius: "50%", marginRight: "8px", alignSelf: "center", boxShadow: "0 0 0 0 rgba(16, 185, 129, 0.7)", animation: "livePulse 2s infinite" }} />
@@ -112,11 +112,11 @@ export default function HRResignationManagement() {
           </div>
         </section>
 
-        <section className="hr-panel-card" style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
+        <section className="hr-panel-card" style={{ borderRadius: "16px", padding: "1.5rem", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
           <div className="table-responsive-box">
             <table className="hr-modern-table" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <tr style={{ color: "#64748b", textAlign: "left", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   <th style={{ padding: "1rem" }}>Employee Details</th>
                   <th style={{ padding: "1rem" }}>Requested LWD</th>
                   <th style={{ padding: "1rem" }}>Notice Period</th>
@@ -135,26 +135,26 @@ export default function HRResignationManagement() {
                     <td colSpan="6">
                       <div className="table-empty-notice" style={{ textAlign: 'center', padding: '60px 20px' }}>
                         <span style={{ fontSize: '3rem', display: 'block', marginBottom: '15px', color: '#cbd5e1' }}>📄</span>
-                        <strong style={{ display: 'block', fontSize: '1.2rem', color: '#334155' }}>No Resignation Requests Found</strong>
+                        <strong style={{ display: 'block', fontSize: '1.2rem' }}>No Resignation Requests Found</strong>
                         <p style={{ color: '#64748b', marginTop: '8px' }}>There are currently no matching records based on your selected filters.</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   resignations.map((res) => (
-                    <tr key={res._id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#f8fafc"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                    <tr key={res._id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s" }}>
                       <td style={{ padding: "1rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                           {res.employee?.profilePhoto ? (
                             <img src={formatPhotoUrl(res.employee.profilePhoto)} alt="avatar" style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }} />
                           ) : (
-                            <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#e2e8f0", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+                            <div className="employee-avatar" style={{ width: "40px", height: "40px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
                               {(res.employee?.firstName?.[0] || '') + (res.employee?.lastName?.[0] || 'E')}
                             </div>
                           )}
                           <div>
-                            <strong style={{ display: "block", color: "#0f172a" }}>{res.employee?.firstName} {res.employee?.lastName}</strong>
-                            <small style={{ color: "#64748b" }}>{res.employee?.email}</small>
+                            <strong className="employee-name" style={{ display: "block" }}>{res.employee?.firstName} {res.employee?.lastName}</strong>
+                            <small className="employee-email" style={{ color: "#64748b" }}>{res.employee?.email}</small>
                           </div>
                         </div>
                       </td>
@@ -164,12 +164,12 @@ export default function HRResignationManagement() {
                         </span>
                       </td>
                       <td style={{ padding: "1rem" }}>
-                        <span style={{ background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0", padding: "4px 10px", borderRadius: "6px", fontSize: "0.85rem" }}>
+                        <span className="code-tag" style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "0.85rem" }}>
                           {res.noticePeriodDays} Days
                         </span>
                       </td>
                       <td style={{ padding: "1rem" }}>
-                        <span style={{ fontSize: "0.9rem", color: "#334155" }}>
+                        <span style={{ fontSize: "0.9rem" }}>
                           {reasonLabels[res.reasonCategory] || res.reasonCategory?.replace("-", " ")}
                         </span>
                       </td>
@@ -192,10 +192,9 @@ export default function HRResignationManagement() {
                       </td>
                       <td style={{ padding: "1rem" }}>
                         <button 
+                          className="view-profile-btn"
                           onClick={() => openReviewModal(res)}
-                          style={{ background: "#fff", border: "1px solid #cbd5e1", padding: "6px 14px", borderRadius: "6px", color: "#0f172a", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.background = "#f1f5f9"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#cbd5e1"; e.currentTarget.style.background = "#fff"; }}
+                          style={{ padding: "6px 14px", borderRadius: "6px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
                         >
                           Review
                         </button>
@@ -216,18 +215,18 @@ export default function HRResignationManagement() {
                 <button type="button" className="btn-close" onClick={() => setSelectedResignation(null)}>&times;</button>
               </div>
               <div className="modal-body" style={{ overflowY: 'auto', padding: '20px' }}>
-                <div style={{ marginBottom: '24px', padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="detail-card" style={{ marginBottom: '24px', padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: '#64748b' }}>Employee Name</span>
-                    <strong style={{ color: '#0f172a' }}>{selectedResignation.employee?.firstName} {selectedResignation.employee?.lastName}</strong>
+                    <strong>{selectedResignation.employee?.firstName} {selectedResignation.employee?.lastName}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: '#64748b' }}>Reason Category</span>
-                    <strong style={{ color: '#0f172a' }}>{reasonLabels[selectedResignation.reasonCategory] || selectedResignation.reasonCategory?.replace("-", " ")}</strong>
+                    <strong>{reasonLabels[selectedResignation.reasonCategory] || selectedResignation.reasonCategory?.replace("-", " ")}</strong>
                   </div>
                   <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '5px' }}>
                     <span style={{ color: '#64748b', display: 'block', marginBottom: '4px' }}>Employee Comments:</span>
-                    <p style={{ margin: 0, color: '#334155', fontStyle: 'italic' }}>"{selectedResignation.reasonDetails}"</p>
+                    <p style={{ margin: 0, fontStyle: 'italic' }}>"{selectedResignation.reasonDetails}"</p>
                   </div>
                   {selectedResignation.managerReviewComment && (
                     <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '5px' }}>

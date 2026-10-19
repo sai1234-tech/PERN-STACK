@@ -462,7 +462,8 @@ function EmployeeHeader() {
           aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           aria-pressed={isDark}
         >
-          <span aria-hidden="true">{isDark ? "☀️" : "🌙"}</span>
+          <span className="theme-toggle-icon" aria-hidden="true">{isDark ? "☀️" : "🌙"}</span>
+          <span className="theme-toggle-text">{isDark ? "Light" : "Dark"}</span>
         </button>
 
         {/* Live Clock Capsule */}

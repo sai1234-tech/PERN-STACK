@@ -158,6 +158,20 @@ const formatEmployeeProfile = (employee) => {
         bankAccount: employee.banking?.accountNumber || employee.bankAccount || "",
         reportsTo: employee.reports_to || employee.reportsTo || null,
         reportsToName: mgrName,
+        assignedHr: employee.assigned_hr || employee.assignedHr || (employee.hr_id ? {
+            id: employee.hr_id,
+            employeeCode: employee.hr_code || "EMP01",
+            name: `${employee.hr_first_name || "Lakshmi"} ${employee.hr_last_name || "Ragula"}`.trim(),
+            email: employee.hr_email || "lragula@quadratics.com"
+        } : (employee.employment?.hrPartnerName ? {
+            name: employee.employment.hrPartnerName,
+            employeeCode: employee.employment.hrPartnerCode || "EMP01",
+            email: employee.employment.hrPartnerEmail || "lragula@quadratics.com"
+        } : {
+            name: "Lakshmi Ragula",
+            employeeCode: "EMP01",
+            email: "lragula@quadratics.com"
+        })),
         employment: {
             department: employee.employment?.department || employee.department || "Engineering",
             designation: employee.employment?.designation || employee.designation || "Developer",

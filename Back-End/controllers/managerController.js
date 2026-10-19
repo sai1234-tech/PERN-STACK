@@ -89,8 +89,9 @@ export const getTeamTimesheets = async (req, res) => {
     try {
         const userId = getUserId(req);
         const email = req.user?.email || "";
+        const statusQuery = req.query.status || "submitted";
 
-        const timesheets = await getTeamTimesheetsRepo(userId, email);
+        const timesheets = await getTeamTimesheetsRepo(userId, email, statusQuery);
 
         return res.status(200).json({
             success: true,
@@ -112,7 +113,7 @@ export const updateTeamTimesheet = async (req, res) => {
         const userId = getUserId(req);
         const email = req.user?.email || "";
 
-        if (!["approved", "rejected", "Approved", "Rejected"].includes(status)) {
+        if (!["approved", "rejected", "Approved", "Rejected", "pending_hr", "Pending HR"].includes(status)) {
             return res.status(400).json({ success: false, message: "Invalid status" });
         }
 
@@ -129,7 +130,9 @@ export const updateTeamTimesheet = async (req, res) => {
         return res.status(200).json({
             success: true,
             data: result.data,
-            message: `Timesheet successfully ${normStatus}`
+            message: result.isApproveAction
+                ? "Timesheet approved by Manager and forwarded to HR for final sign-off"
+                : "Timesheet rejected by Manager"
         });
     } catch (error) {
         console.error("updateTeamTimesheet error:", error);

@@ -11,7 +11,6 @@ import { useLeaves } from "../../hooks/useLeaves";
 import { useTimesheets } from "../../hooks/useTimesheets";
 import { useEnterpriseOps } from "../../hooks/useEnterpriseOps";
 import { getMyDocuments, uploadDocument } from "../../services/documentService";
-import { getMySalary, getMyPayslip } from "../../services/payrollService";
 import { apiRequest } from "../../services/apiClient";
 import { formatTime, formatDate, parseLocalDate, formatDuration } from "../../utils/date";
 import { normalizeRole } from "../../utils/auth";
@@ -25,7 +24,6 @@ function EmployeeDashboard() {
   const timesheetState = useTimesheets();
   const { pulseAnswered, submitPulse } = useEnterpriseOps();
 
-  const [payrollSummary, setPayrollSummary] = useState(null);
   const [requestedDocs, setRequestedDocs] = useState([]);
   const [uploadNotice, setUploadNotice] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -38,43 +36,6 @@ function EmployeeDashboard() {
       return [];
     }
   });
-
-  // Fetch live payroll / compensation status
-  useEffect(() => {
-    let mounted = true;
-    const fetchPayroll = async () => {
-      try {
-        const cur = new Date();
-        const m = cur.getMonth() + 1;
-        const y = cur.getFullYear();
-        const [salRes, slipRes] = await Promise.allSettled([
-          getMySalary(m, y),
-          getMyPayslip(m, y),
-        ]);
-        const sal = salRes.status === "fulfilled" ? (salRes.value?.data || salRes.value) : null;
-        const slip = slipRes.status === "fulfilled" ? (slipRes.value?.data || slipRes.value) : null;
-        if (mounted) {
-          setPayrollSummary({ salary: sal, payslip: slip });
-        }
-      } catch (e) {
-        // silent fallback
-      }
-    };
-
-    fetchPayroll();
-    const handleSync = () => fetchPayroll();
-    window.addEventListener("focus", handleSync);
-    window.addEventListener("hrms_data_updated", handleSync);
-    window.addEventListener("hrms:data_changed", handleSync);
-    window.addEventListener("storage", handleSync);
-    return () => {
-      mounted = false;
-      window.removeEventListener("focus", handleSync);
-      window.removeEventListener("hrms_data_updated", handleSync);
-      window.removeEventListener("hrms:data_changed", handleSync);
-      window.removeEventListener("storage", handleSync);
-    };
-  }, []);
 
   // Fetch HR document requests for logged in employee
   useEffect(() => {
@@ -449,48 +410,73 @@ function EmployeeDashboard() {
       .catch((err) => console.error("Failed to fetch holidays in dashboard", err));
   }, []);
 
+  const getHolidayEmoji = (title = "") => {
+    const t = String(title).toLowerCase();
+    if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
+    if (t.includes("holi")) return "🎨";
+    if (t.includes("christmas") || t.includes("xmas")) return "🎄";
+    if (t.includes("new year")) return "✨";
+    if (t.includes("republic") || t.includes("independence") || t.includes("national")) return "🇮🇳";
+    if (t.includes("gandhi")) return "🕊️";
+    if (t.includes("eid") || t.includes("ramadan") || t.includes("bakrid")) return "🌙";
+    if (t.includes("pongal") || t.includes("sankranti") || t.includes("onam")) return "🌾";
+    if (t.includes("dussehra") || t.includes("durga") || t.includes("navratri") || t.includes("puja") || t.includes("vijayadashami")) return "🌺";
+    if (t.includes("ganesh") || t.includes("vinayaka")) return "🐘";
+    if (t.includes("raksha") || t.includes("rakhi")) return "🧵";
+    if (t.includes("good friday") || t.includes("easter")) return "✝️";
+    if (t.includes("buddha") || t.includes("purnima")) return "🪷";
+    if (t.includes("labor") || t.includes("may day")) return "⚒️";
+    return "🏖️";
+  };
+
   const upcomingHolidays = useMemo(() => {
-    if (apiHolidays.length > 0) {
-      return apiHolidays.map((h) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const source = apiHolidays.length > 0 ? apiHolidays : [
+      { date: `${currentYear}-10-02`, title: "Gandhi Jayanti", type: "National Holiday" },
+      { date: `${currentYear}-10-20`, title: "Dussehra / Vijayadashami", type: "Public Holiday" },
+      { date: `${currentYear}-11-01`, title: "Diwali / Deepavali", type: "Public Holiday" },
+      { date: `${currentYear}-12-25`, title: "Christmas Day", type: "Public Holiday" },
+      { date: `${currentYear + 1}-01-01`, title: "New Year's Day", type: "Public Holiday" },
+      { date: `${currentYear + 1}-01-26`, title: "Republic Day", type: "National Holiday" },
+    ];
+
+    return source
+      .map((h) => {
         const d = parseLocalDate(h.date);
+        const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+        const countdownStr =
+          diffDays === 0
+            ? "Today 🎉"
+            : diffDays === 1
+            ? "Tomorrow ⚡"
+            : diffDays > 1
+            ? `In ${diffDays} days`
+            : "Passed";
         return {
+          id: h._id || h.id || h.title,
           date: String(d.getDate()).padStart(2, "0"),
-          month: d.toLocaleDateString("en-US", { month: "short" }),
+          month: d.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
+          weekday: d.toLocaleDateString("en-US", { weekday: "short" }),
           year: d.getFullYear(),
           name: h.title || h.name,
-          type: h.type || "Official Holiday",
+          type: h.type || "Public Holiday",
+          diffDays,
+          countdownStr,
+          emoji: getHolidayEmoji(h.title || h.name),
+          fullDateStr: d.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
         };
-      });
-    }
-
-    const fallbackHolidays = [
-      { date: "02", month: "Oct", year: 2026, name: "Gandhi Jayanti", type: "National Holiday" },
-      { date: "12", month: "Oct", year: 2026, name: "Dussehra / Vijayadashami", type: "Public Holiday" },
-      { date: "01", month: "Nov", year: 2026, name: "Diwali / Deepavali", type: "Optional Holiday" },
-      { date: "25", month: "Dec", year: 2026, name: "Christmas Day", type: "Public Holiday" },
-      { date: "01", month: "Jan", year: 2027, name: "New Year's Day", type: "Public Holiday" },
-      { date: "26", month: "Jan", year: 2027, name: "Republic Day", type: "National Holiday" },
-    ];
-    return fallbackHolidays.filter((h) => h.year === currentYear);
+      })
+      .filter((h) => h.diffDays >= 0)
+      .sort((a, b) => a.diffDays - b.diffDays)
+      .slice(0, 6);
   }, [apiHolidays, currentYear]);
 
-  const dashGross = Number(
-    payrollSummary?.payslip?.grossSalary ??
-    payrollSummary?.salary?.grossSalary ??
-    payrollSummary?.salary?.monthlySalary ??
-    (profile?.employment?.salary ? Math.round(Number(profile.employment.salary) / 12) : 55000)
-  );
-  const dashNet = Number(
-    payrollSummary?.payslip?.netSalary ??
-    payrollSummary?.salary?.netSalary ??
-    (dashGross > 0 ? Math.max(0, dashGross - 9000) : 46000)
-  );
-  const dashMoney = (val) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(Number(val || 0));
 
   if (employeeState.loading) {
     return <Loader label="Loading your workspace..." />;
@@ -846,38 +832,6 @@ function EmployeeDashboard() {
               {timesheetState.hasUnsubmittedToday ? "Today: 1 Pending" : "Today: Submitted"} • {timesheetState.pendingCount} Total Pending
             </span>
           </div>
-
-          {/* Card 5: Compensation & Net Take-Home Pay */}
-          <Link
-            to="/employee/payroll"
-            className="kpi-card-box emerald"
-            style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
-            title="Click to view detailed salary slips and payroll breakdown"
-          >
-            <div className="kpi-card-head">
-              <span className="kpi-title-text">Net Take-Home Pay</span>
-              <div className="kpi-icon-pod emerald">💰</div>
-            </div>
-            <div className="kpi-stat-row">
-              <span className="kpi-big-num">
-                {dashGross > 0 ? dashMoney(dashNet) : "Pending"}
-              </span>
-              <span className={`kpi-badge-chip ${dashGross > 0 ? "positive" : "neutral"}`}>
-                {dashGross > 0 ? "Verified Pay" : "Awaiting Run"}
-              </span>
-            </div>
-            <div className="kpi-progress-rail">
-              <div
-                className="kpi-progress-bar emerald"
-                style={{ width: dashGross > 0 ? "100%" : "0%" }}
-              />
-            </div>
-            <span className="kpi-subtext">
-              {dashGross > 0
-                ? `Gross: ${dashMoney(dashGross)} • Take-Home: ${dashMoney(dashNet)} →`
-                : "View monthly payroll register →"}
-            </span>
-          </Link>
         </section>
 
         {/* =====================================================
@@ -1295,31 +1249,91 @@ function EmployeeDashboard() {
           <div className="dashboard-dual-layout">
             <div className="dash-layout-col main">
               {/* Upcoming Company Holidays */}
-              <div className="dash-panel-card">
+              <div className="dash-panel-card emp-holiday-panel-card">
                 <div className="dash-panel-head">
-                  <h2>Upcoming Holidays ({currentYear} Calendar)</h2>
-                  <span style={{ fontSize: "0.76rem", color: "#64748b" }}>
-                    Quadratic Systems Inc
-                  </span>
+                  <div>
+                    <h2>Corporate Holidays ({currentYear})</h2>
+                    <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                      Annual gazetted observances and paid company leaves
+                    </span>
+                  </div>
+                  <Link to="/employee/calendar" className="panel-action-link holiday-calendar-cta">
+                    🗓️ Open Full Calendar →
+                  </Link>
                 </div>
                 <div className="holidays-scroll-container">
-                  {upcomingHolidays.map((holiday) => (
-                    <div key={holiday.name} className="holiday-item-row">
-                      <div className="holiday-meta">
-                        <div className="holiday-date-pod">
-                          <strong>{holiday.date}</strong>
-                          <span>{holiday.month}</span>
+                  {(() => {
+                    const imminent = upcomingHolidays.find((h) => h.diffDays === 0 || h.diffDays === 1);
+                    if (!imminent) return null;
+                    const isToday = imminent.diffDays === 0;
+
+                    return (
+                      <div className={`emp-imminent-holiday-notice ${isToday ? "today" : "tomorrow"}`}>
+                        <span className="notice-emoji">{isToday ? "🎉" : "⚡"}</span>
+                        <div className="notice-details">
+                          <strong>
+                            {isToday
+                              ? `Today is ${imminent.name}! (${imminent.type})`
+                              : `Tomorrow is ${imminent.name}! (${imminent.type})`}
+                          </strong>
+                          <p>
+                            {isToday
+                              ? "Company office is closed today. Shift hours and desk punches are paused for the gazetted holiday."
+                              : `Scheduled for tomorrow, ${imminent.fullDateStr}. Corporate office will be closed. Enjoy the holiday!`}
+                          </p>
                         </div>
-                        <div className="holiday-info">
-                          <h4>{holiday.name}</h4>
-                          <span>{holiday.type}</span>
-                        </div>
+                        <span className="notice-badge">
+                          {isToday ? "🎉 TODAY'S HOLIDAY" : "⚡ TOMORROW'S HOLIDAY"}
+                        </span>
                       </div>
-                      <span className="holiday-tag">Official Holiday</span>
-                    </div>
-                  ))}
+                    );
+                  })()}
+
+                  {upcomingHolidays.length === 0 ? (
+                    <p style={{ fontSize: "0.86rem", color: "#64748b", margin: "1rem 0", textAlign: "center" }}>
+                      🏖️ No upcoming holidays scheduled for the rest of the year.
+                    </p>
+                  ) : (
+                    upcomingHolidays.map((holiday) => {
+                      const isToday = holiday.diffDays === 0;
+                      const isTomorrow = holiday.diffDays === 1;
+
+                      return (
+                        <div
+                          key={holiday.id || holiday.name}
+                          className={`holiday-item-row ${isToday ? "today-row imminent-row" : ""} ${isTomorrow ? "tomorrow-row imminent-row" : ""}`}
+                        >
+                          <div className="holiday-meta">
+                            <div className="holiday-date-pod">
+                              <span className="h-pod-month">{holiday.month}</span>
+                              <strong className="h-pod-day">{holiday.date}</strong>
+                              <span className="h-pod-weekday">{holiday.weekday}</span>
+                            </div>
+                            <div className="holiday-info">
+                              <div className="holiday-title-line">
+                                <span className="holiday-festive-emoji">{holiday.emoji}</span>
+                                <h4>{holiday.name}</h4>
+                                {isToday && <span className="mini-celebration-pill">🎉 Today</span>}
+                                {isTomorrow && <span className="mini-celebration-pill tomorrow">⚡ Tomorrow</span>}
+                              </div>
+                              <span className="holiday-date-detail">{holiday.fullDateStr}</span>
+                            </div>
+                          </div>
+                          <div className="holiday-tags-group">
+                            <span className={`holiday-type-pill ${(holiday.type || "public").toLowerCase().replace(/\s+/g, "-")}`}>
+                              {holiday.type}
+                            </span>
+                            <span className={`holiday-countdown-pill ${isToday ? "today-glow" : isTomorrow ? "tomorrow-glow" : ""}`}>
+                              {isToday ? "🎉 Today" : isTomorrow ? "⚡ Tomorrow" : holiday.countdownStr}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
+
             </div>
 
             <div className="dash-layout-col">

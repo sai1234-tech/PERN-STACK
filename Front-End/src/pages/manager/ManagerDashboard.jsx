@@ -132,6 +132,9 @@ function ManagerDashboard() {
               <Link to="/manager/projects" className="hero-action-link">
                 🚀 Team Projects
               </Link>
+              <Link to="/manager/resources" className="hero-action-link">
+                🏢 Resource Matrix
+              </Link>
               <Link to="/employee/payroll" className="hero-action-link">
                 💰 My Payroll
               </Link>
@@ -362,8 +365,15 @@ function ManagerDashboard() {
                         <span className="req-meta-val">{req.project || "N/A"}</span>
                       </div>
                       <div className="req-meta-row">
+                        <span className="req-meta-label">Task:</span>
+                        <span className="req-meta-val">{req.task || "N/A"}</span>
+                      </div>
+                      <div className="req-meta-row">
                         <span className="req-meta-label">Hours Logged:</span>
                         <span className="req-meta-val">{req.hours} hrs</span>
+                      </div>
+                      <div className="req-stage-note" style={{ fontSize: "0.74rem", color: "#d97706", background: "rgba(245, 158, 11, 0.12)", padding: "4px 8px", borderRadius: "6px", marginTop: "6px", fontWeight: "600" }}>
+                        🟡 Step 1/2: Manager Review ➔ Step 2: HR Final Sign-off
                       </div>
                     </div>
 
@@ -378,9 +388,9 @@ function ManagerDashboard() {
                       <button
                         type="button"
                         className="card-action-btn approve"
-                        onClick={() => approveTimesheet(req._id, "Approved by manager")}
+                        onClick={() => approveTimesheet(req._id, "Approved by Manager - Forwarded to HR")}
                       >
-                        Approve
+                        ✓ Approve & Forward to HR
                       </button>
                     </div>
                   </div>

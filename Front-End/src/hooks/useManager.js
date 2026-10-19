@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../services/apiClient";
-import { useSyncRefresh } from "../utils/syncManager";
+import { useSyncRefresh, broadcastDataChange } from "../utils/syncManager";
 
 export const useManager = () => {
   const [overview, setOverview] = useState(null);
@@ -88,6 +88,7 @@ export const useManager = () => {
         body: JSON.stringify({ status: "approved", remarks }),
       });
       if (res.success) {
+        broadcastDataChange("leave");
         await loadAll(true);
         return true;
       }
@@ -104,6 +105,7 @@ export const useManager = () => {
         body: JSON.stringify({ status: "rejected", remarks }),
       });
       if (res.success) {
+        broadcastDataChange("leave");
         await loadAll(true);
         return true;
       }
@@ -120,6 +122,7 @@ export const useManager = () => {
         body: JSON.stringify({ status: "approved", reviewComment: comment }),
       });
       if (res.success) {
+        broadcastDataChange("timesheet");
         await loadAll(true);
         return true;
       }
@@ -136,6 +139,7 @@ export const useManager = () => {
         body: JSON.stringify({ status: "rejected", reviewComment: comment }),
       });
       if (res.success) {
+        broadcastDataChange("timesheet");
         await loadAll(true);
         return true;
       }

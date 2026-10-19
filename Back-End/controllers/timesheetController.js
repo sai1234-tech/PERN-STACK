@@ -176,9 +176,14 @@ const getWeekRange = (dateInput) => {
     sunday.setDate(monday.getDate() + 6);
     sunday.setHours(23, 59, 59, 999);
 
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+    friday.setHours(23, 59, 59, 999);
+
     return {
         start: monday,
         end: sunday,
+        friday,
     };
 };
 
@@ -306,6 +311,25 @@ export const createTimesheet = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: `Enterprise Attendance Policy: You have not clocked in for attendance on ${dateStr}. Timesheet entries can only be filled for dates where you have clocked in.`,
+            });
+        }
+
+        // Enforce One-Time Submission Policy:
+        const alreadySubmittedEntry = existingDailyEntries.find(e =>
+            ["submitted", "pending_hr", "approved"].includes(e.status)
+        );
+        if (alreadySubmittedEntry) {
+            return res.status(400).json({
+                success: false,
+                message: `Enterprise Timesheet Policy: A timesheet for ${dateStr} has already been submitted (${alreadySubmittedEntry.status}) and cannot be submitted again. Timesheets can only be submitted once per working day.`,
+            });
+        }
+
+        const existingDraft = existingDailyEntries.find(e => e.status === "draft");
+        if (existingDraft) {
+            return res.status(400).json({
+                success: false,
+                message: `Enterprise Timesheet Policy: A draft timesheet for ${dateStr} already exists. Please edit or submit your existing draft.`,
             });
         }
 
@@ -500,7 +524,7 @@ export const getMyWeek = async (req, res) => {
         }
 
         const selectedDate = req.query.date || new Date();
-        const { start, end } = getWeekRange(selectedDate);
+        const { start, end, friday } = getWeekRange(selectedDate);
         const startStr = formatDateKey(start);
         const endStr = formatDateKey(end);
 
@@ -516,18 +540,17 @@ export const getMyWeek = async (req, res) => {
             const todayStr = formatDateKey(new Date());
             if (startStr <= todayStr) {
                 const realisticSchedule = [
-                    { dayOffset: 0, task: "Core Platform Architecture & Microservice Refactoring", project: "Enterprise HRMS Engine", hours: 8.0, status: "approved" },
-                    { dayOffset: 1, task: "Postgres Database Query Tuning & Index Optimization", project: "Enterprise HRMS Engine", hours: 8.0, status: "approved" },
-                    { dayOffset: 2, task: "Full-Stack Security Audit & Token Authentication Hardening", project: "Enterprise HRMS Engine", hours: 8.0, status: "approved" },
-                    { dayOffset: 3, task: "Enterprise Payroll Ledger & Compensation Reconciliation", project: "Enterprise HRMS Engine", hours: 8.0, status: "submitted" },
-                    { dayOffset: 4, task: "Production Release Deployment & Telemetry Verification", project: "Enterprise HRMS Engine", hours: 4.5, status: "draft" }
+                    { dayOffset: 0, task: "Core Platform Architecture & Microservice Refactoring", project: "Enterprise HRMS Engine", hours: 8.0, status: "submitted" },
+                    { dayOffset: 1, task: "Postgres Database Query Tuning & Index Optimization", project: "Enterprise HRMS Engine", hours: 8.0, status: "submitted" },
+                    { dayOffset: 2, task: "Full-Stack Security Audit & Token Authentication Hardening", project: "Enterprise HRMS Engine", hours: 8.0, status: "submitted" },
+                    { dayOffset: 3, task: "Enterprise Payroll Ledger & Compensation Reconciliation", project: "Enterprise HRMS Engine", hours: 8.0, status: "submitted" }
                 ];
 
                 for (const t of realisticSchedule) {
                     const taskDate = new Date(start);
                     taskDate.setDate(start.getDate() + t.dayOffset);
                     const taskDateStr = formatDateKey(taskDate);
-                    if (taskDateStr > todayStr) continue;
+                    if (taskDateStr >= todayStr) continue;
 
                     // STRICT RULE: If user has NOT clocked in on taskDateStr, mark as absent and DO NOT autofill!
                     const dayAttendance = attendanceRecords.find(
@@ -572,8 +595,12 @@ export const getMyWeek = async (req, res) => {
             }
         }
 
+        const managerName = (employee.manager_first_name || employee.manager_last_name)
+            ? `${employee.manager_first_name || ''} ${employee.manager_last_name || ''}`.trim() + " (Team Manager)"
+            : "Vikas Guru (Team Manager)";
+
         const dailyTotals = [];
-        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        for (let dayOffset = 0; dayOffset < 5; dayOffset++) {
             const day = new Date(start);
             day.setDate(start.getDate() + dayOffset);
             dailyTotals.push({
@@ -592,8 +619,23 @@ export const getMyWeek = async (req, res) => {
                 dailyTotal.entries += 1;
             }
 
+            let entryReviewer = timesheet.reviewer;
+            if (timesheet.status === "submitted") {
+                entryReviewer = `Awaiting review by ${managerName}`;
+            } else if (timesheet.status === "pending_hr") {
+                entryReviewer = `Approved by ${timesheet.managerApproverName || managerName} ➔ Awaiting HR final sign-off`;
+            } else if (timesheet.status === "approved") {
+                entryReviewer = timesheet.hrApproverName
+                    ? `Approved by ${timesheet.hrApproverName} (HR)`
+                    : (timesheet.reviewer || "Approved by HR");
+            } else if (timesheet.status === "rejected") {
+                entryReviewer = timesheet.reviewer || managerName;
+            }
+
             return {
                 ...timesheet,
+                reviewer: entryReviewer,
+                managerName,
                 actions: getAvailableActions(timesheet.status),
             };
         });
@@ -661,11 +703,13 @@ export const getMyWeek = async (req, res) => {
         return res.status(200).json({
             success: true,
             data: {
-                week: { start, end },
+                week: { start, end: friday, sunday: end },
                 totalHours: roundedTotal,
                 dailyTotals,
                 entries,
                 statusCounts,
+                managerName,
+                reportingManager: managerName,
                 reconciliation: selectedDayItem?.reconciliation || weekReconciliation,
                 weekReconciliation,
             },
@@ -1018,10 +1062,30 @@ export const submitTimesheet = async (req, res) => {
             });
         }
 
+        if (["submitted", "pending_hr", "approved"].includes(timesheet.status)) {
+            return res.status(400).json({
+                success: false,
+                message: `This timesheet has already been submitted (status: ${timesheet.status}). A timesheet can only be submitted once.`,
+            });
+        }
+
         if (!["draft", "rejected"].includes(timesheet.status)) {
             return res.status(400).json({
                 success: false,
                 message: "Only draft or rejected entries can be submitted",
+            });
+        }
+
+        const dateStr = formatDateKey(new Date(timesheet.date));
+        const existingEntries = await findTimesheetsByDate(employee.id, dateStr);
+        const alreadySubmitted = existingEntries.find(e =>
+            String(e.id) !== String(timesheet.id) &&
+            ["submitted", "pending_hr", "approved"].includes(e.status)
+        );
+        if (alreadySubmitted) {
+            return res.status(400).json({
+                success: false,
+                message: `Enterprise Timesheet Policy: A timesheet for ${dateStr} has already been submitted (${alreadySubmitted.status}). Only one timesheet can be submitted per working day.`,
             });
         }
 
@@ -1083,14 +1147,14 @@ export const submitWeek = async (req, res) => {
             });
         }
 
-        const lockedEntries = entries.filter((entry) =>
-            ["submitted", "approved"].includes(entry.status)
+        const draftOrRejected = entries.filter((entry) =>
+            ["draft", "rejected"].includes(entry.status)
         );
 
-        if (lockedEntries.length > 0) {
+        if (draftOrRejected.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: "Some entries in this week are already submitted or approved",
+                message: "This week's timesheet has already been submitted. Timesheets can only be submitted once.",
             });
         }
 
@@ -1127,7 +1191,7 @@ export const submitWeek = async (req, res) => {
 };
 
 // =====================================================
-// GET ALL TIMESHEETS - HR / ADMIN
+// GET ALL TIMESHEETS - HR / ADMIN / MANAGER
 // GET /api/v1/timesheets/all
 // =====================================================
 export const getAllTimesheets = async (req, res) => {
@@ -1136,18 +1200,27 @@ export const getAllTimesheets = async (req, res) => {
         const filter = {};
 
         if (status) {
-            if (!["draft", "submitted", "approved", "rejected"].includes(status)) {
+            const normStatus = status.toLowerCase();
+            if (!["draft", "submitted", "pending_hr", "approved", "rejected", "all"].includes(normStatus)) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid status filter",
                 });
             }
-            filter.status = status;
+            if (normStatus !== "all") {
+                filter.status = normStatus;
+            }
         }
 
         if (employeeId) filter.employeeId = employeeId;
         if (from) filter.fromDate = formatDateKey(new Date(from));
         if (to) filter.toDate = formatDateKey(new Date(to));
+
+        if (req.user?.role === "manager") {
+            const { getTeamMemberIds } = await import("../repositories/managerRepository.js");
+            const { teamIds } = await getTeamMemberIds(req.user.userId || req.user.id, req.user.email);
+            filter.teamIds = teamIds;
+        }
 
         const pageNumber = Math.max(Number(page), 1);
         const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
@@ -1188,7 +1261,7 @@ export const getAllTimesheets = async (req, res) => {
 };
 
 // =====================================================
-// REVIEW TIMESHEET - HR / ADMIN
+// REVIEW TIMESHEET - HR / MANAGER / ADMIN
 // PATCH /api/v1/timesheets/:timesheetId/review
 // =====================================================
 export const reviewTimesheet = async (req, res) => {
@@ -1209,6 +1282,9 @@ export const reviewTimesheet = async (req, res) => {
             });
         }
 
+        const userRole = (req.user?.role || "").toLowerCase();
+        const reviewerUserId = req.user.userId || req.user.id;
+
         const timesheet = await findTimesheetById(req.params.timesheetId);
 
         if (!timesheet) {
@@ -1218,23 +1294,71 @@ export const reviewTimesheet = async (req, res) => {
             });
         }
 
-        if (timesheet.status !== "submitted") {
+        if (!["submitted", "pending_hr"].includes(timesheet.status)) {
             return res.status(400).json({
                 success: false,
-                message: "Only submitted entries can be reviewed",
+                message: "Only submitted or manager-approved entries can be reviewed",
             });
         }
 
-        const updated = await updateTimesheetRecord(timesheet.id, {
-            status,
-            reviewedBy: req.user.userId,
-            reviewedAt: new Date(),
-            reviewComment: reviewComment?.trim() || "",
-        });
+        const isManager = userRole === "manager";
+        const isHRorAdmin = ["hr", "admin"].includes(userRole);
+
+        let finalStatus = status;
+        let updateFields = {};
+        let successMessage = "";
+
+        if (status === "approved") {
+            if (isManager) {
+                // Stage 1: Reporting Manager forwards to HR
+                finalStatus = "pending_hr";
+                updateFields = {
+                    status: "pending_hr",
+                    reviewedBy: reviewerUserId,
+                    reviewedAt: new Date(),
+                    reviewComment: reviewComment?.trim() || "Approved by Manager, forwarded to HR for final sign-off",
+                    managerApprovedBy: reviewerUserId,
+                    managerApprovedAt: new Date(),
+                    managerRemarks: reviewComment?.trim() || "Approved by Manager, forwarded to HR",
+                };
+                successMessage = "Timesheet entry approved by Manager and forwarded to HR for final sign-off";
+            } else {
+                // Stage 2: HR or Admin final sign-off
+                finalStatus = "approved";
+                updateFields = {
+                    status: "approved",
+                    reviewedBy: reviewerUserId,
+                    reviewedAt: new Date(),
+                    reviewComment: reviewComment?.trim() || "Final sign-off by HR, reconciled to payroll ledger",
+                    hrApprovedBy: reviewerUserId,
+                    hrApprovedAt: new Date(),
+                    hrRemarks: reviewComment?.trim() || "Approved by HR",
+                };
+                successMessage = "Timesheet entry approved by HR (Final Sign-off completed)";
+            }
+        } else {
+            // Rejection by either Manager or HR
+            finalStatus = "rejected";
+            const rejectMsg = reviewComment?.trim() || (isManager ? "Rejected by Manager" : "Rejected by HR");
+            updateFields = {
+                status: "rejected",
+                reviewedBy: reviewerUserId,
+                reviewedAt: new Date(),
+                reviewComment: rejectMsg,
+            };
+            if (isManager) {
+                updateFields.managerRemarks = rejectMsg;
+            } else {
+                updateFields.hrRemarks = rejectMsg;
+            }
+            successMessage = isManager ? "Timesheet entry rejected by Manager" : "Timesheet entry rejected by HR";
+        }
+
+        const updated = await updateTimesheetRecord(timesheet.id, updateFields);
 
         return res.status(200).json({
             success: true,
-            message: status === "approved" ? "Timesheet entry approved" : "Timesheet entry rejected",
+            message: successMessage,
             data: updated,
         });
     } catch (error) {

@@ -10,11 +10,13 @@ import {
   getAllLeaves,
   getEmployees,
 } from "../../services/hrService";
-import { formatDate, formatTime } from "../../utils/date";
+import { getAllTimesheets, reviewTimesheet } from "../../services/timesheetService";
+import { formatDate, formatTime, parseLocalDate } from "../../utils/date";
 import { formatPhotoUrl } from "../../utils/photo";
-import { useSyncRefresh } from "../../utils/syncManager";
+import { useSyncRefresh, broadcastDataChange } from "../../utils/syncManager";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useAuth } from "../../context/AuthContext";
+import { apiRequest } from "../../services/apiClient";
 import "./HRDashboard.css";
 
 const avatarColors = [
@@ -61,6 +63,8 @@ function HRDashboard() {
   const [employees, setEmployees] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [timesheets, setTimesheets] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [loading, setLoading] = useState(true);
@@ -68,19 +72,36 @@ function HRDashboard() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("directory");
 
+  // Timesheet tab state
+  const [timesheetSearch, setTimesheetSearch] = useState("");
+  const [timesheetStatusFilter, setTimesheetStatusFilter] = useState("pending");
+  const [timesheetWeekFilter, setTimesheetWeekFilter] = useState("all");
+  const [timesheetActionNotice, setTimesheetActionNotice] = useState("");
+  const [timesheetActionError, setTimesheetActionError] = useState("");
+  const [rejectModalTimesheet, setRejectModalTimesheet] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [actionBusyId, setActionBusyId] = useState(null);
+
   const loadDashboard = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError("");
     try {
-      const [employeeResponse, attendanceResponse, leaveResponse] =
+      const [employeeResponse, attendanceResponse, leaveResponse, timesheetResponse, holidayResponse] =
         await Promise.all([
           getEmployees(),
           getAllAttendance(),
           getAllLeaves(),
+          getAllTimesheets().catch(() => ({ data: [] })),
+          apiRequest("/holidays").catch(() => ({ data: [] })),
         ]);
       setEmployees(listFrom(employeeResponse));
       setAttendance(listFrom(attendanceResponse));
       setLeaves(listFrom(leaveResponse));
+      setTimesheets(listFrom(timesheetResponse));
+      const hList = Array.isArray(holidayResponse)
+        ? holidayResponse
+        : (holidayResponse?.data || holidayResponse?.holidays || []);
+      setHolidays(hList);
     } catch (requestError) {
       if (!silent) setError(requestError.message || "Failed to load dashboard data");
     } finally {
@@ -125,6 +146,113 @@ function HRDashboard() {
     () => leaves.filter((leave) => String(leave?.status || "").toLowerCase().includes("pending")),
     [leaves]
   );
+
+  const pendingTimesheets = useMemo(() => {
+    return timesheets.filter((t) => ["pending_hr", "submitted"].includes((t.status || "").toLowerCase()));
+  }, [timesheets]);
+
+  const approvedTimesheets = useMemo(() => {
+    return timesheets.filter((t) => (t.status || "").toLowerCase() === "approved");
+  }, [timesheets]);
+
+  const upcomingHolidays = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return (holidays || [])
+      .map((h) => ({ ...h, parsedDate: parseLocalDate(h.date) }))
+      .filter((h) => h.parsedDate && h.parsedDate >= today)
+      .sort((a, b) => a.parsedDate - b.parsedDate)
+      .slice(0, 4);
+  }, [holidays]);
+
+  const getHolidayEmoji = (title = "", type = "") => {
+    const t = (title + " " + type).toLowerCase();
+    if (t.includes("new year")) return "🎆";
+    if (t.includes("republic") || t.includes("independence")) return "🇮🇳";
+    if (t.includes("gandhi")) return "🕊️";
+    if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
+    if (t.includes("holi") || t.includes("phagwah")) return "🌸";
+    if (t.includes("christmas")) return "🎄";
+    if (t.includes("eid")) return "🌙";
+    if (t.includes("dussehra") || t.includes("vijayadashami")) return "🏹";
+    if (t.includes("ambedkar")) return "⚖️";
+    if (t.includes("labour") || t.includes("worker")) return "💼";
+    return "🏖️";
+  };
+
+  const filteredTimesheets = useMemo(() => {
+    return timesheets.filter((t) => {
+      const s = (t.status || "").toLowerCase();
+      const matchesStatus =
+        timesheetStatusFilter === "all" ||
+        (timesheetStatusFilter === "pending" && ["pending_hr", "submitted"].includes(s)) ||
+        (timesheetStatusFilter === "approved" && s === "approved") ||
+        (timesheetStatusFilter === "rejected" && s === "rejected");
+
+      if (!matchesStatus) return false;
+
+      const dStr = String(t.date || "").slice(0, 10);
+      const matchesWeek =
+        timesheetWeekFilter === "all" ||
+        (timesheetWeekFilter === "current" && dStr >= "2026-10-19" && dStr <= "2026-10-23") ||
+        (timesheetWeekFilter === "previous" && dStr >= "2026-10-12" && dStr <= "2026-10-16");
+
+      if (!matchesWeek) return false;
+
+      const q = timesheetSearch.trim().toLowerCase();
+      if (!q) return true;
+
+      const empName = `${t.employee?.firstName || ""} ${t.employee?.lastName || ""} ${t.employee?.name || ""}`.toLowerCase();
+      const empCode = (t.employee?.employeeCode || "").toLowerCase();
+      const proj = (t.project || "").toLowerCase();
+      const task = (t.task || "").toLowerCase();
+
+      return empName.includes(q) || empCode.includes(q) || proj.includes(q) || task.includes(q);
+    });
+  }, [timesheets, timesheetStatusFilter, timesheetWeekFilter, timesheetSearch]);
+
+  const handleApproveTimesheet = async (timesheetId) => {
+    setActionBusyId(timesheetId);
+    setTimesheetActionError("");
+    setTimesheetActionNotice("");
+    try {
+      await reviewTimesheet(timesheetId, "approved", "Approved by HR (Final Sign-off completed)");
+      broadcastDataChange("timesheet");
+      await loadDashboard(true);
+      setTimesheetActionNotice("✓ Timesheet signed-off and approved by HR successfully.");
+    } catch (err) {
+      setTimesheetActionError(err.message || "Failed to approve timesheet.");
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleRejectTimesheet = async () => {
+    if (!rejectModalTimesheet) return;
+    if (!rejectionReason.trim()) {
+      setTimesheetActionError("A rejection reason is required.");
+      return;
+    }
+    setActionBusyId(rejectModalTimesheet._id || rejectModalTimesheet.id);
+    setTimesheetActionError("");
+    setTimesheetActionNotice("");
+    try {
+      await reviewTimesheet(
+        rejectModalTimesheet._id || rejectModalTimesheet.id,
+        "rejected",
+        rejectionReason.trim()
+      );
+      broadcastDataChange("timesheet");
+      setRejectModalTimesheet(null);
+      setRejectionReason("");
+      await loadDashboard(true);
+      setTimesheetActionNotice("Timesheet rejected with feedback.");
+    } catch (err) {
+      setTimesheetActionError(err.message || "Failed to reject timesheet.");
+    } finally {
+      setActionBusyId(null);
+    }
+  };
 
   const { todayAttendance, clockIn, clockOut } = useAttendance();
   const [clockActionSubmitting, setClockActionSubmitting] = useState(false);
@@ -463,9 +591,17 @@ function HRDashboard() {
                 <span className="chip-icon">📄</span>
                 <span className="chip-name">Documents</span>
               </Link>
+              <Link to="/employee/calendar" className="shortcut-chip calendar" title="Corporate Holiday Calendar">
+                <span className="chip-icon">🗓️</span>
+                <span className="chip-name">Holidays</span>
+              </Link>
               <Link to="/hr/departments" className="shortcut-chip teams" title="Departments & Teams">
                 <span className="chip-icon">🏢</span>
                 <span className="chip-name">Teams</span>
+              </Link>
+              <Link to="/hr/recruitment" className="shortcut-chip recruitment" title="Recruitment & Onboarding">
+                <span className="chip-icon">🎯</span>
+                <span className="chip-name">Hiring</span>
               </Link>
               <Link to="/hr/resignations" className="shortcut-chip resignations" title="Resignation Approvals">
                 <span className="chip-icon">👋</span>
@@ -528,6 +664,128 @@ function HRDashboard() {
           </div>
         </section>
 
+        {/* Corporate Holiday Spotlight Section */}
+        <section className="hr-holiday-spotlight-section">
+          {(() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const imminentHoliday = upcomingHolidays.find((h) => {
+              if (!h.parsedDate) return false;
+              const diffDays = Math.ceil((h.parsedDate - today) / (1000 * 60 * 60 * 24));
+              return diffDays === 0 || diffDays === 1;
+            });
+
+            if (!imminentHoliday) return null;
+            const diffDays = Math.ceil((imminentHoliday.parsedDate - today) / (1000 * 60 * 60 * 24));
+            const isToday = diffDays === 0;
+
+            return (
+              <div className={`hr-imminent-holiday-alert ${isToday ? "today" : "tomorrow"}`}>
+                <div className="alert-content-left">
+                  <span className="alert-icon-pod">{isToday ? "🎉" : "⚡"}</span>
+                  <div className="alert-text-block">
+                    <div className="alert-title-badges">
+                      <strong>
+                        {isToday
+                          ? `Enterprise Gazetted Holiday Today: ${imminentHoliday.title}`
+                          : `Upcoming Corporate Holiday Tomorrow: ${imminentHoliday.title}`}
+                      </strong>
+                      <span className="alert-chip-type">{imminentHoliday.type || "Public Holiday"}</span>
+                      <span className="alert-chip-date">
+                        {imminentHoliday.parsedDate.toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <p>
+                      {isToday
+                        ? "Office is officially closed today for Vijayadashami celebration. Regular shift punches, attendance rules, and late-mark tracking are auto-exempted."
+                        : "Mandatory corporate holiday scheduled for tomorrow. Office desks closed, attendance auto-reconciled, and shift hours paused."}
+                    </p>
+                  </div>
+                </div>
+                <div className="alert-content-right">
+                  <span className="alert-urgency-badge">
+                    {isToday ? "🎉 TODAY'S HOLIDAY" : "⚡ TOMORROW'S HOLIDAY"}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          <div className="holiday-spotlight-header">
+            <div>
+              <div className="spotlight-kicker">
+                <span className="pulsing-live-dot" />
+                <span>Enterprise Observances & Leave Planning</span>
+              </div>
+              <h2>Upcoming Corporate Holidays</h2>
+              <p>Gazetted public holidays, optional observances, and mandatory paid days off.</p>
+            </div>
+            <Link to="/employee/calendar" className="holiday-view-all-btn" title="Open Corporate Holiday Calendar">
+              <span>🗓️</span> Open Holiday Calendar →
+            </Link>
+          </div>
+
+          <div className="holiday-spotlight-grid">
+            {upcomingHolidays.length === 0 ? (
+              <div className="spotlight-empty-notice">
+                <span>🏖️</span> No upcoming holidays scheduled for the near term.
+              </div>
+            ) : (
+              upcomingHolidays.map((h, idx) => {
+                const d = h.parsedDate;
+                const monthShort = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+                const dayNum = d.getDate();
+                const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "short" });
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+                const isToday = diffDays === 0;
+                const isTomorrow = diffDays === 1;
+                const isImminent = isToday || isTomorrow;
+                const countdownStr = diffDays === 0 ? "Today 🎉" : diffDays === 1 ? "Tomorrow ⚡" : `In ${diffDays} days`;
+
+                return (
+                  <div key={h.id || h._id || idx} className={`holiday-spotlight-card ${isToday ? "spotlight-today imminent-highlight" : ""} ${isTomorrow ? "spotlight-tomorrow imminent-highlight" : ""}`}>
+                    {isImminent && (
+                      <div className={`spotlight-card-ribbon ${isToday ? "today" : "tomorrow"}`}>
+                        <span>{isToday ? "🎉 ACTIVE TODAY" : "⚡ TOMORROW (OFFICE OFF)"}</span>
+                      </div>
+                    )}
+                    <div className="spotlight-card-body">
+                      <div className="spotlight-date-pod">
+                        <span className="pod-month">{monthShort}</span>
+                        <strong className="pod-day">{dayNum}</strong>
+                        <span className="pod-weekday">{dayOfWeek}</span>
+                      </div>
+                      <div className="spotlight-holiday-details">
+                        <div className="spotlight-title-row">
+                          <span className="spotlight-emoji">{getHolidayEmoji(h.title, h.type)}</span>
+                          <h4>{h.title}</h4>
+                        </div>
+                        <span className="spotlight-date-full">
+                          {d.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                        </span>
+                        <div className="spotlight-badge-row">
+                          <span className={`spotlight-type-badge ${(h.type || "public").toLowerCase().replace(/\s+/g, "-")}`}>
+                            {h.type || "Gazetted Holiday"}
+                          </span>
+                          <span className={`spotlight-countdown-badge ${isToday ? "today-glow" : isTomorrow ? "tomorrow-glow" : ""}`}>
+                            {countdownStr}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
+
         {/* Executive Segmented Navigation Tabs */}
         <section className="hr-nav-tabs-wrapper">
           <nav className="hr-segmented-nav" aria-label="Dashboard views">
@@ -567,6 +825,24 @@ function HRDashboard() {
               <span className="tab-icon">⏱️</span>
               <span className="tab-label">Recent Attendance</span>
               <span className="tab-count-pill">{attendance.length}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`nav-tab-btn ${
+                activeTab === "timesheets" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("timesheets")}
+            >
+              <span className="tab-icon">🕒</span>
+              <span className="tab-label">Timesheets</span>
+              {pendingTimesheets.length > 0 ? (
+                <span className="tab-count-pill alert">
+                  {pendingTimesheets.length}
+                </span>
+              ) : (
+                <span className="tab-count-pill">{timesheets.length}</span>
+              )}
             </button>
 
             <button
@@ -886,6 +1162,373 @@ function HRDashboard() {
               </table>
             </div>
           </section>
+        )}
+
+        {/* Tab: Timesheet Review & Audit */}
+        {activeTab === "timesheets" && (
+          <section className="hr-panel-card" aria-label="Workforce Timesheets">
+            <div className="panel-card-header">
+              <div>
+                <h2>Workforce Timesheets & Audit</h2>
+                <p>
+                  Review submitted employee timesheet hours, audit against attendance reconciliation, and sign-off for payroll.
+                </p>
+              </div>
+
+              <div className="panel-controls-row">
+                <div className="search-box-wrap">
+                  <svg
+                    className="search-svg-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    value={timesheetSearch}
+                    onChange={(e) => setTimesheetSearch(e.target.value)}
+                    placeholder="Search employee, project, task..."
+                    aria-label="Search timesheets"
+                  />
+                  {timesheetSearch && (
+                    <button
+                      type="button"
+                      className="search-clear-btn"
+                      onClick={() => setTimesheetSearch("")}
+                      aria-label="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div className="ts-week-filter-cluster">
+                  <button
+                    type="button"
+                    className={`ts-week-pill ${timesheetWeekFilter === "all" ? "active" : ""}`}
+                    onClick={() => setTimesheetWeekFilter("all")}
+                  >
+                    All Weeks
+                  </button>
+                  <button
+                    type="button"
+                    className={`ts-week-pill ${timesheetWeekFilter === "current" ? "active" : ""}`}
+                    onClick={() => setTimesheetWeekFilter("current")}
+                  >
+                    📅 19–23 Oct
+                  </button>
+                  <button
+                    type="button"
+                    className={`ts-week-pill ${timesheetWeekFilter === "previous" ? "active" : ""}`}
+                    onClick={() => setTimesheetWeekFilter("previous")}
+                  >
+                    ⏪ 12–16 Oct
+                  </button>
+                </div>
+
+                <div className="status-filter-pills">
+                  {[
+                    { id: "all", label: "All", count: timesheets.length },
+                    { id: "pending", label: "Needs HR Review", count: pendingTimesheets.length, alert: pendingTimesheets.length > 0 },
+                    { id: "approved", label: "Approved", count: approvedTimesheets.length },
+                    { id: "rejected", label: "Declined", count: timesheets.filter(t => (t.status || "").toLowerCase() === "rejected").length },
+                  ].map((filterTab) => (
+                    <button
+                      key={filterTab.id}
+                      type="button"
+                      className={`ts-status-pill ${timesheetStatusFilter === filterTab.id ? "active" : ""}`}
+                      onClick={() => setTimesheetStatusFilter(filterTab.id)}
+                    >
+                      <span>{filterTab.label}</span>
+                      <span className={`ts-status-pill-count ${filterTab.alert ? "alert" : ""} ${timesheetStatusFilter === filterTab.id ? "active" : ""}`}>
+                        {filterTab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <Link
+                  to="/hr/timesheets"
+                  className="view-profile-btn"
+                  style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+                >
+                  <span>📋 Full Timesheet Hub →</span>
+                </Link>
+              </div>
+            </div>
+
+            {timesheetActionNotice && (
+              <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46", padding: "0.75rem 1rem", borderRadius: "8px", marginBottom: "1rem", fontWeight: 600, fontSize: "0.85rem" }}>
+                {timesheetActionNotice}
+              </div>
+            )}
+            {timesheetActionError && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "0.75rem 1rem", borderRadius: "8px", marginBottom: "1rem", fontWeight: 600, fontSize: "0.85rem" }}>
+                ⚠️ {timesheetActionError}
+              </div>
+            )}
+
+            <div className="table-responsive-wrapper">
+              <table className="hr-modern-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Project & Task</th>
+                    <th>Hours</th>
+                    <th>Workflow Stage & Status</th>
+                    <th className="action-col">HR Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTimesheets.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="empty-state-cell" style={{ textAlign: "center", padding: "2.5rem", color: "#64748b" }}>
+                        <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🕒</div>
+                        <strong>No timesheet records match this view.</strong>
+                        <p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem" }}>
+                          {timesheetStatusFilter === "pending"
+                            ? "All employee timesheets have been reviewed and approved!"
+                            : "No timesheets recorded under this category."}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTimesheets.map((entry, idx) => {
+                      const empName = `${entry.employee?.firstName || ""} ${entry.employee?.lastName || ""} ${entry.employee?.name || "Employee"}`.trim();
+                      const color = getColorForString(empName);
+                      const initials = getInitials(entry.employee?.firstName, entry.employee?.lastName, empName);
+                      const isPendingSignoff = ["pending_hr", "submitted"].includes((entry.status || "").toLowerCase());
+                      const isApproved = (entry.status || "").toLowerCase() === "approved";
+                      const isBusy = actionBusyId === (entry._id || entry.id);
+
+                      return (
+                        <tr key={entry._id || entry.id || idx}>
+                          <td>
+                            <div className="employee-cell-meta">
+                              <div
+                                className="employee-avatar"
+                                style={{
+                                  backgroundColor: color.bg,
+                                  color: color.text,
+                                  borderColor: color.border,
+                                }}
+                              >
+                                {initials}
+                              </div>
+                              <div className="employee-info-texts">
+                                <strong className="employee-name">{empName}</strong>
+                                <span className="employee-email">
+                                  {entry.employee?.employeeCode ? `${entry.employee.employeeCode} • ` : ""}
+                                  {entry.employee?.employment?.department || entry.employee?.department || "General"}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="ts-cell-date">
+                              {formatDate(entry.date)}
+                            </div>
+                            <span className="ts-cell-time">
+                              {entry.startTime ? formatTime(entry.startTime) : "09:30 AM"} – {entry.endTime ? formatTime(entry.endTime) : "06:15 PM"}
+                            </span>
+                          </td>
+                          <td style={{ maxWidth: "280px" }}>
+                            <span className="ts-cell-project-tag">
+                              📁 {entry.project || "Enterprise Project"}
+                            </span>
+                            <div className="ts-cell-task">
+                              {entry.task || "Engineering Task"}
+                            </div>
+                            {entry.description && (
+                              <div className="ts-cell-desc" title={entry.description}>
+                                {entry.description}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className="ts-cell-hours">
+                              ⏱️ {Number(entry.hours || 8.0).toFixed(1)} hrs
+                            </span>
+                          </td>
+                          <td>
+                            <div>
+                              <span
+                                className={`status-pill ${
+                                  entry.status === "approved"
+                                    ? "present"
+                                    : entry.status === "pending_hr"
+                                    ? "active"
+                                    : entry.status === "submitted"
+                                    ? "late"
+                                    : "rejected"
+                                }`}
+                              >
+                                <span className="pulse-dot" />
+                                {entry.status === "pending_hr"
+                                  ? "🔵 Pending HR Sign-off"
+                                  : entry.status === "submitted"
+                                  ? "🟡 Pending Manager"
+                                  : entry.status === "approved"
+                                  ? "🟢 HR Approved"
+                                  : "✕ Declined"}
+                              </span>
+                              {entry.managerApproverName && entry.status === "pending_hr" && (
+                                <div style={{ fontSize: "0.72rem", color: "#0284c7", marginTop: "3px", fontWeight: 600 }}>
+                                  ✓ Manager Approved: {entry.managerApproverName}
+                                </div>
+                              )}
+                              {entry.managerRemarks && (
+                                <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px", fontStyle: "italic" }}>
+                                  Note: {entry.managerRemarks}
+                                </div>
+                              )}
+                              {entry.hrApproverName && entry.status === "approved" && (
+                                <div style={{ fontSize: "0.72rem", color: "#059669", marginTop: "3px", fontWeight: 600 }}>
+                                  ✓ Signed-off by HR: {entry.hrApproverName}
+                                </div>
+                              )}
+                              {entry.status === "rejected" && (entry.reviewComment || entry.rejectionReason) && (
+                                <div style={{ fontSize: "0.72rem", color: "#dc2626", marginTop: "3px" }}>
+                                  Declined: {entry.reviewComment || entry.rejectionReason}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="action-col">
+                            {isPendingSignoff ? (
+                              <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => handleApproveTimesheet(entry._id || entry.id)}
+                                  style={{
+                                    background: "#0d9488",
+                                    color: "#ffffff",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    padding: "0.38rem 0.75rem",
+                                    fontWeight: 700,
+                                    fontSize: "0.8rem",
+                                    cursor: isBusy ? "not-allowed" : "pointer",
+                                    opacity: isBusy ? 0.7 : 1,
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  {isBusy ? "..." : "✓ Approve Sign-off"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => {
+                                    setRejectModalTimesheet(entry);
+                                    setRejectionReason("");
+                                  }}
+                                  style={{
+                                    background: "#ffffff",
+                                    color: "#dc2626",
+                                    border: "1px solid #fca5a5",
+                                    borderRadius: "6px",
+                                    padding: "0.38rem 0.65rem",
+                                    fontWeight: 700,
+                                    fontSize: "0.8rem",
+                                    cursor: isBusy ? "not-allowed" : "pointer",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  ✕ Decline
+                                </button>
+                              </div>
+                            ) : isApproved ? (
+                              <span style={{ color: "#059669", fontWeight: 700, fontSize: "0.82rem" }}>
+                                ✓ Reconciled to Payroll
+                              </span>
+                            ) : (
+                              <span style={{ color: "#dc2626", fontWeight: 600, fontSize: "0.82rem" }}>
+                                Rejected
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* Rejection Modal for Timesheets */}
+        {rejectModalTimesheet && (
+          <div className="modal-overlay" onClick={() => setRejectModalTimesheet(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Decline Timesheet Entry</h2>
+                <button type="button" className="btn-close" onClick={() => setRejectModalTimesheet(null)}>×</button>
+              </div>
+              <div className="modal-body">
+                <p style={{ margin: "0 0 1rem", fontSize: "0.88rem", color: "#475569" }}>
+                  Please provide a reason for declining the timesheet for{" "}
+                  <strong>
+                    {rejectModalTimesheet.employee?.firstName} {rejectModalTimesheet.employee?.lastName || rejectModalTimesheet.employee?.name}
+                  </strong>{" "}
+                  ({formatDate(rejectModalTimesheet.date)}). The employee and manager will be notified.
+                </p>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter rejection feedback (e.g., Deliverable notes incomplete, discrepancy with clocked hours)..."
+                  rows={4}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    font: "inherit",
+                    fontSize: "0.88rem",
+                  }}
+                />
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    onClick={() => setRejectModalTimesheet(null)}
+                    style={{
+                      background: "#f1f5f9",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      padding: "0.5rem 1rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRejectTimesheet}
+                    style={{
+                      background: "#dc2626",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "0.5rem 1.25rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Confirm Decline
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Tab 4: Monthly Attendance Report */}

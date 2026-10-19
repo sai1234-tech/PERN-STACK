@@ -59,9 +59,9 @@ router.post("/submit-week", verifyToken, authorizeRoles(...ALL_ROLES), submitWee
 // =====================================================
 
 // Get all timesheets
-router.get("/all", verifyToken, authorizeRoles("hr", "manager", "admin"), getAllTimesheets);
+router.get("/all", verifyToken, authorizeRoles("manager", "hr", "admin"), getAllTimesheets);
 
 // Approve / reject
-router.patch("/:timesheetId/review", verifyToken, authorizeRoles("hr", "admin"), reviewTimesheet);
+router.patch("/:timesheetId/review", verifyToken, authorizeRoles("manager", "hr", "admin"), reviewTimesheet);
 
 export default router;

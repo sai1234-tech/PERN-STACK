@@ -1,17 +1,51 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
+import { useAuth } from "../../context/AuthContext";
+import { normalizeRole } from "../../utils/auth";
 import { apiRequest } from "../../services/apiClient";
 import { parseLocalDate, getLocalDateString, isToday } from "../../utils/date";
 import "./EmployeeCalendar.css";
 import { toast } from "react-toastify";
 
 export default function EmployeeCalendar() {
+  const { user, employee } = useAuth();
+  const userRole = normalizeRole(user, employee);
+  const isHrOrAdmin = ["hr", "admin"].includes(userRole);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "grid";
+  const [viewMode, setViewMode] = useState(
+    initialTab === "holidays" ? "holidays" : initialTab === "timeline" ? "timeline" : "grid"
+  );
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    setSearchParams({ tab: mode }, { replace: true });
+  };
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState("grid"); // "grid" | "timeline" | "roadmap"
   const [holidays, setHolidays] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Holiday Tab Filters & Search
+  const [holidaySearch, setHolidaySearch] = useState("");
+  const [holidayCategoryFilter, setHolidayCategoryFilter] = useState("all"); // "all" | "gazetted" | "optional" | "upcoming" | "past"
+  const [holidaySortOrder, setHolidaySortOrder] = useState("asc"); // "asc" | "desc"
+
+  // HR / Admin Declare Corporate Holiday Form State
+  const [showDeclareHolidayModal, setShowDeclareHolidayModal] = useState(false);
+  const [holidayFormTitle, setHolidayFormTitle] = useState("");
+  const [holidayFormDate, setHolidayFormDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  });
+  const [holidayFormType, setHolidayFormType] = useState("Public Holiday");
+  const [holidayFormMandatory, setHolidayFormMandatory] = useState(true);
+  const [holidayFormDescription, setHolidayFormDescription] = useState("");
+  const [declaringHoliday, setDeclaringHoliday] = useState(false);
 
   // Employee Custom Events State (backend is source of truth)
   const [customEvents, setCustomEvents] = useState([]);
@@ -23,6 +57,7 @@ export default function EmployeeCalendar() {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [newEventCategory, setNewEventCategory] = useState("Meeting");
+
 
   // Track current time in minutes for red progress indicator line
   const [nowMins, setNowMins] = useState(() => {
@@ -291,6 +326,62 @@ export default function EmployeeCalendar() {
     return map;
   }, [customEvents]);
 
+  // Celebratory holiday emoji identifier
+  const getHolidayEmoji = (title = "") => {
+    const t = String(title).toLowerCase();
+    if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
+    if (t.includes("holi")) return "🎨";
+    if (t.includes("christmas") || t.includes("xmas")) return "🎄";
+    if (t.includes("new year")) return "✨";
+    if (t.includes("republic") || t.includes("independence") || t.includes("national")) return "🇮🇳";
+    if (t.includes("gandhi")) return "🕊️";
+    if (t.includes("eid") || t.includes("ramadan") || t.includes("bakrid")) return "🌙";
+    if (t.includes("pongal") || t.includes("sankranti") || t.includes("onam") || t.includes("baisakhi") || t.includes("harvest")) return "🌾";
+    if (t.includes("dussehra") || t.includes("durga") || t.includes("navratri") || t.includes("puja") || t.includes("vijayadashami")) return "🌺";
+    if (t.includes("ganesh") || t.includes("vinayaka")) return "🐘";
+    if (t.includes("raksha") || t.includes("rakhi")) return "🧵";
+    if (t.includes("good friday") || t.includes("easter")) return "✝️";
+    if (t.includes("buddha") || t.includes("purnima")) return "🪷";
+    if (t.includes("labor") || t.includes("may day")) return "⚒️";
+    if (t.includes("janmashtami") || t.includes("krishna")) return "🪈";
+    if (t.includes("shivaratri")) return "🔱";
+    return "🏖️";
+  };
+
+  // Live Holiday Summary & Stats
+  const holidayStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const total = holidays.length;
+    let gazetted = 0;
+    let optional = 0;
+    const upcoming = [];
+
+    holidays.forEach((h) => {
+      const isMandatory =
+        h.mandatory ||
+        String(h.type || "").toLowerCase().includes("gazetted") ||
+        String(h.type || "").toLowerCase().includes("national") ||
+        String(h.type || "").toLowerCase().includes("public");
+      if (isMandatory) gazetted++;
+      else optional++;
+
+      if (h.date) {
+        const d = parseLocalDate(h.date);
+        const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0) {
+          upcoming.push({ ...h, diffDays, parsedDate: d });
+        }
+      }
+    });
+
+    upcoming.sort((a, b) => a.diffDays - b.diffDays);
+    const nextHoliday = upcoming[0] || null;
+
+    return { total, gazetted, optional, nextHoliday };
+  }, [holidays]);
+
   // Upcoming holidays list
   const upcomingHolidays = useMemo(() => {
     const todayKey = formatDateKey(new Date());
@@ -299,6 +390,105 @@ export default function EmployeeCalendar() {
       .sort((a, b) => formatDateKey(a.date).localeCompare(formatDateKey(b.date)))
       .slice(0, 6);
   }, [holidays]);
+
+  // Filtered and Searched holidays for Holiday List View
+  const filteredHolidays = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return (holidays || [])
+      .filter((h) => {
+        if (!h) return false;
+        const q = holidaySearch.trim().toLowerCase();
+        if (q) {
+          const matchTitle = (h.title || h.name || "").toLowerCase().includes(q);
+          const matchDesc = (h.description || "").toLowerCase().includes(q);
+          const matchType = (h.type || "").toLowerCase().includes(q);
+          if (!matchTitle && !matchDesc && !matchType) return false;
+        }
+
+        if (!h.date) return true;
+        const d = parseLocalDate(h.date);
+        const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+        const isMandatory =
+          h.mandatory ||
+          String(h.type || "").toLowerCase().includes("gazetted") ||
+          String(h.type || "").toLowerCase().includes("national") ||
+          String(h.type || "").toLowerCase().includes("public");
+
+        if (holidayCategoryFilter === "gazetted") return isMandatory;
+        if (holidayCategoryFilter === "optional") return !isMandatory;
+        if (holidayCategoryFilter === "upcoming") return diffDays >= 0;
+        if (holidayCategoryFilter === "past") return diffDays < 0;
+        return true;
+      })
+      .sort((a, b) => {
+        const da = a.date ? new Date(a.date).getTime() : 0;
+        const db = b.date ? new Date(b.date).getTime() : 0;
+        return holidaySortOrder === "asc" ? da - db : db - da;
+      });
+  }, [holidays, holidaySearch, holidayCategoryFilter, holidaySortOrder]);
+
+  // Declare Corporate Holiday Handler (HR / Admin)
+  const handleDeclareHoliday = async (e) => {
+    e.preventDefault();
+    if (!holidayFormTitle.trim() || !holidayFormDate) {
+      toast.warning("Please enter a holiday title and date");
+      return;
+    }
+
+    setDeclaringHoliday(true);
+    try {
+      const payload = {
+        title: holidayFormTitle.trim(),
+        date: holidayFormDate,
+        type: holidayFormType,
+        mandatory: holidayFormMandatory,
+        description: holidayFormDescription.trim() || "Official company holiday",
+      };
+
+      const res = await apiRequest("/holidays", {
+        method: "POST",
+        body: payload,
+      });
+
+      if (res.success || res.data) {
+        toast.success(`🎉 Corporate Holiday "${payload.title}" declared successfully!`);
+        setShowDeclareHolidayModal(false);
+        setHolidayFormTitle("");
+        setHolidayFormDescription("");
+        await fetchCalendarData();
+      } else {
+        toast.error(res.message || "Failed to declare holiday");
+      }
+    } catch (err) {
+      console.error("Failed to declare holiday:", err);
+      toast.error(err.message || "Failed to declare holiday");
+    } finally {
+      setDeclaringHoliday(false);
+    }
+  };
+
+  // Delete Holiday Handler (HR / Admin)
+  const handleDeleteHoliday = async (holidayId, title) => {
+    if (!window.confirm(`Are you sure you want to remove the corporate holiday "${title}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await apiRequest(`/holidays/${holidayId}`, {
+        method: "DELETE",
+      });
+      if (res.success) {
+        toast.info(`Holiday "${title}" removed.`);
+        setHolidays((prev) => prev.filter((h) => (h.id || h._id) !== holidayId));
+      }
+    } catch (err) {
+      console.error("Failed to delete holiday:", err);
+      toast.error(err.message || "Failed to delete holiday");
+    }
+  };
+
 
   const getHolidaysForDate = (dateObj) => holidayMap.get(formatDateKey(dateObj)) || [];
   const getLeavesForDate = (dateObj) => leaveMap.get(formatDateKey(dateObj)) || [];
@@ -464,36 +654,113 @@ export default function EmployeeCalendar() {
           <div className="calendar-hero-left">
             <div className="hero-kicker-pill">
               <span className="pulsing-live-dot" />
-              <span>Quadratic Corporate Roadmap</span>
+              <span>Quadratic Corporate Roadmap · {year}</span>
             </div>
-            <h1>Annual Holiday & Timeline Calendar</h1>
-            <p>View company holidays, leave schedules, and hourly shift timeline roadmaps.</p>
+            <h1>Corporate Holiday & Work Roadmap</h1>
+            <p>Official company holidays, team leave schedules, and shift planning roadmap.</p>
+
+            {/* Quick Hero Stats Cluster */}
+            <div className="calendar-hero-stats-row">
+              <div className="hero-stat-card">
+                <span className="stat-num">{holidayStats.total}</span>
+                <span className="stat-label">🌴 Total Holidays</span>
+              </div>
+              <div className="hero-stat-card">
+                <span className="stat-num">{holidayStats.gazetted}</span>
+                <span className="stat-label">🏛️ Gazetted / Mandatory</span>
+              </div>
+              <div className="hero-stat-card">
+                <span className="stat-num">{holidayStats.optional}</span>
+                <span className="stat-label">⭐ Optional / Restricted</span>
+              </div>
+              {holidayStats.nextHoliday && (
+                <div className={`hero-stat-card next-celebration ${holidayStats.nextHoliday.diffDays === 0 ? "imminent-today" : holidayStats.nextHoliday.diffDays === 1 ? "imminent-tomorrow" : ""}`}>
+                  <div className="next-holiday-kicker">
+                    <span className="next-emoji">{getHolidayEmoji(holidayStats.nextHoliday.title)}</span>
+                    <span className="next-countdown">
+                      {holidayStats.nextHoliday.diffDays === 0
+                        ? "Today 🎉"
+                        : holidayStats.nextHoliday.diffDays === 1
+                        ? "Tomorrow ⚡"
+                        : `In ${holidayStats.nextHoliday.diffDays} days`}
+                    </span>
+                  </div>
+                  <strong className="next-title">{holidayStats.nextHoliday.title}</strong>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="calendar-mode-tabs">
-            <button
-              type="button"
-              className={`mode-tab-btn ${viewMode === "grid" ? "active" : ""}`}
-              onClick={() => setViewMode("grid")}
-            >
-              📅 Month Grid
-            </button>
-            <button
-              type="button"
-              className={`mode-tab-btn ${viewMode === "timeline" ? "active" : ""}`}
-              onClick={() => setViewMode("timeline")}
-            >
-              ⏱️ Shift Timeline
-            </button>
-            <button
-              type="button"
-              className={`mode-tab-btn ${viewMode === "holidays" ? "active" : ""}`}
-              onClick={() => setViewMode("holidays")}
-            >
-              🏖️ Holiday List
-            </button>
+          <div className="calendar-hero-right">
+            {isHrOrAdmin && (
+              <button
+                type="button"
+                className="declare-holiday-hero-btn"
+                onClick={() => setShowDeclareHolidayModal(true)}
+                title="Declare New Corporate Holiday"
+              >
+                <span>➕</span> Declare Holiday
+              </button>
+            )}
+
+            <div className="calendar-mode-tabs">
+              <button
+                type="button"
+                className={`mode-tab-btn ${viewMode === "grid" ? "active" : ""}`}
+                onClick={() => handleViewModeChange("grid")}
+              >
+                📅 Month Grid
+              </button>
+              <button
+                type="button"
+                className={`mode-tab-btn ${viewMode === "holidays" ? "active" : ""}`}
+                onClick={() => handleViewModeChange("holidays")}
+              >
+                🏖️ Holiday List
+              </button>
+              <button
+                type="button"
+                className={`mode-tab-btn ${viewMode === "timeline" ? "active" : ""}`}
+                onClick={() => handleViewModeChange("timeline")}
+              >
+                ⏱️ Shift Timeline
+              </button>
+            </div>
           </div>
         </section>
+
+        {/* Imminent Holiday Live Alert Banner (Highlighted when holiday comes: Today or Tomorrow) */}
+        {holidayStats.nextHoliday && holidayStats.nextHoliday.diffDays <= 1 && (
+          <div className={`calendar-imminent-alert-banner ${holidayStats.nextHoliday.diffDays === 0 ? "today" : "tomorrow"}`}>
+            <div className="alert-banner-left">
+              <span className="alert-emoji">{holidayStats.nextHoliday.diffDays === 0 ? "🎉" : "⚡"}</span>
+              <div className="alert-text">
+                <div className="alert-title-row">
+                  <strong>
+                    {holidayStats.nextHoliday.diffDays === 0
+                      ? `Corporate Holiday Today: ${holidayStats.nextHoliday.title}`
+                      : `Corporate Holiday Tomorrow: ${holidayStats.nextHoliday.title}`}
+                  </strong>
+                  <span className="alert-type-badge">{holidayStats.nextHoliday.type || "Public Holiday"}</span>
+                  <span className="alert-date-chip">
+                    {holidayStats.nextHoliday.parsedDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                </div>
+                <p>
+                  {holidayStats.nextHoliday.diffDays === 0
+                    ? "Official company gazetted holiday is active today. Regular office operations and daily shifts are paused."
+                    : `Official corporate gazetted holiday scheduled for tomorrow (${holidayStats.nextHoliday.parsedDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}). Offices will remain closed.`}
+                </p>
+              </div>
+            </div>
+            <div className="alert-banner-right">
+              <span className="alert-countdown-pill">
+                {holidayStats.nextHoliday.diffDays === 0 ? "🎉 TODAY'S HOLIDAY" : "⚡ TOMORROW'S HOLIDAY"}
+              </span>
+            </div>
+          </div>
+        )}
+
 
         {loading ? (
           <div className="calendar-loading">Loading Calendar & Timeline Data...</div>
@@ -540,6 +807,17 @@ export default function EmployeeCalendar() {
                       const isToday = isTodayDate(cell.date);
                       const isSelected = isSelectedDate(cell.date);
 
+                      // Calculate if cell has a holiday that is Today or Tomorrow
+                      const cellD = new Date(cell.date);
+                      cellD.setHours(0, 0, 0, 0);
+                      const todayD = new Date();
+                      todayD.setHours(0, 0, 0, 0);
+                      const cellDiff = Math.round((cellD.getTime() - todayD.getTime()) / (1000 * 60 * 60 * 24));
+                      const hasHoliday = dailyHolidays.length > 0;
+                      const isHolidayToday = hasHoliday && cellDiff === 0 && cell.isCurrentMonth;
+                      const isHolidayTomorrow = hasHoliday && cellDiff === 1 && cell.isCurrentMonth;
+                      const isHolidayImminent = isHolidayToday || isHolidayTomorrow;
+
                       return (
                         <div
                           key={`cell-${cell.index}`}
@@ -547,12 +825,20 @@ export default function EmployeeCalendar() {
                             setSelectedDate(cell.date);
                             setShowDayDetailModal(true);
                           }}
-                          className={`calendar-day ${!cell.isCurrentMonth ? "other-month" : ""} ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${dailyHolidays.length > 0 ? "has-holiday" : ""}`}
+                          className={`calendar-day ${!cell.isCurrentMonth ? "other-month" : ""} ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${hasHoliday ? "has-holiday" : ""} ${isHolidayToday ? "holiday-today-cell holiday-imminent-day" : ""} ${isHolidayTomorrow ? "holiday-tomorrow-cell holiday-imminent-day" : ""}`}
                         >
                           <div className="day-header">
-                            <span className="day-number">{cell.dayNumber}</span>
-                            {dailyHolidays.length > 0 && cell.isCurrentMonth && (
-                              <span className="holiday-indicator-dot" title="Holiday Scheduled" />
+                            <div className="day-number-cluster">
+                              <span className="day-number">{cell.dayNumber}</span>
+                              {isHolidayToday && (
+                                <span className="imminent-cell-badge today" title="Holiday is Today!">🎉 TODAY</span>
+                              )}
+                              {isHolidayTomorrow && (
+                                <span className="imminent-cell-badge tomorrow" title="Holiday is Tomorrow!">⚡ TOMORROW</span>
+                              )}
+                            </div>
+                            {hasHoliday && cell.isCurrentMonth && (
+                              <span className={`holiday-indicator-dot ${isHolidayImminent ? "pulsing-holiday-dot" : ""}`} title="Holiday Scheduled" />
                             )}
                           </div>
 
@@ -568,16 +854,21 @@ export default function EmployeeCalendar() {
                               </div>
                             ))}
 
-                            {dailyHolidays.map((holiday, idx) => (
-                              <div
-                                key={`h-${idx}`}
-                                className={`holiday-badge ${holiday.type?.toLowerCase().replace(/\s+/g, "-") || "public"}`}
-                                title={`${holiday.title} (${holiday.type})`}
-                              >
-                                <span className="event-dot" />
-                                <span className="event-title">{holiday.title}</span>
-                              </div>
-                            ))}
+                            {dailyHolidays.map((holiday, idx) => {
+                              const isImminentBadge = isHolidayToday || isHolidayTomorrow;
+                              return (
+                                <div
+                                  key={`h-${idx}`}
+                                  className={`holiday-badge ${holiday.type?.toLowerCase().replace(/\s+/g, "-") || "public"} ${isImminentBadge ? (isHolidayToday ? "imminent-today-badge" : "imminent-tomorrow-badge") : ""}`}
+                                  title={`${holiday.title} (${holiday.type || "Public Holiday"})${isHolidayToday ? " - Celebrated Today!" : isHolidayTomorrow ? " - Scheduled for Tomorrow!" : ""}`}
+                                >
+                                  <span className="holiday-grid-emoji">{getHolidayEmoji(holiday.title)}</span>
+                                  <span className="event-title">{holiday.title}</span>
+                                  {isHolidayToday && <span className="mini-imminent-tag">🎉</span>}
+                                  {isHolidayTomorrow && <span className="mini-imminent-tag">⚡</span>}
+                                </div>
+                              );
+                            })}
 
                             {dailyLeaves.map((leave, idx) => (
                               <div
@@ -685,67 +976,215 @@ export default function EmployeeCalendar() {
                 <div className="holiday-list-view-container">
                   <div className="holiday-list-header">
                     <div>
-                      <h3>🏖️ Official Corporate Holidays ({year})</h3>
+                      <div className="holiday-list-kicker">
+                        <span>🗓️ Company Observances · {year}</span>
+                      </div>
+                      <h3>Official Corporate Holidays</h3>
                       <p className="holiday-list-subtitle">Annual company declared holidays, gazetted observances, and restricted leaves.</p>
                     </div>
-                    <div className="holiday-list-stats">
-                      <span className="holiday-count-badge">
-                        Total: <strong>{holidays.length} Holidays</strong>
-                      </span>
+
+                    <div className="holiday-list-header-actions">
+                      {isHrOrAdmin && (
+                        <button
+                          type="button"
+                          className="declare-holiday-accent-btn"
+                          onClick={() => setShowDeclareHolidayModal(true)}
+                          title="Declare New Corporate Holiday"
+                        >
+                          <span>➕</span> Declare Holiday
+                        </button>
+                      )}
+                      <div className="holiday-list-stats">
+                        <span className="holiday-count-badge">
+                          Total: <strong>{holidays.length} Holidays</strong>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Search and Category Filter Toolbar */}
+                  <div className="holiday-filter-toolbar">
+                    <div className="holiday-search-wrap">
+                      <span className="holiday-search-icon">🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Search holidays by name, month, or description..."
+                        value={holidaySearch}
+                        onChange={(e) => setHolidaySearch(e.target.value)}
+                        className="holiday-search-input"
+                      />
+                      {holidaySearch && (
+                        <button
+                          type="button"
+                          className="holiday-clear-search-btn"
+                          onClick={() => setHolidaySearch("")}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="holiday-filter-pills">
+                      <button
+                        type="button"
+                        className={`holiday-filter-pill ${holidayCategoryFilter === "all" ? "active" : ""}`}
+                        onClick={() => setHolidayCategoryFilter("all")}
+                      >
+                        All ({holidays.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`holiday-filter-pill ${holidayCategoryFilter === "gazetted" ? "active" : ""}`}
+                        onClick={() => setHolidayCategoryFilter("gazetted")}
+                      >
+                        🏛️ Gazetted ({holidayStats.gazetted})
+                      </button>
+                      <button
+                        type="button"
+                        className={`holiday-filter-pill ${holidayCategoryFilter === "optional" ? "active" : ""}`}
+                        onClick={() => setHolidayCategoryFilter("optional")}
+                      >
+                        ⭐ Optional ({holidayStats.optional})
+                      </button>
+                      <button
+                        type="button"
+                        className={`holiday-filter-pill ${holidayCategoryFilter === "upcoming" ? "active" : ""}`}
+                        onClick={() => setHolidayCategoryFilter("upcoming")}
+                      >
+                        ⏳ Upcoming Only
+                      </button>
+                      <button
+                        type="button"
+                        className={`holiday-filter-pill ${holidayCategoryFilter === "past" ? "active" : ""}`}
+                        onClick={() => setHolidayCategoryFilter("past")}
+                      >
+                        ✓ Observed
+                      </button>
+
+                      <button
+                        type="button"
+                        className="holiday-sort-btn"
+                        onClick={() => setHolidaySortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+                        title={`Sorted ${holidaySortOrder === "asc" ? "Earliest First" : "Latest First"}`}
+                      >
+                        {holidaySortOrder === "asc" ? "📅 Oldest First ↑" : "📅 Latest First ↓"}
+                      </button>
                     </div>
                   </div>
 
                   <div className="holiday-cards-scroll-container">
                     <div className="holiday-cards-grid">
-                      {holidays.length > 0 ? (
-                        holidays.map((h, idx) => {
+                      {filteredHolidays.length > 0 ? (
+                        filteredHolidays.map((h, idx) => {
                           const d = parseLocalDate(h.date);
                           const monthShort = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
                           const dayNum = d.getDate();
                           const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "short" });
                           const formattedDateStr = d.toLocaleDateString("en-IN", {
+                            weekday: "long",
                             day: "numeric",
                             month: "long",
                             year: "numeric",
                           });
 
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+                          const isPast = diffDays < 0;
+                          const isToday = diffDays === 0;
+                          const isTomorrow = diffDays === 1;
+                          const isImminent = isToday || isTomorrow;
+                          const countdownStr =
+                            diffDays === 0
+                              ? "Today 🎉"
+                              : diffDays === 1
+                              ? "Tomorrow ⚡"
+                              : diffDays > 1
+                              ? `In ${diffDays} days`
+                              : "✓ Observed";
+
+                          const emoji = getHolidayEmoji(h.title || h.name);
+                          const isMandatory =
+                            h.mandatory ||
+                            String(h.type || "").toLowerCase().includes("gazetted") ||
+                            String(h.type || "").toLowerCase().includes("national") ||
+                            String(h.type || "").toLowerCase().includes("public");
+
                           return (
-                            <div key={h.id || h._id || idx} className="holiday-list-card">
-                              <div className="holiday-card-date-badge">
-                                <span className="h-month">{monthShort}</span>
-                                <span className="h-day-num">{dayNum}</span>
-                                <span className="h-day">{dayOfWeek}</span>
-                              </div>
-                              <div className="holiday-card-info">
-                                <div className="holiday-card-title-row">
-                                <h4>{h.title || h.name}</h4>
-                                <span className="h-date">{formattedDateStr}</span>
-                              </div>
-                              <p>{h.description || "Official company holiday"}</p>
-                              <div className="holiday-card-tags">
-                                <span className={`holiday-type-pill ${(h.type || "gazetted").toLowerCase().replace(/\s+/g, "-")}`}>
-                                  {h.type || "Gazetted"}
-                                </span>
-                                {h.mandatory ? (
-                                  <span className="mandatory-pill">Mandatory Paid Off</span>
-                                ) : (
-                                  <span className="optional-pill">Optional Holiday</span>
-                                )}
+                            <div
+                              key={h.id || h._id || idx}
+                              className={`holiday-list-card ${isMandatory ? "mandatory-card" : "optional-card"} ${isPast ? "past-holiday" : ""} ${isToday ? "today-holiday-card holiday-imminent-card" : ""} ${isTomorrow ? "tomorrow-holiday-card holiday-imminent-card" : ""}`}
+                            >
+                              {isImminent && (
+                                <div className={`imminent-ribbon ${isToday ? "today" : "tomorrow"}`}>
+                                  <span className="ribbon-icon">{isToday ? "🎉" : "⚡"}</span>
+                                  <span className="ribbon-text">
+                                    {isToday ? "TODAY'S CORPORATE HOLIDAY" : "TOMORROW'S CORPORATE HOLIDAY"}
+                                  </span>
+                                  <span className="ribbon-badge">Office Closed</span>
+                                </div>
+                              )}
+
+                              <div className="holiday-card-main-content">
+                                <div className="holiday-card-date-badge">
+                                  <span className="h-month">{monthShort}</span>
+                                  <span className="h-day-num">{dayNum}</span>
+                                  <span className="h-day">{dayOfWeek}</span>
+                                </div>
+
+                                <div className="holiday-card-info">
+                                  <div className="holiday-card-title-row">
+                                    <div className="holiday-festive-pod">
+                                      <span className="holiday-card-emoji">{emoji}</span>
+                                      <h4>{h.title || h.name}</h4>
+                                    </div>
+                                    <span className="h-date">{formattedDateStr}</span>
+                                  </div>
+
+                                  <p>{h.description || "Official company holiday"}</p>
+
+                                  <div className="holiday-card-footer">
+                                    <div className="holiday-card-tags">
+                                      <span className={`holiday-type-pill ${(h.type || "gazetted").toLowerCase().replace(/\s+/g, "-")}`}>
+                                        {h.type || "Gazetted"}
+                                      </span>
+                                      {isMandatory ? (
+                                        <span className="mandatory-pill">✓ Mandatory Paid Off</span>
+                                      ) : (
+                                        <span className="optional-pill">⭐ Optional Holiday</span>
+                                      )}
+                                      <span className={`holiday-status-chip ${isPast ? "past" : isToday ? "today-glow" : isTomorrow ? "tomorrow-glow" : "upcoming"}`}>
+                                        {isToday ? "🎉 Active Today" : isTomorrow ? "⚡ Tomorrow" : countdownStr}
+                                      </span>
+                                    </div>
+
+                                    {isHrOrAdmin && (
+                                      <button
+                                        type="button"
+                                        className="holiday-delete-btn"
+                                        onClick={() => handleDeleteHoliday(h.id || h._id, h.title || h.name)}
+                                        title="Delete corporate holiday"
+                                      >
+                                        🗑️
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="no-events-prompt">
-                        🏖️ No holidays found in database.
-                      </div>
-                    )}
+                          );
+                        })
+                      ) : (
+                        <div className="no-events-prompt">
+                          🏖️ No holidays match the current search or filter criteria.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
                 </div>
               )}
             </div>
+
 
             {/* Right Side Panel: Inspector & Upcoming Holidays */}
             <div className="calendar-sidebar">
@@ -887,7 +1326,16 @@ export default function EmployeeCalendar() {
 
               {/* Upcoming Holidays Card */}
               <div className="sidebar-card">
-                <h3>Upcoming Holidays</h3>
+                <div className="sidebar-card-title-row">
+                  <h3>Upcoming Holidays</h3>
+                  <button
+                    type="button"
+                    className="sidebar-view-all-link"
+                    onClick={() => handleViewModeChange("holidays")}
+                  >
+                    View All →
+                  </button>
+                </div>
                 <div className="upcoming-list">
                   {upcomingHolidays.length > 0 ? (
                     upcomingHolidays.map((holiday) => {
@@ -895,18 +1343,24 @@ export default function EmployeeCalendar() {
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
                       const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+                      const emoji = getHolidayEmoji(holiday.title);
+                      const isToday = diffDays === 0;
+                      const isTomorrow = diffDays === 1;
 
                       return (
-                        <div key={holiday._id} className="upcoming-item">
+                        <div key={holiday._id || holiday.id || holiday.title} className={`upcoming-item ${isToday ? "today-upcoming imminent-sidebar-item" : isTomorrow ? "tomorrow-upcoming imminent-sidebar-item" : ""}`}>
                           <div className="upcoming-date">
                             <span className="month">{monthNames[d.getMonth()].substring(0, 3)}</span>
                             <span className="day">{d.getDate()}</span>
                           </div>
                           <div className="upcoming-details">
-                            <h4>{holiday.title}</h4>
-                            <span className="type">{holiday.type}</span>
-                            <span className="countdown">
-                              {diffDays === 0 ? "Today" : diffDays === 1 ? "Tomorrow" : `In ${diffDays} days`}
+                            <div className="upcoming-title-line">
+                              <span className="upcoming-emoji">{emoji}</span>
+                              <h4>{holiday.title}</h4>
+                            </div>
+                            <span className="type">{holiday.type || "Public Holiday"}</span>
+                            <span className={`countdown ${isToday ? "today-glow" : isTomorrow ? "tomorrow-glow" : ""}`}>
+                              {diffDays === 0 ? "Today 🎉" : diffDays === 1 ? "Tomorrow ⚡" : `In ${diffDays} days`}
                             </span>
                           </div>
                         </div>
@@ -917,6 +1371,7 @@ export default function EmployeeCalendar() {
                   )}
                 </div>
               </div>
+
 
               {/* Calendar Legend Card */}
               <div className="legend-card">
@@ -929,6 +1384,10 @@ export default function EmployeeCalendar() {
                   <div className="legend-item">
                     <span className="legend-color optional-holiday" />
                     <span>Optional / Restricted Holiday</span>
+                  </div>
+                  <div className="legend-item">
+                    <span className="legend-color imminent-legend" />
+                    <span>Imminent Holiday (Today / Tomorrow 🎉⚡)</span>
                   </div>
                   <div className="legend-item">
                     <span className="legend-color personal-leave" />
@@ -1114,7 +1573,116 @@ export default function EmployeeCalendar() {
             </div>
           </div>
         )}
+
+        {/* =====================================================
+            HR / ADMIN DECLARE CORPORATE HOLIDAY MODAL
+        ===================================================== */}
+
+        {showDeclareHolidayModal && (
+          <div className="day-planner-modal-backdrop" onClick={() => setShowDeclareHolidayModal(false)}>
+            <div className="declare-holiday-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="declare-modal-header">
+                <div className="declare-modal-title">
+                  <span className="declare-icon-pill">🏖️</span>
+                  <div>
+                    <h2>Declare Corporate Holiday</h2>
+                    <p>Add an official observance, gazetted holiday, or mandatory paid company off.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="close-modal-btn"
+                  onClick={() => setShowDeclareHolidayModal(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form className="declare-holiday-form" onSubmit={handleDeclareHoliday}>
+                <div className="form-group-field">
+                  <label>Holiday Title *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Diwali / Deepavali, Eid al-Fitr, Good Friday, Christmas Day"
+                    value={holidayFormTitle}
+                    onChange={(e) => setHolidayFormTitle(e.target.value)}
+                    required
+                    className="declare-input"
+                  />
+                </div>
+
+                <div className="form-row-2">
+                  <div className="form-group-field">
+                    <label>Observance Date *</label>
+                    <input
+                      type="date"
+                      value={holidayFormDate}
+                      onChange={(e) => setHolidayFormDate(e.target.value)}
+                      required
+                      className="declare-input"
+                    />
+                  </div>
+                  <div className="form-group-field">
+                    <label>Holiday Classification</label>
+                    <select
+                      value={holidayFormType}
+                      onChange={(e) => setHolidayFormType(e.target.value)}
+                      className="declare-select"
+                    >
+                      <option value="Public Holiday">🏛️ Public Holiday</option>
+                      <option value="National Holiday">🇮🇳 National Holiday</option>
+                      <option value="Gazetted Holiday">📜 Gazetted Holiday</option>
+                      <option value="Optional Holiday">⭐ Optional / Restricted Holiday</option>
+                      <option value="Company Off">🏢 Company Off</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group-field">
+                  <label>Description / Cultural Background</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Brief description of the corporate observance, celebration details, and office closure schedule..."
+                    value={holidayFormDescription}
+                    onChange={(e) => setHolidayFormDescription(e.target.value)}
+                    className="declare-textarea"
+                  />
+                </div>
+
+                <label className="declare-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={holidayFormMandatory}
+                    onChange={(e) => setHolidayFormMandatory(e.target.checked)}
+                  />
+                  <div>
+                    <strong>Mandatory Paid Company Off</strong>
+                    <span>All corporate offices closed; full paid leave applied for all employees</span>
+                  </div>
+                </label>
+
+                <div className="declare-modal-actions">
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={() => setShowDeclareHolidayModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="save-holiday-submit-btn"
+                    disabled={declaringHoliday}
+                  >
+                    {declaringHoliday ? "Declaring..." : "🎉 Declare Holiday"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </>
+
   );
 }

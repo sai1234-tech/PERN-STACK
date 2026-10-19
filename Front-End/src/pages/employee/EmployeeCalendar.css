@@ -2104,6 +2104,1969 @@
   }
 }
 
+/* ==========================================================================
+   ENHANCED HERO BANNER & STATS CLUSTER
+   ========================================================================== */
+
+.calendar-hero-left {
+  flex: 1;
+  min-width: 320px;
+}
+
+.calendar-hero-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 1.25rem;
+}
+
+.hero-stat-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  padding: 10px 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: all 0.2s ease;
+}
+
+.hero-stat-card:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.hero-stat-card .stat-num {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+.hero-stat-card .stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.hero-stat-card.next-celebration {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  min-width: 200px;
+}
+
+.next-holiday-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.next-emoji {
+  font-size: 1.1rem;
+}
+
+.next-countdown {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.next-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.calendar-hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.declare-holiday-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  border: 1px solid #34d399;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.declare-holiday-hero-btn:hover {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+}
+
+/* ==========================================================================
+   MONTH GRID FESTIVE ACCENTS
+   ========================================================================== */
+
+.calendar-day.has-holiday {
+  background: #fcfdfe;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+}
+
+.calendar-day.has-holiday .holiday-indicator-dot {
+  background: #f97316;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.6);
+}
+
+.holiday-grid-emoji {
+  font-size: 0.78rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-right: 1px;
+}
+
+/* ==========================================================================
+   CORPORATE HOLIDAY LIST TAB ENHANCEMENTS
+   ========================================================================== */
+
+.holiday-list-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 750;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+
+.holiday-list-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.declare-holiday-accent-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #059669;
+  color: white;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+}
+
+.declare-holiday-accent-btn:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
+/* Filter Toolbar */
+.holiday-filter-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.holiday-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 12px;
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+.holiday-search-wrap:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.holiday-search-icon {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.holiday-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #0f172a;
+  width: 100%;
+}
+
+.holiday-clear-search-btn {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.holiday-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.holiday-filter-pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.holiday-filter-pill:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.holiday-filter-pill.active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+}
+
+.holiday-sort-btn {
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.holiday-sort-btn:hover {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* Card Improvements */
+.holiday-list-card.mandatory-card {
+  border-left: 4px solid #3b82f6;
+}
+
+.holiday-list-card.optional-card {
+  border-left: 4px solid #f59e0b;
+}
+
+.holiday-list-card.past-holiday {
+  opacity: 0.75;
+}
+
+.holiday-festive-pod {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.holiday-card-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+  background: #f8fafc;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.holiday-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.holiday-status-chip {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.holiday-status-chip.upcoming {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.holiday-status-chip.past {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.holiday-delete-btn {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.holiday-delete-btn:hover {
+  background: #ef4444;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* ==========================================================================
+   SIDEBAR UPCOMING HOLIDAYS ENHANCEMENTS
+   ========================================================================== */
+
+.sidebar-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sidebar-card-title-row h3 {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.sidebar-view-all-link {
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidebar-view-all-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.upcoming-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.upcoming-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   DECLARE CORPORATE HOLIDAY MODAL
+   ========================================================================== */
+
+.declare-holiday-dialog {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 540px;
+  padding: 1.75rem;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e2e8f0;
+}
+
+@keyframes modalScaleUp {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.declare-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.declare-modal-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.declare-icon-pill {
+  font-size: 1.6rem;
+  line-height: 1;
+  background: #f0fdf4;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+}
+
+.declare-modal-title h2 {
+  margin: 0 0 2px 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.declare-modal-title p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.declare-holiday-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group-field label {
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: #334155;
+  letter-spacing: 0.01em;
+}
+
+.declare-input,
+.declare-select,
+.declare-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.declare-input:focus,
+.declare-select:focus,
+.declare-textarea:focus {
+  outline: none;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+.declare-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.declare-checkbox-label input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: #059669;
+}
+
+.declare-checkbox-label strong {
+  display: block;
+  font-size: 0.84rem;
+  color: #15803d;
+}
+
+.declare-checkbox-label span {
+  display: block;
+  font-size: 0.75rem;
+  color: #166534;
+  margin-top: 1px;
+}
+
+.declare-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 0.5rem;
+}
+
+.cancel-btn {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cancel-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.save-holiday-submit-btn {
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: white;
+  font-weight: 750;
+  font-size: 0.86rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+.save-holiday-submit-btn:hover {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   COMPREHENSIVE DARK THEME OVERRIDES FOR HOLIDAY CALENDAR
+   Fixing all text elements, badges, pills, grid cells, and modals in dark mode
+   ========================================================================== */
+
+[data-theme="dark"] .employee-calendar-hub,
+html[data-theme="dark"] .employee-calendar-hub {
+  color: #f1f5f9;
+}
+
+/* 1. Hero Command Banner */
+[data-theme="dark"] .calendar-hero-banner {
+  background: linear-gradient(135deg, #0b1120 0%, #172033 100%) !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="dark"] .calendar-hero-left h1 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .calendar-hero-left p {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .hero-kicker-pill {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .hero-stat-card {
+  background: #111827 !important;
+  border: 1px solid #1e293b !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .hero-stat-card .stat-num {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .hero-stat-card .stat-label {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .hero-stat-card.next-celebration .next-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .mode-tab-btn {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .mode-tab-btn:hover {
+  background: #283548 !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .mode-tab-btn.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* 2. Main Calendar Panel & Month Navigation */
+[data-theme="dark"] .calendar-grid-panel {
+  background: #111827 !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .calendar-month-title-wrap h2 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .year-highlight {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .nav-btn {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .nav-btn:hover {
+  background: #243247 !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .today-btn {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .today-btn:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+/* 3. Calendar Grid & Weekday Headers */
+[data-theme="dark"] .calendar-grid-container {
+  border-color: #1e293b !important;
+  background: #111827 !important;
+}
+
+[data-theme="dark"] .calendar-weekdays {
+  background: #162032 !important;
+  border-bottom-color: #1e293b !important;
+}
+
+[data-theme="dark"] .weekday-header {
+  color: #cbd5e1 !important;
+  font-weight: 750 !important;
+}
+
+[data-theme="dark"] .calendar-day {
+  border-right-color: #1e293b !important;
+  border-bottom-color: #1e293b !important;
+  background: #111827 !important;
+}
+
+[data-theme="dark"] .calendar-day:not(.other-month):hover {
+  background: #172033 !important;
+  box-shadow: inset 0 0 0 1px #334155 !important;
+}
+
+[data-theme="dark"] .calendar-day.other-month {
+  background: #0b0f19 !important;
+}
+
+[data-theme="dark"] .calendar-day.other-month .day-number {
+  color: #475569 !important;
+}
+
+[data-theme="dark"] .calendar-day.other-month .holiday-badge {
+  opacity: 0.35 !important;
+}
+
+[data-theme="dark"] .calendar-day .day-number {
+  color: #f1f5f9 !important;
+  font-weight: 750 !important;
+}
+
+[data-theme="dark"] .calendar-day.is-today {
+  background: #0f2922 !important;
+  box-shadow: inset 0 0 0 1px #059669 !important;
+}
+
+[data-theme="dark"] .calendar-day.is-today .day-number {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5) !important;
+}
+
+[data-theme="dark"] .calendar-day.is-selected {
+  background: #172554 !important;
+  box-shadow: inset 0 0 0 2px #3b82f6 !important;
+}
+
+[data-theme="dark"] .calendar-day.has-holiday {
+  background: #181926 !important;
+  box-shadow: inset 0 0 0 1px #312e81 !important;
+}
+
+/* 4. Event Badges Inside Calendar Month Grid Cells */
+[data-theme="dark"] .holiday-badge {
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .holiday-badge .event-title {
+  color: inherit !important;
+}
+
+[data-theme="dark"] .holiday-badge.public-holiday,
+[data-theme="dark"] .holiday-badge.gazetted,
+[data-theme="dark"] .holiday-badge.gazetted-holiday {
+  background: rgba(99, 102, 241, 0.22) !important;
+  color: #c7d2fe !important;
+  border: 1px solid rgba(165, 180, 252, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-badge.public-holiday .event-dot,
+[data-theme="dark"] .holiday-badge.gazetted .event-dot {
+  background: #818cf8 !important;
+}
+
+[data-theme="dark"] .holiday-badge.national-holiday,
+[data-theme="dark"] .holiday-badge.national {
+  background: rgba(16, 185, 129, 0.22) !important;
+  color: #a7f3d0 !important;
+  border: 1px solid rgba(110, 231, 183, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-badge.national-holiday .event-dot,
+[data-theme="dark"] .holiday-badge.national .event-dot {
+  background: #34d399 !important;
+}
+
+[data-theme="dark"] .holiday-badge.optional-holiday,
+[data-theme="dark"] .holiday-badge.restricted,
+[data-theme="dark"] .holiday-badge.restricted-holiday {
+  background: rgba(245, 158, 11, 0.22) !important;
+  color: #fde68a !important;
+  border: 1px solid rgba(253, 230, 138, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-badge.optional-holiday .event-dot,
+[data-theme="dark"] .holiday-badge.restricted .event-dot {
+  background: #fbbf24 !important;
+}
+
+[data-theme="dark"] .holiday-badge.company-off {
+  background: rgba(168, 85, 247, 0.22) !important;
+  color: #e9d5ff !important;
+  border: 1px solid rgba(216, 180, 254, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-badge.company-off .event-dot {
+  background: #c084fc !important;
+}
+
+[data-theme="dark"] .holiday-badge.personal-leave.approved {
+  background: rgba(34, 197, 94, 0.22) !important;
+  color: #bbf7d0 !important;
+  border: 1px solid rgba(134, 239, 172, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-badge.personal-leave.approved .event-dot {
+  background: #4ade80 !important;
+}
+
+[data-theme="dark"] .holiday-badge.personal-leave.pending {
+  background: rgba(234, 179, 8, 0.2) !important;
+  color: #fef08a !important;
+  border: 1px dashed rgba(254, 240, 138, 0.5) !important;
+}
+
+[data-theme="dark"] .holiday-badge.personal-leave.pending .event-dot {
+  background: #facc15 !important;
+}
+
+[data-theme="dark"] .holiday-badge.custom-event {
+  background: rgba(239, 68, 68, 0.22) !important;
+  color: #fecdd3 !important;
+  border: 1px solid rgba(252, 165, 165, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-badge.custom-event .event-dot {
+  background: #f87171 !important;
+}
+
+/* 5. Corporate Holiday List View (Tab 2) */
+[data-theme="dark"] .holiday-list-header h3 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .holiday-list-subtitle {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .holiday-list-kicker {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .holiday-count-badge {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .holiday-count-badge strong {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .holiday-filter-toolbar {
+  background: #162032 !important;
+  border-color: #1e293b !important;
+}
+
+[data-theme="dark"] .holiday-search-wrap {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-search-icon {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-search-input {
+  color: #f8fafc !important;
+  background: transparent !important;
+}
+
+[data-theme="dark"] .holiday-search-input::placeholder {
+  color: #64748b !important;
+}
+
+[data-theme="dark"] .holiday-clear-search-btn {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-filter-pill {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .holiday-filter-pill:hover {
+  background: #243247 !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .holiday-filter-pill.active {
+  background: #3b82f6 !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .holiday-sort-btn {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .holiday-sort-btn:hover {
+  background: #243247 !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .holiday-list-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme="dark"] .holiday-list-card:hover {
+  background: #243247 !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .holiday-card-date-badge {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-card-date-badge .h-month {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .holiday-card-date-badge .h-day-num {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .holiday-card-date-badge .h-day {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-card-emoji {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-card-info h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .holiday-card-info .h-date {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-card-info p {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .holiday-card-footer {
+  border-top-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-type-pill.public-holiday,
+[data-theme="dark"] .holiday-type-pill.public,
+[data-theme="dark"] .holiday-type-pill.gazetted,
+[data-theme="dark"] .holiday-type-pill.gazetted-holiday {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-type-pill.national-holiday,
+[data-theme="dark"] .holiday-type-pill.national {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(52, 211, 153, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-type-pill.optional-holiday,
+[data-theme="dark"] .holiday-type-pill.optional,
+[data-theme="dark"] .holiday-type-pill.restricted,
+[data-theme="dark"] .holiday-type-pill.restricted-holiday {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fde68a !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+[data-theme="dark"] .mandatory-pill {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(52, 211, 153, 0.35) !important;
+}
+
+[data-theme="dark"] .optional-pill {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fde68a !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+[data-theme="dark"] .holiday-status-chip.upcoming {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+
+[data-theme="dark"] .holiday-status-chip.past {
+  background: #0f172a !important;
+  color: #64748b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .no-events-prompt {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+/* 6. Right Sidebar (Timeline Inspector, Upcoming, Legend) */
+[data-theme="dark"] .sidebar-card,
+[data-theme="dark"] .legend-card {
+  background: #111827 !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .sidebar-card h3,
+[data-theme="dark"] .legend-card h3 {
+  color: #f8fafc !important;
+  border-bottom-color: #1e293b !important;
+}
+
+[data-theme="dark"] .inspector-card-header h3 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .inspector-date {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .add-event-form {
+  background: #162032 !important;
+  border-color: #1e293b !important;
+}
+
+[data-theme="dark"] .add-event-form h4 {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .event-input-field,
+[data-theme="dark"] .event-select-field,
+[data-theme="dark"] .clock-input {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .clock-field-label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .duration-preview-chip {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+[data-theme="dark"] .inspector-item {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .inspector-item:hover {
+  background: #243247 !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .inspector-time {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .inspector-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .inspector-tag {
+  background: #0f172a !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .inspector-duration-chip {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .inspector-item.custom-red-item {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  border-left: 4px solid #ef4444 !important;
+}
+
+[data-theme="dark"] .sidebar-view-all-link {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .upcoming-item {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .upcoming-item:hover {
+  background: #243247 !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .upcoming-date {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .upcoming-date .month {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .upcoming-date .day {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .upcoming-details h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .upcoming-details .type {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .upcoming-details .countdown {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(52, 211, 153, 0.3) !important;
+}
+
+[data-theme="dark"] .no-holidays {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .legend-item span {
+  color: #cbd5e1 !important;
+}
+
+/* 7. Shift Timeline View (Tab 3) */
+[data-theme="dark"] .timeline-view-header {
+  background: #111827 !important;
+  border: 1px solid #1e293b !important;
+}
+
+[data-theme="dark"] .timeline-header-left h3 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .timeline-selected-date-str {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .timeline-axis-bar {
+  background: #162032 !important;
+  border-color: #1e293b !important;
+}
+
+[data-theme="dark"] .timeline-hour-slot .hour-label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .hour-tick {
+  background: #334155 !important;
+}
+
+[data-theme="dark"] .timeline-event-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .timeline-event-card .event-time-badge {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .timeline-event-card .event-main-content h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .timeline-event-card .event-duration-pill {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+[data-theme="dark"] .timeline-event-card .event-category-tag {
+  background: #0f172a !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #334155 !important;
+}
+
+/* 8. Full 24-Hour Day Planner Popup Modal */
+[data-theme="dark"] .day-planner-modal-dialog {
+  background: #111827 !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="dark"] .day-planner-modal-header {
+  background: #0b1120 !important;
+  border-bottom-color: #1e293b !important;
+}
+
+[data-theme="dark"] .planner-modal-title h2 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .planner-subtitle {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .modal-quick-event-bar {
+  background: #162032 !important;
+  border-bottom-color: #1e293b !important;
+}
+
+[data-theme="dark"] .modal-event-input,
+[data-theme="dark"] .modal-clock-input,
+[data-theme="dark"] .modal-select-field {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .modal-time-label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .day-planner-scroll-canvas {
+  background: #111827 !important;
+}
+
+[data-theme="dark"] .slot-time-label {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .slot-grid-line {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .slot-half-line {
+  border-top-color: #1e293b !important;
+}
+
+[data-theme="dark"] .planner-time-slot:hover {
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+[data-theme="dark"] .planner-event-block {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .planner-event-block.custom {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+[data-theme="dark"] .planner-event-block.holiday {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+}
+
+[data-theme="dark"] .planner-event-block.leave {
+  background: rgba(236, 72, 153, 0.2) !important;
+  border-color: rgba(236, 72, 153, 0.5) !important;
+}
+
+[data-theme="dark"] .planner-block-time {
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .planner-block-duration {
+  background: rgba(239, 68, 68, 0.3) !important;
+  color: #fecdd3 !important;
+}
+
+[data-theme="dark"] .planner-block-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .planner-block-tag {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .open-planner-btn {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}
+
+/* 9. Dark Theme Declare Modal */
+[data-theme="dark"] .declare-holiday-dialog {
+  background: #111827 !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .declare-modal-header {
+  border-bottom-color: #1e293b !important;
+}
+
+[data-theme="dark"] .declare-modal-title h2 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .declare-modal-title p {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .declare-icon-pill {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+
+[data-theme="dark"] .form-group-field label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .declare-input,
+[data-theme="dark"] .declare-select,
+[data-theme="dark"] .declare-textarea {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .declare-input:focus,
+[data-theme="dark"] .declare-select:focus,
+[data-theme="dark"] .declare-textarea:focus {
+  border-color: #10b981 !important;
+}
+
+[data-theme="dark"] .declare-checkbox-label {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(52, 211, 153, 0.25) !important;
+}
+
+[data-theme="dark"] .declare-checkbox-label strong {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .declare-checkbox-label span {
+  color: #a7f3d0 !important;
+}
+
+[data-theme="dark"] .cancel-btn {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .cancel-btn:hover {
+  background: #243247 !important;
+  color: #f8fafc !important;
+}
+
+/* ==========================================================================
+   IMMINENT CORPORATE HOLIDAY HIGHLIGHTS (TODAY & TOMORROW)
+   ========================================================================== */
+
+@keyframes holidayPulseRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes holidayTodayPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* Imminent Live Alert Banner */
+.calendar-imminent-alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 1.1rem 1.4rem;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.calendar-imminent-alert-banner.tomorrow {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 45%, #fff7ed 100%);
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.15);
+}
+
+.calendar-imminent-alert-banner.today {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 45%, #f0fdf4 100%);
+  border: 1.5px solid #10b981;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.15);
+}
+
+.alert-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.alert-emoji {
+  font-size: 2rem;
+  line-height: 1;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.alert-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.alert-title-row strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.alert-type-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.calendar-imminent-alert-banner.today .alert-type-badge {
+  background: #10b981;
+}
+
+.alert-date-chip {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.alert-text p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.alert-countdown-pill {
+  font-size: 0.82rem;
+  font-weight: 850;
+  padding: 6px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.calendar-imminent-alert-banner.tomorrow .alert-countdown-pill {
+  background: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.35);
+  animation: holidayPulseRing 2s infinite;
+}
+
+.calendar-imminent-alert-banner.today .alert-countdown-pill {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+  animation: holidayTodayPulse 2s infinite;
+}
+
+/* Hero Next Celebration Card Highlight */
+.hero-stat-card.next-celebration.imminent-tomorrow {
+  border: 1.5px solid #f59e0b !important;
+  background: linear-gradient(135deg, rgba(254, 243, 199, 0.4) 0%, #ffffff 100%) !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.2) !important;
+}
+
+.hero-stat-card.next-celebration.imminent-today {
+  border: 1.5px solid #10b981 !important;
+  background: linear-gradient(135deg, rgba(209, 250, 229, 0.4) 0%, #ffffff 100%) !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Month Grid Day Highlighting */
+.day-number-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-day.holiday-tomorrow-cell {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 70%, #ffffff 100%) !important;
+  box-shadow: inset 0 0 0 2px #f59e0b !important;
+  z-index: 2;
+}
+
+.calendar-day.holiday-today-cell {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 70%, #ffffff 100%) !important;
+  box-shadow: inset 0 0 0 2px #10b981 !important;
+  z-index: 2;
+}
+
+.imminent-cell-badge {
+  font-size: 0.6rem;
+  font-weight: 850;
+  padding: 2px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.imminent-cell-badge.tomorrow {
+  background: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.35);
+}
+
+.imminent-cell-badge.today {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.35);
+}
+
+.pulsing-holiday-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b !important;
+  box-shadow: 0 0 6px #f59e0b;
+  animation: holidayPulseRing 1.8s infinite;
+}
+
+.holiday-badge.imminent-tomorrow-badge {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a !important;
+  font-weight: 750 !important;
+}
+
+.holiday-badge.imminent-today-badge {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+  font-weight: 750 !important;
+}
+
+.mini-imminent-tag {
+  font-size: 0.75rem;
+  margin-left: 2px;
+}
+
+/* Corporate Holiday List Card Celebratory Ribbon */
+.holiday-list-card.tomorrow-holiday-card {
+  border: 2px solid #f59e0b !important;
+  border-left: 6px solid #f59e0b !important;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 50%) !important;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.16) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.holiday-list-card.today-holiday-card {
+  border: 2px solid #10b981 !important;
+  border-left: 6px solid #10b981 !important;
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 50%) !important;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.16) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.imminent-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  margin: -16px -16px 12px -16px;
+}
+
+.imminent-ribbon.tomorrow {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+
+.imminent-ribbon.today {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+}
+
+.imminent-ribbon .ribbon-badge {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+}
+
+.holiday-card-main-content {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+}
+
+.holiday-status-chip.tomorrow-glow {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #f59e0b !important;
+  animation: holidayPulseRing 2s infinite;
+}
+
+.holiday-status-chip.today-glow {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+  border: 1px solid #10b981 !important;
+  animation: holidayTodayPulse 2s infinite;
+}
+
+/* Sidebar Upcoming Item Highlight */
+.upcoming-item.tomorrow-upcoming {
+  border-left: 3px solid #f59e0b !important;
+  background: #fffbeb !important;
+}
+
+.upcoming-item.today-upcoming {
+  border-left: 3px solid #10b981 !important;
+  background: #ecfdf5 !important;
+}
+
+.upcoming-item .countdown.tomorrow-glow {
+  background: #fef3c7;
+  color: #b45309;
+  font-weight: 800;
+  border: 1px solid #f59e0b;
+}
+
+.upcoming-item .countdown.today-glow {
+  background: #d1fae5;
+  color: #047857;
+  font-weight: 800;
+  border: 1px solid #10b981;
+}
+
+.legend-color.imminent-legend {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+/* ==========================================================================
+   DARK THEME IMMINENT HOLIDAY STYLES
+   ========================================================================== */
+[data-theme="dark"] .calendar-imminent-alert-banner.tomorrow {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.4) 0%, #1e293b 100%) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.2) !important;
+}
+
+[data-theme="dark"] .calendar-imminent-alert-banner.today {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.4) 0%, #1e293b 100%) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="dark"] .alert-emoji {
+  background: #0f172a !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .alert-title-row strong {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .alert-date-chip {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .alert-text p {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .calendar-day.holiday-tomorrow-cell {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.45) 0%, #1e293b 100%) !important;
+  box-shadow: inset 0 0 0 2px #f59e0b !important;
+}
+
+[data-theme="dark"] .calendar-day.holiday-today-cell {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.45) 0%, #1e293b 100%) !important;
+  box-shadow: inset 0 0 0 2px #10b981 !important;
+}
+
+[data-theme="dark"] .holiday-badge.imminent-tomorrow-badge {
+  background: rgba(245, 158, 11, 0.25) !important;
+  color: #fde68a !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+}
+
+[data-theme="dark"] .holiday-badge.imminent-today-badge {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #a7f3d0 !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+}
+
+[data-theme="dark"] .holiday-list-card.tomorrow-holiday-card {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.35) 0%, #1e293b 100%) !important;
+  border-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .holiday-list-card.today-holiday-card {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.35) 0%, #1e293b 100%) !important;
+  border-color: #10b981 !important;
+}
+
+[data-theme="dark"] .upcoming-item.tomorrow-upcoming {
+  background: rgba(120, 53, 15, 0.25) !important;
+  border-left-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .upcoming-item.today-upcoming {
+  background: rgba(6, 78, 59, 0.25) !important;
+  border-left-color: #10b981 !important;
+}
+
+/* Hero Next Celebration Card in Dark Mode */
+[data-theme="dark"] .hero-stat-card.next-celebration.imminent-tomorrow {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.4) 0%, #111827 100%) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25) !important;
+}
+
+[data-theme="dark"] .hero-stat-card.next-celebration.imminent-today {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.4) 0%, #111827 100%) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25) !important;
+}
+
+[data-theme="dark"] .hero-stat-card.next-celebration .next-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .hero-stat-card.next-celebration .next-countdown {
+  color: #6ee7b7 !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+}
+
+[data-theme="dark"] .hero-stat-card.next-celebration.imminent-tomorrow .next-countdown {
+  color: #fde68a !important;
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+}
+
+/* Imminent Countdown Pills & Status Badges in Dark Mode */
+[data-theme="dark"] .calendar-imminent-alert-banner .alert-countdown-pill {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .holiday-status-chip.tomorrow-glow {
+  background: rgba(245, 158, 11, 0.25) !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .holiday-status-chip.today-glow {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #a7f3d0 !important;
+  border-color: #10b981 !important;
+}
+
+[data-theme="dark"] .upcoming-item .countdown.tomorrow-glow {
+  background: rgba(245, 158, 11, 0.25) !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .upcoming-item .countdown.today-glow {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #a7f3d0 !important;
+  border-color: #10b981 !important;
+}
+
+[data-theme="dark"] .imminent-cell-badge.tomorrow {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .imminent-cell-badge.today {
+  background: #10b981 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .calendar-day.holiday-tomorrow-cell .day-number {
+  color: #fde68a !important;
+}
+
+[data-theme="dark"] .calendar-day.holiday-today-cell .day-number {
+  color: #a7f3d0 !important;
+}
+
+/* Timeline Cards for Leaves, Holidays, and Weekends */
+[data-theme="dark"] .timeline-event-card.leave {
+  background: rgba(236, 72, 153, 0.15) !important;
+  border-left-color: #ec4899 !important;
+}
+
+[data-theme="dark"] .timeline-event-card.leave .event-category-tag {
+  background: rgba(236, 72, 153, 0.25) !important;
+  color: #fbcfe8 !important;
+  border: 1px solid rgba(236, 72, 153, 0.4) !important;
+}
+
+[data-theme="dark"] .timeline-event-card.weekend {
+  background: #1e293b !important;
+  border-left-color: #64748b !important;
+}
+
+[data-theme="dark"] .timeline-event-card.weekend .event-category-tag {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .timeline-event-card.holiday {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-left-color: #6366f1 !important;
+}
+
+[data-theme="dark"] .timeline-event-card.holiday .event-category-tag {
+  background: rgba(99, 102, 241, 0.25) !important;
+  color: #c7d2fe !important;
+  border: 1px solid rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Event Management & Action Buttons */
+[data-theme="dark"] .delete-evt-btn,
+[data-theme="dark"] .delete-evt-btn-sm {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .delete-evt-btn:hover,
+[data-theme="dark"] .delete-evt-btn-sm:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .delete-block-btn {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .delete-block-btn:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .holiday-delete-btn {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .holiday-delete-btn:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Legend Indicators in Dark Mode */
+[data-theme="dark"] .legend-color.public-holiday {
+  background: #818cf8 !important;
+  box-shadow: 0 0 6px rgba(129, 140, 248, 0.5) !important;
+}
+
+[data-theme="dark"] .legend-color.optional-holiday {
+  background: #fbbf24 !important;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.5) !important;
+}
+
+[data-theme="dark"] .legend-color.company-off {
+  background: #c084fc !important;
+  box-shadow: 0 0 6px rgba(192, 132, 252, 0.5) !important;
+}
+
+[data-theme="dark"] .legend-color.personal-leave {
+  background: #4ade80 !important;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5) !important;
+}
+
+[data-theme="dark"] .legend-color.personal-leave-pending {
+  background: rgba(234, 179, 8, 0.25) !important;
+  border: 1px dashed #facc15 !important;
+}
+
+[data-theme="dark"] .legend-color.imminent-legend {
+  background: #f59e0b !important;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6) !important;
+}
+
+/* Modal Close Buttons */
+[data-theme="dark"] .close-modal-btn {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .close-modal-btn:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+}
+
+
+
 
 
 

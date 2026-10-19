@@ -1,4 +1,18 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
+
+export function isAuthPath(pathname) {
+  if (!pathname) return false;
+  const path = pathname.toLowerCase();
+  return (
+    path === "/login" ||
+    path.startsWith("/login/") ||
+    path === "/signup" ||
+    path.startsWith("/signup/") ||
+    path === "/admin/setup" ||
+    path.startsWith("/admin/setup/")
+  );
+}
 
 const ThemeContext = createContext({
   theme: "light",
@@ -7,6 +21,9 @@ const ThemeContext = createContext({
 });
 
 export function ThemeProvider({ children }) {
+  const location = useLocation();
+  const isAuth = isAuthPath(location?.pathname);
+
   const [theme, setTheme] = useState(() => {
     try {
       const saved = localStorage.getItem("hrms_theme");
@@ -21,13 +38,18 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute("data-theme", theme);
+    // Auth & login pages must ALWAYS maintain clean light design
+    if (isAuth) {
+      root.setAttribute("data-theme", "light");
+    } else {
+      root.setAttribute("data-theme", theme);
+    }
     try {
       localStorage.setItem("hrms_theme", theme);
     } catch {
       // ignore
     }
-  }, [theme]);
+  }, [theme, isAuth]);
 
   // Listen for system preference changes
   useEffect(() => {
@@ -49,7 +71,7 @@ export function ThemeProvider({ children }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, isDark: theme === "dark" }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, isDark: !isAuth && theme === "dark" }}>
       {children}
     </ThemeContext.Provider>
   );

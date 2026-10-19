@@ -228,6 +228,14 @@ function AppSidebar() {
                   <span className="nav-item-icon">🚀</span>
                   {!isCollapsed && <span className="nav-item-label">Active Projects</span>}
                 </NavLink>
+                <NavLink to="/manager/timesheets" end className="sidebar-nav-link" title="Review Team Timesheets">
+                  <span className="nav-item-icon">📋</span>
+                  {!isCollapsed && <span className="nav-item-label">Team Timesheets</span>}
+                </NavLink>
+                <NavLink to="/manager/resources" end className="sidebar-nav-link" title="Bench & Resource Allocation Matrix">
+                  <span className="nav-item-icon">🏢</span>
+                  {!isCollapsed && <span className="nav-item-label">Resource Matrix</span>}
+                </NavLink>
                 <NavLink to="/manager/performance" end className="sidebar-nav-link" title="Team Performance Reviews & OKRs">
                   <span className="nav-item-icon">🎯</span>
                   {!isCollapsed && <span className="nav-item-label">Team Appraisals & OKRs</span>}
@@ -304,10 +312,6 @@ function AppSidebar() {
                 <NavLink to="/hr/helpdesk" end className="sidebar-nav-link" title="HR Support Tickets">
                   <span className="nav-item-icon">🎟️</span>
                   {!isCollapsed && <span className="nav-item-label">HR Helpdesk</span>}
-                </NavLink>
-                <NavLink to="/hr/resources" end className="sidebar-nav-link" title="Bench & Resource Allocation">
-                  <span className="nav-item-icon">🏢</span>
-                  {!isCollapsed && <span className="nav-item-label">Resource Matrix</span>}
                 </NavLink>
                 <NavLink to="/hr/roster" end className="sidebar-nav-link" title="Shift & Roster Management">
                   <span className="nav-item-icon">🕒</span>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from "react-router-dom";
 
 function AuthLayout({
@@ -13,8 +13,25 @@ function AuthLayout({
   const location = useLocation();
   const currentPath = location.pathname;
 
+  // The login and authentication layout strictly maintains light mode aesthetic
+  useEffect(() => {
+    const root = document.documentElement;
+    const previousTheme = root.getAttribute("data-theme") || "light";
+    root.setAttribute("data-theme", "light");
+
+    return () => {
+      // When leaving auth views, restore the user's dashboard theme preference
+      try {
+        const savedTheme = localStorage.getItem("hrms_theme") || previousTheme;
+        root.setAttribute("data-theme", savedTheme);
+      } catch {
+        root.setAttribute("data-theme", previousTheme);
+      }
+    };
+  }, []);
+
   return (
-    <div className="auth-page">
+    <div className="auth-page" data-theme="light">
       {/* Dynamic ambient floating gradient orbs */}
       <div className="auth-ambient-mesh" aria-hidden="true">
         <div className="ambient-orb orb-1"></div>

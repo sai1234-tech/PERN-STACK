@@ -5,6 +5,7 @@ import {
   reviewTimesheet,
 } from "../../services/timesheetService";
 import { formatDate, formatTime } from "../../utils/date";
+import { useSyncRefresh, broadcastDataChange } from "../../utils/syncManager";
 import "./TimesheetManagement.css";
 
 const AVATAR_PALETTES = [
@@ -165,6 +166,9 @@ function TimesheetManagement() {
     loadEntries();
   }, [loadEntries]);
 
+  // Real-time live sync: refresh on mutations across tabs
+  useSyncRefresh(loadEntries, { interval: 5000, silent: true });
+
   // Active records: backend or synthesized corporate dataset
   const entries = useMemo(() => {
     if (apiEntries.length > 0 && !useSampleData) {
@@ -187,7 +191,7 @@ function TimesheetManagement() {
 
   // Status counts for segmented tabs
   const statusCounts = useMemo(() => {
-    const counts = { submitted: 0, approved: 0, rejected: 0, draft: 0, all: entries.length };
+    const counts = { submitted: 0, pending_hr: 0, approved: 0, rejected: 0, draft: 0, all: entries.length };
     entries.forEach((e) => {
       const s = (e.status || "draft").toLowerCase();
       if (counts[s] !== undefined) counts[s] += 1;
@@ -197,7 +201,7 @@ function TimesheetManagement() {
 
   // Executive KPI stats
   const kpis = useMemo(() => {
-    const pendingCount = statusCounts.submitted;
+    const pendingCount = (statusCounts.pending_hr || 0) + (statusCounts.submitted || 0);
     const totalHours = entries.reduce((acc, e) => acc + (Number(e.hours) || 0), 0);
     const approvedEntries = entries.filter((e) => e.status === "approved");
     const approvedHours = approvedEntries.reduce(
@@ -205,7 +209,7 @@ function TimesheetManagement() {
       0
     );
     const uniqueProjects = projectsList.length;
-    const processedCount = (statusCounts.submitted || 0) + (statusCounts.approved || 0);
+    const processedCount = (statusCounts.pending_hr || 0) + (statusCounts.submitted || 0) + (statusCounts.approved || 0);
     const complianceRate = entries.length > 0 ? Math.round((processedCount / entries.length) * 100) : 100;
 
     return {
@@ -221,11 +225,12 @@ function TimesheetManagement() {
   // Filtered entries based on tab, search, and project filter
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) => {
+      const s = (entry.status || "draft").toLowerCase();
       const matchesTab =
         activeTab === "all" ||
-        (activeTab === "unsubmitted" && ["draft", "rejected"].includes((entry.status || "draft").toLowerCase())) ||
-        (activeTab === "processed" && ["submitted", "approved"].includes((entry.status || "draft").toLowerCase())) ||
-        (activeTab === "pending" && (entry.status || "draft").toLowerCase() === "submitted");
+        (activeTab === "unsubmitted" && ["draft", "rejected"].includes(s)) ||
+        (activeTab === "processed" && ["pending_hr", "submitted", "approved"].includes(s)) ||
+        (activeTab === "pending" && ["pending_hr", "submitted"].includes(s));
 
       const q = search.trim().toLowerCase();
       const empName = `${entry.employee?.firstName || ""} ${
@@ -255,7 +260,7 @@ function TimesheetManagement() {
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       const submittable = filteredEntries
-        .filter((entry) => entry.status === "submitted")
+        .filter((entry) => ["pending_hr", "submitted"].includes(entry.status))
         .map((entry) => entry._id);
       setSelectedIds(new Set(submittable));
     } else {
@@ -279,6 +284,7 @@ function TimesheetManagement() {
     try {
       if (!entry.isSample) {
         await reviewTimesheet(entry._id, nextStatus, comment);
+        broadcastDataChange("timesheet");
         await loadEntries();
       } else {
         // Optimistically update local sample data
@@ -313,6 +319,7 @@ function TimesheetManagement() {
           await reviewTimesheet(id, "approved");
         }
       }
+      broadcastDataChange("timesheet");
       setSelectedIds(new Set());
       await loadEntries();
       setActionNotice(`Successfully approved ${count} timesheets.`);
@@ -395,9 +402,9 @@ function TimesheetManagement() {
   };
 
   const isAllSelected =
-    filteredEntries.filter((e) => e.status === "submitted").length > 0 &&
+    filteredEntries.filter((e) => ["pending_hr", "submitted"].includes(e.status)).length > 0 &&
     filteredEntries
-      .filter((e) => e.status === "submitted")
+      .filter((e) => ["pending_hr", "submitted"].includes(e.status))
       .every((e) => selectedIds.has(e._id));
 
   return (
@@ -629,8 +636,8 @@ function TimesheetManagement() {
               onClick={() => setActiveTab("processed")}
             >
               <span>✓</span>
-              <span>Submitted / Approved</span>
-              <span className="tab-count-badge">{(statusCounts.submitted || 0) + (statusCounts.approved || 0)}</span>
+              <span>In-Review / Approved</span>
+              <span className="tab-count-badge">{(statusCounts.pending_hr || 0) + (statusCounts.submitted || 0) + (statusCounts.approved || 0)}</span>
             </button>
 
             <button
@@ -640,8 +647,8 @@ function TimesheetManagement() {
             >
               <span>⏳</span>
               <span>Needs HR Review</span>
-              <span className={`tab-count-badge ${statusCounts.submitted > 0 ? "alert" : ""}`}>
-                {statusCounts.submitted}
+              <span className={`tab-count-badge ${((statusCounts.pending_hr || 0) + (statusCounts.submitted || 0)) > 0 ? "alert" : ""}`}>
+                {(statusCounts.pending_hr || 0) + (statusCounts.submitted || 0)}
               </span>
             </button>
 
@@ -884,15 +891,16 @@ function TimesheetManagement() {
                         entry.employee?.email ||
                         "Employee";
                       const palette = getColorForString(empName);
-                      const isSubmitted = entry.status === "submitted";
+                      const isActionable = ["pending_hr", "submitted"].includes(entry.status);
+                      const isPendingHR = entry.status === "pending_hr";
                       const isSelected = selectedIds.has(entry._id);
                       const dayOfWeek = getDayOfWeek(entry.date);
 
                       return (
                         <tr key={entry._id}>
-                          {activeTab === "submitted" && (
+                          {["pending", "all"].includes(activeTab) && (
                             <td className="td-checkbox-col">
-                              {isSubmitted && (
+                              {isActionable && (
                                 <input
                                   type="checkbox"
                                   className="ts-checkbox"
@@ -974,10 +982,26 @@ function TimesheetManagement() {
                           <td>
                             <span className={`ts-status-pill ${entry.status || "draft"}`}>
                               <span className="pulse-dot" />
-                              {entry.status === "submitted"
-                                ? "Awaiting Review"
-                                : entry.status}
+                              {entry.status === "pending_hr"
+                                ? "🔵 Step 2/2: Manager Approved ➔ Pending HR"
+                                : entry.status === "submitted"
+                                ? "🟡 Step 1/2: Pending Manager Approval"
+                                : entry.status === "approved"
+                                ? "🟢 Step 2/2 Complete: Approved"
+                                : entry.status === "rejected"
+                                ? "✕ Rejected"
+                                : "Draft"}
                             </span>
+                            {entry.managerRemarks && (
+                              <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "3px" }}>
+                                <strong>Mgr:</strong> {entry.managerRemarks}
+                              </div>
+                            )}
+                            {entry.hrRemarks && (
+                              <div style={{ fontSize: "0.7rem", color: "#047857", marginTop: "2px" }}>
+                                <strong>HR:</strong> {entry.hrRemarks}
+                              </div>
+                            )}
                             {entry.reconciliation && (
                               <div style={{ marginTop: "4px" }}>
                                 <span
@@ -1003,15 +1027,15 @@ function TimesheetManagement() {
 
                           <td>
                             <div className="ts-actions-wrap">
-                              {isSubmitted && (
+                              {isActionable && (
                                 <>
                                   <button
                                     type="button"
                                     className="btn-approve-sm"
                                     onClick={() => handleReview(entry, "approved")}
-                                    title="Approve timesheet"
+                                    title={isPendingHR ? "Execute HR final sign-off" : "Approve timesheet"}
                                   >
-                                    <span>✓</span> Approve
+                                    <span>✓</span> {isPendingHR ? "Final Sign-off" : "Approve"}
                                   </button>
                                   <button
                                     type="button"

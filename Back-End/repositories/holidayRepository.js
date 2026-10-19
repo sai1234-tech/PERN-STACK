@@ -67,3 +67,15 @@ export const seedDefaultHolidays = async (holidayList) => {
     }
     return inserted;
 };
+
+export const deleteHolidayRecord = async (id) => {
+    const queryText = `
+        DELETE FROM holidays
+        WHERE id = $1
+        RETURNING *;
+    `;
+    const { rows } = await pool.query(queryText, [id]);
+    return formatHoliday(rows[0]);
+};
+
+

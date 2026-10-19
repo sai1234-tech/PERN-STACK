@@ -476,6 +476,75 @@
   color: #5eead4;
 }
 
+/* Dark mode theme overrides for all Payroll Tabs */
+[data-theme="dark"] .payslip-modern-card,
+[data-theme="dark"] .ctc-structure-card,
+[data-theme="dark"] .tax-intelligence-card,
+[data-theme="dark"] .dash-panel-card {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .payslip-corp-header,
+[data-theme="dark"] .payslip-meta-header,
+[data-theme="dark"] .payslip-meta-grid,
+[data-theme="dark"] .payslip-legal-footer,
+[data-theme="dark"] .tax-panel,
+[data-theme="dark"] .ctc-tile-box {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .payslip-meta-item {
+  border-color: #334155;
+}
+
+[data-theme="dark"] .corp-brand-block h2,
+[data-theme="dark"] .payslip-period-badge strong,
+[data-theme="dark"] .payslip-meta-heading-title,
+[data-theme="dark"] .payslip-meta-item strong,
+[data-theme="dark"] .ledger-column h3,
+[data-theme="dark"] .signatory-title,
+[data-theme="dark"] .ctc-structure-head h2,
+[data-theme="dark"] .ctc-tile-box strong,
+[data-theme="dark"] .tax-panel h4,
+[data-theme="dark"] .tax-item-row strong {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .payslip-meta-item span,
+[data-theme="dark"] .corp-brand-block p,
+[data-theme="dark"] .ctc-structure-head p,
+[data-theme="dark"] .ctc-tile-box span,
+[data-theme="dark"] .tax-item-row span,
+[data-theme="dark"] .signatory-org {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .ledger-table thead tr {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .ledger-table th {
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .ledger-table td {
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .ledger-table tfoot tr {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .ledger-table tfoot th {
+  color: #f1f5f9;
+}
+
 /* ==========================================================================
    Official Payslip Document View (Tab 1)
    ========================================================================== */
@@ -1022,6 +1091,28 @@
 /* ==========================================================================
    Tax Withholding & YTD Analysis (Tab 3)
    ========================================================================== */
+
+.tax-intelligence-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Empty & Inactive Tab State Panels */
+.dash-panel-card {
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 18px;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.03);
+  box-sizing: border-box;
+  width: 100%;
+}
 
 .tax-hero-card {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -2108,9 +2199,11 @@ main.payroll-page {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 1.25rem 0 0.75rem;
-  padding-bottom: 0.4rem;
+  padding: 1rem 2rem 0.85rem;
+  background: #fbfcfe;
   border-bottom: 1.5px solid #e2e8f0;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .payslip-meta-heading-title {

@@ -680,9 +680,222 @@
   color: #115e59;
 }
 
+.shortcut-chip.calendar {
+  background: #fdf4ff;
+  color: #a21caf;
+  border: 1.5px solid #f0abfc;
+}
+.shortcut-chip.calendar:hover {
+  background: #fae8ff;
+  border-color: #e879f9;
+  color: #86198f;
+}
+
+.shortcut-chip.recruitment {
+  background: #fdf2f8;
+  color: #db2777;
+  border: 1.5px solid #fbcfe8;
+}
+.shortcut-chip.recruitment:hover {
+  background: #fce7f3;
+  border-color: #f472b6;
+  color: #be185d;
+}
+
 .shortcut-chip:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.09);
+}
+
+/* ==========================================================================
+   Dark Theme - Operational Module Shortcuts (Luminous High Contrast)
+   ========================================================================== */
+
+[data-theme="dark"] .shortcut-chip,
+html[data-theme="dark"] .shortcut-chip {
+  background: #172033 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .shortcut-chip .chip-name,
+html[data-theme="dark"] .shortcut-chip .chip-name {
+  font-weight: 750 !important;
+}
+
+/* Payroll Chip in Dark Mode: Luminous Emerald */
+[data-theme="dark"] .shortcut-chip.payroll,
+html[data-theme="dark"] .shortcut-chip.payroll {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #34d399 !important;
+  border: 1.5px solid rgba(52, 211, 153, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.payroll .chip-name,
+html[data-theme="dark"] .shortcut-chip.payroll .chip-name {
+  color: #34d399 !important;
+}
+[data-theme="dark"] .shortcut-chip.payroll:hover,
+html[data-theme="dark"] .shortcut-chip.payroll:hover {
+  background: rgba(16, 185, 129, 0.28) !important;
+  border-color: #34d399 !important;
+  color: #a7f3d0 !important;
+}
+[data-theme="dark"] .shortcut-chip.payroll:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.payroll:hover .chip-name {
+  color: #a7f3d0 !important;
+}
+
+/* Documents Chip in Dark Mode: Luminous Amber/Gold */
+[data-theme="dark"] .shortcut-chip.documents,
+html[data-theme="dark"] .shortcut-chip.documents {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border: 1.5px solid rgba(251, 191, 36, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.documents .chip-name,
+html[data-theme="dark"] .shortcut-chip.documents .chip-name {
+  color: #fbbf24 !important;
+}
+[data-theme="dark"] .shortcut-chip.documents:hover,
+html[data-theme="dark"] .shortcut-chip.documents:hover {
+  background: rgba(245, 158, 11, 0.28) !important;
+  border-color: #fbbf24 !important;
+  color: #fef08a !important;
+}
+[data-theme="dark"] .shortcut-chip.documents:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.documents:hover .chip-name {
+  color: #fef08a !important;
+}
+
+/* Timesheets Chip in Dark Mode: Luminous Blue */
+[data-theme="dark"] .shortcut-chip.timesheets,
+html[data-theme="dark"] .shortcut-chip.timesheets {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #60a5fa !important;
+  border: 1.5px solid rgba(96, 165, 250, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.timesheets .chip-name,
+html[data-theme="dark"] .shortcut-chip.timesheets .chip-name {
+  color: #60a5fa !important;
+}
+[data-theme="dark"] .shortcut-chip.timesheets:hover,
+html[data-theme="dark"] .shortcut-chip.timesheets:hover {
+  background: rgba(59, 130, 246, 0.28) !important;
+  border-color: #60a5fa !important;
+  color: #bfdbfe !important;
+}
+[data-theme="dark"] .shortcut-chip.timesheets:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.timesheets:hover .chip-name {
+  color: #bfdbfe !important;
+}
+
+/* Teams Chip in Dark Mode: Luminous Purple */
+[data-theme="dark"] .shortcut-chip.teams,
+html[data-theme="dark"] .shortcut-chip.teams {
+  background: rgba(139, 92, 246, 0.16) !important;
+  color: #a78bfa !important;
+  border: 1.5px solid rgba(167, 139, 250, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.teams .chip-name,
+html[data-theme="dark"] .shortcut-chip.teams .chip-name {
+  color: #a78bfa !important;
+}
+[data-theme="dark"] .shortcut-chip.teams:hover,
+html[data-theme="dark"] .shortcut-chip.teams:hover {
+  background: rgba(139, 92, 246, 0.28) !important;
+  border-color: #a78bfa !important;
+  color: #ddd6fe !important;
+}
+[data-theme="dark"] .shortcut-chip.teams:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.teams:hover .chip-name {
+  color: #ddd6fe !important;
+}
+
+/* Resignations Chip in Dark Mode: Luminous Rose */
+[data-theme="dark"] .shortcut-chip.resignations,
+html[data-theme="dark"] .shortcut-chip.resignations {
+  background: rgba(244, 63, 94, 0.16) !important;
+  color: #fb7185 !important;
+  border: 1.5px solid rgba(251, 113, 133, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.resignations .chip-name,
+html[data-theme="dark"] .shortcut-chip.resignations .chip-name {
+  color: #fb7185 !important;
+}
+[data-theme="dark"] .shortcut-chip.resignations:hover,
+html[data-theme="dark"] .shortcut-chip.resignations:hover {
+  background: rgba(244, 63, 94, 0.28) !important;
+  border-color: #fb7185 !important;
+  color: #fecdd3 !important;
+}
+[data-theme="dark"] .shortcut-chip.resignations:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.resignations:hover .chip-name {
+  color: #fecdd3 !important;
+}
+
+/* Helpdesk Chip in Dark Mode: Luminous Teal */
+[data-theme="dark"] .shortcut-chip.helpdesk,
+html[data-theme="dark"] .shortcut-chip.helpdesk {
+  background: rgba(20, 184, 166, 0.16) !important;
+  color: #2dd4bf !important;
+  border: 1.5px solid rgba(45, 212, 191, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.helpdesk .chip-name,
+html[data-theme="dark"] .shortcut-chip.helpdesk .chip-name {
+  color: #2dd4bf !important;
+}
+[data-theme="dark"] .shortcut-chip.helpdesk:hover,
+html[data-theme="dark"] .shortcut-chip.helpdesk:hover {
+  background: rgba(20, 184, 166, 0.28) !important;
+  border-color: #2dd4bf !important;
+  color: #99f6e4 !important;
+}
+[data-theme="dark"] .shortcut-chip.helpdesk:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.helpdesk:hover .chip-name {
+  color: #99f6e4 !important;
+}
+
+/* Calendar Chip in Dark Mode: Luminous Fuchsia */
+[data-theme="dark"] .shortcut-chip.calendar,
+html[data-theme="dark"] .shortcut-chip.calendar {
+  background: rgba(217, 70, 239, 0.16) !important;
+  color: #e879f9 !important;
+  border: 1.5px solid rgba(232, 121, 249, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.calendar .chip-name,
+html[data-theme="dark"] .shortcut-chip.calendar .chip-name {
+  color: #e879f9 !important;
+}
+[data-theme="dark"] .shortcut-chip.calendar:hover,
+html[data-theme="dark"] .shortcut-chip.calendar:hover {
+  background: rgba(217, 70, 239, 0.28) !important;
+  border-color: #e879f9 !important;
+  color: #f5d0fe !important;
+}
+[data-theme="dark"] .shortcut-chip.calendar:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.calendar:hover .chip-name {
+  color: #f5d0fe !important;
+}
+
+/* Recruitment Chip in Dark Mode: Luminous Pink */
+[data-theme="dark"] .shortcut-chip.recruitment,
+html[data-theme="dark"] .shortcut-chip.recruitment {
+  background: rgba(236, 72, 153, 0.16) !important;
+  color: #f472b6 !important;
+  border: 1.5px solid rgba(244, 114, 182, 0.45) !important;
+}
+[data-theme="dark"] .shortcut-chip.recruitment .chip-name,
+html[data-theme="dark"] .shortcut-chip.recruitment .chip-name {
+  color: #f472b6 !important;
+}
+[data-theme="dark"] .shortcut-chip.recruitment:hover,
+html[data-theme="dark"] .shortcut-chip.recruitment:hover {
+  background: rgba(236, 72, 153, 0.28) !important;
+  border-color: #f472b6 !important;
+  color: #fbcfe8 !important;
+}
+[data-theme="dark"] .shortcut-chip.recruitment:hover .chip-name,
+html[data-theme="dark"] .shortcut-chip.recruitment:hover .chip-name {
+  color: #fbcfe8 !important;
 }
 
 .hr-pulse-section {
@@ -801,6 +1014,348 @@
   color: #64748b;
   font-weight: 500;
   margin-left: 2px;
+}
+
+/* ==========================================================================
+   Corporate Holiday Spotlight Section
+   ========================================================================== */
+
+.hr-holiday-spotlight-section {
+  margin-top: 1.75rem;
+  margin-bottom: 2.25rem;
+  padding: 1.85rem 2.25rem;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+  transition: all 0.25s ease;
+}
+
+.holiday-spotlight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.spotlight-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0d9488;
+  margin-bottom: 0.35rem;
+}
+
+.holiday-spotlight-header h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.holiday-spotlight-header p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.holiday-view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.84rem;
+  font-weight: 750;
+  text-decoration: none;
+  border: 1px solid #bfdbfe;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.holiday-view-all-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.holiday-spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 1.15rem;
+}
+
+.holiday-spotlight-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.holiday-spotlight-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #10b981 0%, #0d9488 100%);
+  opacity: 0.75;
+}
+
+.holiday-spotlight-card:hover {
+  transform: translateY(-2px);
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 22px -5px rgba(15, 23, 42, 0.08);
+}
+
+.spotlight-date-pod {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  flex-shrink: 0;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+}
+
+.spotlight-date-pod .pod-month {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #f43f5e;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.spotlight-date-pod .pod-day {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+  margin: 2px 0 1px;
+}
+
+.spotlight-date-pod .pod-weekday {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1;
+}
+
+.spotlight-holiday-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.spotlight-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.spotlight-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.spotlight-holiday-details h4 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-date-full {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.spotlight-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.spotlight-type-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.spotlight-type-badge.national-holiday,
+.spotlight-type-badge.national {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.spotlight-type-badge.public-holiday,
+.spotlight-type-badge.public {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.spotlight-type-badge.optional-holiday,
+.spotlight-type-badge.optional {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.spotlight-countdown-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #fdf4ff;
+  color: #a21caf;
+  border: 1px solid #f0abfc;
+}
+
+.spotlight-empty-notice {
+  padding: 1.5rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Dark Theme for Corporate Holiday Spotlight */
+[data-theme="dark"] .hr-holiday-spotlight-section,
+html[data-theme="dark"] .hr-holiday-spotlight-section {
+  background: #111827 !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .spotlight-kicker,
+html[data-theme="dark"] .spotlight-kicker {
+  color: #2dd4bf !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-header h2,
+html[data-theme="dark"] .holiday-spotlight-header h2 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-header p,
+html[data-theme="dark"] .holiday-spotlight-header p {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-view-all-btn,
+html[data-theme="dark"] .holiday-view-all-btn {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #60a5fa !important;
+  border-color: rgba(96, 165, 250, 0.45) !important;
+}
+
+[data-theme="dark"] .holiday-view-all-btn:hover,
+html[data-theme="dark"] .holiday-view-all-btn:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-card,
+html[data-theme="dark"] .holiday-spotlight-card {
+  background: #172033 !important;
+  border-color: #1e293b !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-card:hover,
+html[data-theme="dark"] .holiday-spotlight-card:hover {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .spotlight-date-pod,
+html[data-theme="dark"] .spotlight-date-pod {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .spotlight-date-pod .pod-month,
+html[data-theme="dark"] .spotlight-date-pod .pod-month {
+  color: #fb7185 !important;
+}
+
+[data-theme="dark"] .spotlight-date-pod .pod-day,
+html[data-theme="dark"] .spotlight-date-pod .pod-day {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .spotlight-date-pod .pod-weekday,
+html[data-theme="dark"] .spotlight-date-pod .pod-weekday {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .spotlight-holiday-details h4,
+html[data-theme="dark"] .spotlight-holiday-details h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .spotlight-date-full,
+html[data-theme="dark"] .spotlight-date-full {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .spotlight-type-badge,
+html[data-theme="dark"] .spotlight-type-badge {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .spotlight-countdown-badge,
+html[data-theme="dark"] .spotlight-countdown-badge {
+  background: rgba(217, 70, 239, 0.16) !important;
+  color: #e879f9 !important;
+  border-color: rgba(232, 121, 249, 0.4) !important;
+}
+
+[data-theme="dark"] .spotlight-empty-notice,
+html[data-theme="dark"] .spotlight-empty-notice {
+  background: #172033 !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
 }
 
 /* ==========================================================================
@@ -1461,4 +2016,668 @@ img.employee-avatar,
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* ==========================================================================
+   Timesheet Tab Filter Controls & Table Elements
+   ========================================================================== */
+.ts-week-filter-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #f1f5f9;
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.ts-week-pill {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ts-week-pill:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.ts-week-pill.active {
+  background: #ffffff;
+  color: #0f766e;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.status-filter-pills {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.ts-status-pill {
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.ts-status-pill:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.ts-status-pill.active {
+  background: #0d9488;
+  border-color: #0d9488;
+  color: #ffffff;
+}
+
+.ts-status-pill-count {
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.ts-status-pill-count.alert {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.ts-status-pill-count.active {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Timesheet Table Cells */
+.ts-cell-date {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ts-cell-time {
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+.ts-cell-project-tag {
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  color: #0f766e;
+  margin-bottom: 3px;
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.ts-cell-task {
+  font-weight: 600;
+  color: #0f172a;
+  fontSize: 0.85rem;
+}
+
+.ts-cell-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+.ts-cell-hours {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* ==========================================================================
+   Corporate Holiday Spotlight Section (HR Dashboard)
+   ========================================================================== */
+
+.hr-holiday-spotlight-section {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.holiday-spotlight-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.spotlight-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-size: 0.76rem;
+  font-weight: 750;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 0.4rem;
+}
+
+.holiday-spotlight-header h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.2rem 0;
+}
+
+.holiday-spotlight-header p {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.holiday-view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.84rem;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.holiday-view-all-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.holiday-spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.holiday-spotlight-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  transition: all 0.2s ease;
+}
+
+.holiday-spotlight-card:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.spotlight-date-pod {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.pod-month {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #ef4444;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pod-day {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.pod-weekday {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.spotlight-holiday-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.spotlight-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.spotlight-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.spotlight-title-row h4 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-date-full {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: block;
+  margin: 0.2rem 0 0.45rem 0;
+}
+
+.spotlight-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.spotlight-type-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.spotlight-countdown-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.spotlight-empty-notice {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Dark Theme Overrides for Spotlight */
+[data-theme="dark"] .hr-holiday-spotlight-section,
+html[data-theme="dark"] .hr-holiday-spotlight-section {
+  background: #111827 !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .spotlight-kicker,
+html[data-theme="dark"] .spotlight-kicker {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(52, 211, 153, 0.35) !important;
+  color: #34d399 !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-header h2,
+html[data-theme="dark"] .holiday-spotlight-header h2 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-header p,
+html[data-theme="dark"] .holiday-spotlight-header p {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-view-all-btn,
+html[data-theme="dark"] .holiday-view-all-btn {
+  background: rgba(59, 130, 246, 0.18) !important;
+  color: #60a5fa !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+}
+
+[data-theme="dark"] .holiday-view-all-btn:hover,
+html[data-theme="dark"] .holiday-view-all-btn:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-card,
+html[data-theme="dark"] .holiday-spotlight-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-card:hover,
+html[data-theme="dark"] .holiday-spotlight-card:hover {
+  background: #243247 !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .spotlight-date-pod,
+html[data-theme="dark"] .spotlight-date-pod {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .pod-day,
+html[data-theme="dark"] .pod-day {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .pod-weekday,
+html[data-theme="dark"] .pod-weekday {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .spotlight-title-row h4,
+html[data-theme="dark"] .spotlight-title-row h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .spotlight-date-full,
+html[data-theme="dark"] .spotlight-date-full {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .spotlight-type-badge,
+html[data-theme="dark"] .spotlight-type-badge {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+
+[data-theme="dark"] .spotlight-countdown-badge,
+html[data-theme="dark"] .spotlight-countdown-badge {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+
+[data-theme="dark"] .spotlight-empty-notice,
+html[data-theme="dark"] .spotlight-empty-notice {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+/* ==========================================================================
+   HR IMMINENT HOLIDAY ALERT BANNER & SPOTLIGHT HIGHLIGHTS
+   ========================================================================== */
+
+.hr-imminent-holiday-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 1.1rem 1.4rem;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hr-imminent-holiday-alert.tomorrow {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 45%, #fff7ed 100%);
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.16);
+}
+
+.hr-imminent-holiday-alert.today {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 45%, #f0fdf4 100%);
+  border: 1.5px solid #10b981;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.16);
+}
+
+.alert-content-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.alert-icon-pod {
+  font-size: 2rem;
+  line-height: 1;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.alert-title-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.alert-title-badges strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.alert-chip-type {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.hr-imminent-holiday-alert.today .alert-chip-type {
+  background: #10b981;
+}
+
+.alert-chip-date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.alert-text-block p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.alert-urgency-badge {
+  font-size: 0.82rem;
+  font-weight: 850;
+  padding: 6px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.hr-imminent-holiday-alert.tomorrow .alert-urgency-badge {
+  background: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.35);
+  animation: holidayPulseRing 2s infinite;
+}
+
+.hr-imminent-holiday-alert.today .alert-urgency-badge {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+  animation: holidayTodayPulse 2s infinite;
+}
+
+/* Spotlight Card Imminent Highlights */
+.holiday-spotlight-card.spotlight-tomorrow {
+  border: 2px solid #f59e0b !important;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 60%) !important;
+  box-shadow: 0 10px 28px rgba(245, 158, 11, 0.18) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.holiday-spotlight-card.spotlight-today {
+  border: 2px solid #10b981 !important;
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 60%) !important;
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.18) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight-card-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  width: 100%;
+}
+
+.spotlight-card-ribbon.tomorrow {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+
+.spotlight-card-ribbon.today {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+}
+
+.spotlight-card-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 1.15rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.spotlight-countdown-badge.tomorrow-glow {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #f59e0b !important;
+  animation: holidayPulseRing 2s infinite;
+}
+
+.spotlight-countdown-badge.today-glow {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+  border: 1px solid #10b981 !important;
+  animation: holidayTodayPulse 2s infinite;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] .hr-imminent-holiday-alert.tomorrow {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.4) 0%, #1e293b 100%) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.2) !important;
+}
+
+[data-theme="dark"] .hr-imminent-holiday-alert.today {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.4) 0%, #1e293b 100%) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="dark"] .alert-icon-pod {
+  background: #0f172a !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .alert-title-badges strong {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .alert-chip-date {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .alert-text-block p {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-card.spotlight-tomorrow {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.35) 0%, #1e293b 100%) !important;
+  border-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .holiday-spotlight-card.spotlight-today {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.35) 0%, #1e293b 100%) !important;
+  border-color: #10b981 !important;
+}
+
+[data-theme="dark"] .spotlight-countdown-badge.tomorrow-glow {
+  background: rgba(245, 158, 11, 0.25) !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .spotlight-countdown-badge.today-glow {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #a7f3d0 !important;
+  border-color: #10b981 !important;
+}
+
+
 

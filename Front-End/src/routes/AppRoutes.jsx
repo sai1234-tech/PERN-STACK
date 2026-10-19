@@ -135,6 +135,8 @@ function AppRoutes() {
           <Route path="/employee/dashboard"   element={<ProtectedRoute roles={ALL_ROLES}><EmployeeDashboard /></ProtectedRoute>} />
           <Route path="/employee/calendar"    element={<ProtectedRoute roles={ALL_ROLES}><EmployeeCalendar /></ProtectedRoute>} />
           <Route path="/calendar"             element={<ProtectedRoute roles={ALL_ROLES}><EmployeeCalendar /></ProtectedRoute>} />
+          <Route path="/hr/calendar"           element={<ProtectedRoute roles={ALL_ROLES}><EmployeeCalendar /></ProtectedRoute>} />
+
           <Route path="/employee/attendance"  element={<ProtectedRoute roles={ALL_ROLES}><EmployeeAttendance /></ProtectedRoute>} />
           <Route path="/attendance"           element={<ProtectedRoute roles={ALL_ROLES}><EmployeeAttendance /></ProtectedRoute>} />
           <Route path="/employee/leaves"      element={<ProtectedRoute roles={ALL_ROLES}><EmployeeLeaves /></ProtectedRoute>} />
@@ -156,6 +158,9 @@ function AppRoutes() {
           {/* ── Manager Routes ── */}
           <Route path="/manager/dashboard"   element={<ProtectedRoute roles={["manager", "admin"]}><ManagerDashboard /></ProtectedRoute>} />
           <Route path="/manager/projects"    element={<ProtectedRoute roles={["manager", "admin"]}><ManagerProjects /></ProtectedRoute>} />
+          <Route path="/manager/timesheets"  element={<ProtectedRoute roles={["manager", "admin", "hr"]}><TimesheetManagement /></ProtectedRoute>} />
+          <Route path="/manager/resources"   element={<ProtectedRoute roles={["manager", "admin", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/resources"           element={<ProtectedRoute roles={["manager", "admin", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
           <Route path="/manager/performance" element={<ProtectedRoute roles={["manager", "admin"]}><ManagerPerformance /></ProtectedRoute>} />
 
           {/* ── Admin Routes ── */}
@@ -167,9 +172,9 @@ function AppRoutes() {
           <Route path="/hr/departments"  element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
           <Route path="/departments"     element={<ProtectedRoute roles={["hr", "admin"]}><DepartmentManagement /></ProtectedRoute>} />
           <Route path="/hr/employees"    element={<ProtectedRoute roles={["hr", "admin"]}><EmployeeManagement /></ProtectedRoute>} />
-          <Route path="/hr/timesheets"   element={<ProtectedRoute roles={["hr", "admin"]}><TimesheetManagement /></ProtectedRoute>} />
+          <Route path="/hr/timesheets"   element={<ProtectedRoute roles={["hr", "admin", "manager"]}><TimesheetManagement /></ProtectedRoute>} />
           <Route path="/hr/recruitment"  element={<ProtectedRoute roles={["hr", "admin"]}><RecruitmentOnboarding /></ProtectedRoute>} />
-          <Route path="/hr/resources"    element={<ProtectedRoute roles={["hr", "admin"]}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/hr/resources"    element={<ProtectedRoute roles={["manager", "admin", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
           <Route path="/hr/roster"       element={<ProtectedRoute roles={["hr", "admin"]}><ShiftRoster /></ProtectedRoute>} />
           <Route path="/hr/payroll"      element={<ProtectedRoute roles={["hr", "admin"]}><PayrollManagement /></ProtectedRoute>} />
           <Route path="/hr/helpdesk"     element={<ProtectedRoute roles={["hr", "admin"]}><Helpdesk /></ProtectedRoute>} />

@@ -141,6 +141,12 @@ export const useChatbot = () => {
     // HR/ADMIN INTENTS
     // ============================================
 
+    if (role === "manager" || role === "hr" || role === "admin") {
+      if (query.includes("bench") || query.includes("allocation") || query.includes("resource matrix") || query.includes("resources")) {
+        return { text: "I can take you to the Resource Matrix to manage bench allocations.", link: "/manager/resources" };
+      }
+    }
+
     if (role === "hr" || role === "admin") {
       if (query.includes("search candidate") || query.includes("interview stage")) {
         const interviewCount = candidates.filter(c => c.status === "Interview").length;
@@ -165,14 +171,10 @@ export const useChatbot = () => {
           actions: ["Confirm", "Cancel"]
         };
       }
-      
-      if (query.includes("bench") || query.includes("allocation")) {
-        return { text: "I can take you to the Resource Matrix to manage bench allocations.", link: "/hr/resources" };
-      }
     } else {
-      // Reject HR commands if Employee
+      // Reject HR/Manager commands if Employee
       if (query.includes("search candidate") || query.includes("start onboarding") || query.includes("bench")) {
-        return { text: "Sorry, you don't have permission to access this information. (Requires HR/Admin role)." };
+        return { text: "Sorry, you don't have permission to access this information. (Requires Manager/HR/Admin role)." };
       }
     }
 

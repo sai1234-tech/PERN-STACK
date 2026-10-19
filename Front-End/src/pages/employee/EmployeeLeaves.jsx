@@ -37,10 +37,10 @@ function calculateDays(start, end) {
 // Enterprise Data Constants
 // ----------------------------------------------------------------------------
 const REAL_LEAVE_TYPES = [
-  { id: "earned", code: "EL", name: "Earned / Privilege Leave", available: 12, total: 15, accrual: "1.25 days/mo" },
-  { id: "casual", code: "CL", name: "Casual Leave", available: 4, total: 6, accrual: "0.50 days/mo" },
-  { id: "sick", code: "SL", name: "Sick / Medical Leave", available: 6, total: 8, accrual: "Annual grant" },
-  { id: "optional", code: "OH", name: "Optional Festival Holiday", available: 1, total: 2, accrual: "Gazetted calendar" },
+  { id: "earned", code: "EL", name: "Earned / Privilege Leave", available: 12, total: 15, used: 3, pending: 0, accrual: "1.25 days/mo" },
+  { id: "casual", code: "CL", name: "Casual Leave", available: 4, total: 6, used: 2, pending: 0, accrual: "0.50 days/mo" },
+  { id: "sick", code: "SL", name: "Sick / Medical Leave", available: 6, total: 8, used: 2, pending: 0, accrual: "Annual grant" },
+  { id: "optional", code: "OH", name: "Optional Festival Holiday", available: 1, total: 2, used: 1, pending: 0, accrual: "Gazetted calendar" },
 ];
 
 const WFH_REASONS = [
@@ -143,6 +143,8 @@ function EmployeeLeaves() {
   // Modal states for Editing & Deleting pending requests
   const [editingLeave, setEditingLeave] = useState(null);
   const [deletingLeave, setDeletingLeave] = useState(null);
+  const [showLeaveBreakdownModal, setShowLeaveBreakdownModal] = useState(false);
+  const [breakdownTab, setBreakdownTab] = useState("categories");
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState("");
 
@@ -175,6 +177,8 @@ function EmployeeLeaves() {
             name: b.leaveType?.name || "Leave",
             available: avail,
             total: alloc,
+            used: used,
+            pending: pending,
             accrual: `${used} used, ${pending} pending`,
           };
         });
@@ -197,12 +201,16 @@ function EmployeeLeaves() {
         .map((t) => {
           const match = REAL_LEAVE_TYPES.find((d) => d.id === t.id || d.name === t.name);
           const annualAlloc = Number(t.annualAllocation ?? t.annual_allocation ?? t.total ?? match?.total ?? 12);
+          const avail = Number(t.available ?? annualAlloc);
+          const used = match?.used ?? Math.max(0, annualAlloc - avail);
           return {
             id: t.id || t._id || t.code,
             code: t.code || match?.code || "LV",
             name: t.name || match?.name || "Leave",
-            available: Number(t.available ?? annualAlloc),
+            available: avail,
             total: annualAlloc,
+            used: used,
+            pending: 0,
             accrual: match?.accrual || "Standard policy",
           };
         });
@@ -534,6 +542,48 @@ function EmployeeLeaves() {
     }
   };
 
+  // Quick action from Breakdown Modal to pre-fill leave form and focus
+  const handleQuickApply = (leaveTypeId) => {
+    setShowLeaveBreakdownModal(false);
+    setRequestMode("leave");
+    setSubmitError("");
+    setSubmittedMessage("");
+    if (leaveTypeId) {
+      setLeaveForm((prev) => ({ ...prev, leaveType: leaveTypeId }));
+    }
+    setTimeout(() => {
+      const el = document.getElementById("leave-form-card");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 120);
+  };
+
+  // Jump smoothly to the records table filtered to paid leaves
+  const handleJumpToHistory = () => {
+    setShowLeaveBreakdownModal(false);
+    setHistoryFilter("leaves");
+    setTimeout(() => {
+      const el = document.getElementById("leave-history-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 120);
+  };
+
+  // Close modals on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (showLeaveBreakdownModal) setShowLeaveBreakdownModal(false);
+        if (editingLeave) setEditingLeave(null);
+        if (deletingLeave) setDeletingLeave(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showLeaveBreakdownModal, editingLeave, deletingLeave]);
+
   // KPI calculations
   const approvedCount = localLeaves.filter((l) => (l.status || "").toLowerCase() === "approved").length;
   const pendingCount = localLeaves.filter((l) => (l.status || "").toLowerCase() === "pending").length;
@@ -577,7 +627,19 @@ function EmployeeLeaves() {
             4 KPI METRICS
         ===================================================== */}
         <section className="leave-kpi-grid" aria-label="Leave KPIs">
-          <div className="kpi-card-box emerald">
+          <div
+            className="kpi-card-box emerald clickable"
+            onClick={() => setShowLeaveBreakdownModal(true)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setShowLeaveBreakdownModal(true);
+              }
+            }}
+            title="Click to view all annual leave quotas, categories & applied leaves"
+          >
             <div className="kpi-card-head">
               <span className="kpi-title-text">Remaining Leaves</span>
               <div className="kpi-icon-pod emerald">🌴</div>
@@ -589,9 +651,12 @@ function EmployeeLeaves() {
             <div className="kpi-progress-rail">
               <div className="kpi-progress-bar emerald" style={{ width: `${remainingPercent}%` }} />
             </div>
-            <span className="kpi-subtext">
-              {remainingBalance} of {totalAllocation} annual days available ({remainingPercent}%)
-            </span>
+            <div className="kpi-footer-row">
+              <span className="kpi-subtext">
+                {remainingBalance} of {totalAllocation} annual days available ({remainingPercent}%)
+              </span>
+              <span className="kpi-click-cue">View Leaves ➔</span>
+            </div>
           </div>
 
           <div className="kpi-card-box teal">
@@ -653,7 +718,7 @@ function EmployeeLeaves() {
         ===================================================== */}
         <div className="leave-workspace-grid">
           {/* Left: Interactive Form Card */}
-          <section className="leave-form-card">
+          <section className="leave-form-card" id="leave-form-card">
             <h2>{requestMode === "wfh" ? "Apply for Work From Home (Remote Shift)" : "Request Time Off / Paid Leave"}</h2>
             <p>
               {requestMode === "wfh"
@@ -1176,7 +1241,7 @@ function EmployeeLeaves() {
         ) : error ? (
           <ErrorMessage message={typeof error === "string" ? error : error?.message || "Failed to load leave history"} />
         ) : (
-          <section className="leave-history-panel" aria-label="Leave History Table">
+          <section className="leave-history-panel" id="leave-history-section" aria-label="Leave History Table">
             <div className="leave-history-head">
               <div>
                 <h2>Application History & Request Management</h2>
@@ -1617,6 +1682,110 @@ function EmployeeLeaves() {
                 disabled={modalSubmitting}
               >
                 {modalSubmitting ? "Deleting..." : "🗑️ Confirm Cancellation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================
+          MODAL: REMAINING LEAVES (SIMPLE & ATTRACTIVE)
+      ===================================================== */}
+      {showLeaveBreakdownModal && (
+        <div className="modal-backdrop" onClick={() => setShowLeaveBreakdownModal(false)}>
+          <div
+            className="leave-modal-dialog simple-leaves-dialog"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="leave-breakdown-title"
+          >
+            <div className="leave-modal-header simple-leaves-header">
+              <div className="simple-header-title-box">
+                <div className="simple-header-icon">🌴</div>
+                <div>
+                  <h3 id="leave-breakdown-title">Remaining Leaves</h3>
+                  <p>Annual leave quota and available days</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowLeaveBreakdownModal(false)}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="leave-modal-body simple-leaves-body">
+              {/* Total Balance Card */}
+              <div className="simple-total-card">
+                <div className="simple-total-left">
+                  <span className="simple-total-label">Total Available Leaves</span>
+                  <div className="simple-total-row">
+                    <span className="simple-total-big">{remainingBalance}</span>
+                    <span className="simple-total-unit">Days Available</span>
+                  </div>
+                </div>
+                <div className="simple-total-badge">
+                  <span>{remainingBalance} of {totalAllocation} Days</span>
+                  <small>({remainingPercent}%)</small>
+                </div>
+              </div>
+
+              {/* Categories list */}
+              <div className="simple-leaves-list">
+                {typesToRender.map((type) => {
+                  const pct = type.total > 0 ? Math.min(100, Math.round((type.available / type.total) * 100)) : 100;
+                  const tone = pct > 50 ? "emerald" : pct > 20 ? "amber" : "rose";
+
+                  return (
+                    <div
+                      key={type.id}
+                      className={`simple-leave-row ${tone}`}
+                      onClick={() => handleQuickApply(type.id)}
+                      role="button"
+                      tabIndex={0}
+                      title={`Click to apply for ${type.name}`}
+                    >
+                      <div className="simple-row-top">
+                        <div className="simple-row-left">
+                          <span className={`simple-code-tag ${tone}`}>{type.code || "LV"}</span>
+                          <span className="simple-leave-name">{type.name}</span>
+                        </div>
+                        <div className="simple-row-right">
+                          <span className="simple-leave-qty">{type.available}</span>
+                          <span className="simple-leave-days-text">{type.available === 1 ? "Day" : "Days"}</span>
+                        </div>
+                      </div>
+
+                      <div className="simple-row-rail">
+                        <div
+                          className={`simple-row-bar ${tone}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="leave-modal-footer simple-leaves-footer">
+              <button
+                type="button"
+                className="modal-btn-cancel"
+                onClick={() => setShowLeaveBreakdownModal(false)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="modal-btn-save"
+                onClick={() => handleQuickApply()}
+              >
+                🌴 Apply for Leave
               </button>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { useAttendance } from "../../hooks/useAttendance";
 import { clockOut } from "../../services/attendanceService";
 import { formatDate, formatTime } from "../../utils/date";
 import WeekdayDatePicker from "../../components/common/WeekdayDatePicker";
+import { broadcastDataChange } from "../../utils/syncManager";
 import "../../styles/employee/timesheets.css";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -36,141 +37,88 @@ const DEFAULT_REALISTIC_ENTRIES = [
   {
     _id: "seed-ts-1",
     id: "seed-ts-1",
-    date: "2026-10-12",
+    date: "2026-10-19",
     project: "Enterprise HRMS Engine",
     client: "Quadratic Systems Inc",
     task: "Core Platform Architecture & Microservice Refactoring",
     description: "Refactored internal routing modules, enhanced middleware caching, and resolved async session bottlenecks.",
-    startTime: "2026-10-12T09:30:00",
-    endTime: "2026-10-12T18:15:00",
+    startTime: "2026-10-19T09:30:00",
+    endTime: "2026-10-19T18:15:00",
     hours: 8.0,
-    status: "approved",
-    reviewer: "Sandhya Rani (Engineering Lead)",
+    status: "submitted",
+    reviewer: "Awaiting Manager Review",
     billable: true,
-    updatedAt: "2026-10-12T18:30:00",
+    updatedAt: "2026-10-19T18:30:00",
   },
   {
     _id: "seed-ts-2",
     id: "seed-ts-2",
-    date: "2026-10-13",
+    date: "2026-10-20",
     project: "Enterprise HRMS Engine",
     client: "Quadratic Systems Inc",
     task: "Postgres Database Query Tuning & Index Optimization",
     description: "Optimized PostgreSQL join queries, reviewed indexed columns on payrolls and attendance, verified execution plans.",
-    startTime: "2026-10-13T09:30:00",
-    endTime: "2026-10-13T18:15:00",
+    startTime: "2026-10-20T09:30:00",
+    endTime: "2026-10-20T18:15:00",
     hours: 8.0,
-    status: "approved",
-    reviewer: "Sandhya Rani (Engineering Lead)",
+    status: "draft",
+    reviewer: "Draft Entry",
     billable: true,
-    updatedAt: "2026-10-13T18:30:00",
+    updatedAt: "2026-10-20T18:30:00",
   },
   {
     _id: "seed-ts-3",
     id: "seed-ts-3",
-    date: "2026-10-14",
+    date: "2026-10-21",
     project: "Enterprise HRMS Engine",
     client: "Quadratic Systems Inc",
     task: "Full-Stack Security Audit & Token Authentication Hardening",
     description: "Hardened JWT refresh rotation, sanitized request parameters across employee controllers, verified role middleware.",
-    startTime: "2026-10-14T09:30:00",
-    endTime: "2026-10-14T18:15:00",
+    startTime: "2026-10-21T09:30:00",
+    endTime: "2026-10-21T18:15:00",
     hours: 8.0,
-    status: "approved",
-    reviewer: "Sandhya Rani (Engineering Lead)",
+    status: "draft",
+    reviewer: "Draft Entry",
     billable: true,
-    updatedAt: "2026-10-14T18:30:00",
+    updatedAt: "2026-10-21T18:30:00",
   },
   {
     _id: "seed-ts-4",
     id: "seed-ts-4",
-    date: "2026-10-15",
+    date: "2026-10-22",
     project: "Enterprise HRMS Engine",
     client: "Quadratic Systems Inc",
     task: "Enterprise Payroll Ledger & Compensation Reconciliation",
     description: "Reconciled statutory deductions, verified 50/50 basic/HRA allowances split, generated monthly payslip statements.",
-    startTime: "2026-10-15T10:50:00",
-    endTime: "2026-10-15T19:35:00",
+    startTime: "2026-10-22T09:30:00",
+    endTime: "2026-10-22T18:15:00",
     hours: 8.0,
-    status: "submitted",
-    submittedAt: "2026-10-15T19:40:00",
+    status: "draft",
+    reviewer: "Draft Entry",
     billable: true,
-    updatedAt: "2026-10-15T19:40:00",
+    updatedAt: "2026-10-22T18:30:00",
   },
   {
     _id: "seed-ts-5",
     id: "seed-ts-5",
-    date: "2026-10-16",
+    date: "2026-10-23",
     project: "Enterprise HRMS Engine",
     client: "Quadratic Systems Inc",
-    task: "Production Release Deployment & Telemetry Verification",
-    description: "Executed staging smoke tests, monitored real-time metrics, performed UI validation on timesheets and dashboard.",
-    startTime: "2026-10-16T09:33:00",
-    endTime: "2026-10-16T14:33:00",
-    hours: 4.5,
+    task: "Sprint Retrospective & Production Deployment Verification",
+    description: "Conducted sprint retrospective, executed production regression test suite, and verified health telemetry.",
+    startTime: "2026-10-23T09:30:00",
+    endTime: "2026-10-23T18:15:00",
+    hours: 8.0,
     status: "draft",
+    reviewer: "Draft Entry",
     billable: true,
-    updatedAt: "2026-10-16T14:33:00",
+    updatedAt: "2026-10-23T18:30:00",
   },
 ];
 
 const DEFAULT_DAILY_TOTALS = [
   {
-    date: "2026-10-12",
-    hours: 8.0,
-    entries: 1,
-    reconciliation: {
-      requiredHours: "8:00",
-      clockedHours: "8:45",
-      timesheetHours: "8:00",
-      difference: "0:45",
-      differenceDecimal: 0.75,
-      status: "MATCHED",
-      action: "Verified & Approved",
-      hasAttendance: true,
-      checkIn: "09:30 AM",
-      checkOut: "06:15 PM",
-      clockedHoursDecimal: 8.75,
-    },
-  },
-  {
-    date: "2026-10-13",
-    hours: 8.0,
-    entries: 1,
-    reconciliation: {
-      requiredHours: "8:00",
-      clockedHours: "8:45",
-      timesheetHours: "8:00",
-      difference: "0:45",
-      differenceDecimal: 0.75,
-      status: "MATCHED",
-      action: "Verified & Approved",
-      hasAttendance: true,
-      checkIn: "09:30 AM",
-      checkOut: "06:15 PM",
-      clockedHoursDecimal: 8.75,
-    },
-  },
-  {
-    date: "2026-10-14",
-    hours: 8.0,
-    entries: 1,
-    reconciliation: {
-      requiredHours: "8:00",
-      clockedHours: "8:45",
-      timesheetHours: "8:00",
-      difference: "0:45",
-      differenceDecimal: 0.75,
-      status: "MATCHED",
-      action: "Verified & Approved",
-      hasAttendance: true,
-      checkIn: "09:30 AM",
-      checkOut: "06:15 PM",
-      clockedHoursDecimal: 8.75,
-    },
-  },
-  {
-    date: "2026-10-15",
+    date: "2026-10-19",
     hours: 8.0,
     entries: 1,
     reconciliation: {
@@ -182,57 +130,81 @@ const DEFAULT_DAILY_TOTALS = [
       status: "MATCHED",
       action: "Submitted for Review",
       hasAttendance: true,
-      checkIn: "10:50 AM",
-      checkOut: "07:35 PM",
+      checkIn: "09:30 AM",
+      checkOut: "06:15 PM",
       clockedHoursDecimal: 8.75,
     },
   },
   {
-    date: "2026-10-16",
-    hours: 4.5,
-    entries: 1,
+    date: "2026-10-20",
+    hours: 0,
+    entries: 0,
     reconciliation: {
       requiredHours: "8:00",
-      clockedHours: "4:30",
-      timesheetHours: "4:30",
+      clockedHours: "0:00",
+      timesheetHours: "0:00",
       difference: "0:00",
       differenceDecimal: 0.0,
-      status: "MATCHED",
-      action: "Active Session — In Progress",
-      hasAttendance: true,
-      checkIn: "09:33 AM",
+      status: "PENDING",
+      action: "Pending Timesheet Entry",
+      hasAttendance: false,
+      checkIn: null,
       checkOut: null,
-      clockedHoursDecimal: 4.5,
+      clockedHoursDecimal: 0,
     },
   },
   {
-    date: "2026-10-17",
+    date: "2026-10-21",
     hours: 0,
     entries: 0,
     reconciliation: {
-      requiredHours: "0:00",
+      requiredHours: "8:00",
       clockedHours: "0:00",
       timesheetHours: "0:00",
       difference: "0:00",
-      differenceDecimal: 0,
-      status: "WEEKEND",
-      action: "Non-Working Day",
+      differenceDecimal: 0.0,
+      status: "PENDING",
+      action: "Pending Timesheet Entry",
       hasAttendance: false,
+      checkIn: null,
+      checkOut: null,
+      clockedHoursDecimal: 0,
     },
   },
   {
-    date: "2026-10-18",
+    date: "2026-10-22",
     hours: 0,
     entries: 0,
     reconciliation: {
-      requiredHours: "0:00",
+      requiredHours: "8:00",
       clockedHours: "0:00",
       timesheetHours: "0:00",
       difference: "0:00",
-      differenceDecimal: 0,
-      status: "WEEKEND",
-      action: "Non-Working Day",
+      differenceDecimal: 0.0,
+      status: "PENDING",
+      action: "Pending Timesheet Entry",
       hasAttendance: false,
+      checkIn: null,
+      checkOut: null,
+      clockedHoursDecimal: 0,
+    },
+  },
+  {
+    date: "2026-10-23",
+    hours: 0,
+    entries: 0,
+    reconciliation: {
+      requiredHours: "8:00",
+      clockedHours: "0:00",
+      timesheetHours: "0:00",
+      difference: "0:00",
+      differenceDecimal: 0.0,
+      status: "PENDING",
+      action: "Pending Timesheet Entry",
+      hasAttendance: false,
+      checkIn: null,
+      checkOut: null,
+      clockedHoursDecimal: 0,
     },
   },
 ];
@@ -251,6 +223,13 @@ function EmployeeTimesheets() {
     } catch {}
     return "";
   }, [rawJoining]);
+
+  const managerDisplayName = useMemo(() => {
+    if (currentEmp?.manager_first_name || currentEmp?.manager_last_name) {
+      return `${currentEmp.manager_first_name || ""} ${currentEmp.manager_last_name || ""}`.trim() + " (Team Manager)";
+    }
+    return "Vikas Guru (Team Manager)";
+  }, [currentEmp]);
 
   const {
     entries,
@@ -421,7 +400,8 @@ function EmployeeTimesheets() {
     try {
       await clockOut();
       await Promise.all([reload(selectedDateKey, true), attendanceState.reload(true)]);
-      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      broadcastDataChange("timesheet");
+      broadcastDataChange("attendance");
       setNotice("Clock-out recorded. Attendance reconciliation has been refreshed.");
     } catch (requestError) {
       setFormError(requestError.message || "Unable to record your clock-out.");
@@ -441,8 +421,38 @@ function EmployeeTimesheets() {
     return false;
   }, [activeDayReconciliation]);
 
-  const pendingEntries = displayEntries.filter(e => ["draft", "rejected"].includes(e.status));
-  const submittedEntries = displayEntries.filter(e => ["submitted", "approved"].includes(e.status));
+  const weekStartStr = week?.start ? String(week.start).slice(0, 10) : "2026-10-19";
+  const weekEndStr = useMemo(() => {
+    if (!week?.start) return "2026-10-23";
+    try {
+      const parts = String(week.start).slice(0, 10).split("-");
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      d.setDate(d.getDate() + 4); // Always Friday of the work week
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    } catch {
+      return "2026-10-23";
+    }
+  }, [week?.start]);
+
+  const workWeekEntries = useMemo(() => {
+    return displayEntries.filter((entry) => {
+      const d = String(entry.date || "").slice(0, 10);
+      return !d || (d >= weekStartStr && d <= weekEndStr);
+    });
+  }, [displayEntries, weekStartStr, weekEndStr]);
+
+  const workWeekDailyTotals = useMemo(() => {
+    return (effectiveDailyTotals || []).filter((dayItem) => {
+      const dateKey = String(dayItem.date).slice(0, 10);
+      const parts = dateKey.split("-");
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const dayOfWeek = d.getDay();
+      return dayOfWeek >= 1 && dayOfWeek <= 5; // Monday to Friday only
+    });
+  }, [effectiveDailyTotals]);
+
+  const pendingEntries = workWeekEntries.filter(e => ["draft", "rejected"].includes(e.status));
+  const submittedEntries = workWeekEntries.filter(e => ["submitted", "pending_hr", "approved"].includes(e.status));
 
   // Calculated metrics: sum only entries for days user clocked in
   const calculatedTotalHours = useMemo(() => {
@@ -455,12 +465,29 @@ function EmployeeTimesheets() {
   }, [displayEntries]);
 
   const submittedCount = useMemo(() => {
-    return displayEntries.filter((e) => e.status === "submitted").length;
+    return displayEntries.filter((e) => ["submitted", "pending_hr"].includes(e.status)).length;
   }, [displayEntries]);
 
   const approvedCount = useMemo(() => {
     return displayEntries.filter((e) => e.status === "approved").length;
   }, [displayEntries]);
+
+  const targetDateStr = (form.date || selectedDateKey || "").slice(0, 10);
+  const existingDateEntry = useMemo(() => {
+    return displayEntries.find(
+      (e) => (e.date || "").slice(0, 10) === targetDateStr
+    );
+  }, [displayEntries, targetDateStr]);
+
+  const isDateAlreadySubmitted = useMemo(() => {
+    return Boolean(
+      existingDateEntry && ["submitted", "pending_hr", "approved"].includes(existingDateEntry.status)
+    );
+  }, [existingDateEntry]);
+
+  const isWeekFullySubmitted = useMemo(() => {
+    return displayEntries.length > 0 && draftCount === 0 && (submittedCount > 0 || approvedCount > 0);
+  }, [displayEntries, draftCount, submittedCount, approvedCount]);
 
   const isWeekend = (dateStr) => {
     if (!dateStr) return false;
@@ -513,6 +540,11 @@ function EmployeeTimesheets() {
 
     if (!isClockedIn) {
       setFormError(`⚠️ Not Clocked In: You did not clock in for attendance on ${form.date || selectedDate}. You must clock in for attendance before logging timesheet tasks.`);
+      return;
+    }
+
+    if (isDateAlreadySubmitted && !editingId) {
+      setFormError(`⚠️ Timesheet Already Submitted: Your timesheet for ${targetDateStr} has already been submitted and cannot be submitted again. Timesheets can only be submitted once per working day.`);
       return;
     }
 
@@ -629,41 +661,53 @@ function EmployeeTimesheets() {
               />
             </div>
 
-            <button
-              type="button"
-              className="att-btn primary"
-              disabled={draftCount === 0}
-              onClick={() => {
-                const hoursByDate = {};
-                displayEntries.forEach((d) => {
-                  const breakH = (Number(d.breakMinutes) || 45) / 60;
-                  hoursByDate[d.date] = (hoursByDate[d.date] || 0) + Number(d.hours) + breakH;
-                });
+            {isWeekFullySubmitted ? (
+              <button
+                type="button"
+                className="att-btn secondary"
+                disabled={true}
+                style={{ cursor: "not-allowed", opacity: 0.9, backgroundColor: "#f0fdf4", color: "#166534", borderColor: "#86efac", fontWeight: 700 }}
+                title="All timesheet entries for this week have already been submitted."
+              >
+                🔒 Timesheet Already Submitted for this Week
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="att-btn primary"
+                disabled={draftCount === 0}
+                onClick={() => {
+                  const hoursByDate = {};
+                  displayEntries.forEach((d) => {
+                    const breakH = (Number(d.breakMinutes) || 45) / 60;
+                    hoursByDate[d.date] = (hoursByDate[d.date] || 0) + Number(d.hours) + breakH;
+                  });
 
-                let failedDate = null;
-                for (const date in hoursByDate) {
-                  const dayOfWeek = new Date(date).getDay();
-                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                  if (!isWeekend && hoursByDate[date] < 8.75) {
-                    failedDate = date;
-                    break;
+                  let failedDate = null;
+                  for (const date in hoursByDate) {
+                    const dayOfWeek = new Date(date).getDay();
+                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                    if (!isWeekend && hoursByDate[date] < 8.75) {
+                      failedDate = date;
+                      break;
+                    }
                   }
-                }
 
-                if (failedDate) {
-                  setFormError(`Enterprise Shift Policy (Asia/Kolkata): You must log 8.0 net working hours (+45m lunch break) for ${failedDate}.`);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                  return;
-                }
+                  if (failedDate) {
+                    setFormError(`Enterprise Shift Policy (Asia/Kolkata): You must log 8.0 net working hours (+45m lunch break) for ${failedDate}.`);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    return;
+                  }
 
-                handleAction(
-                  () => submitAll(selectedDate),
-                  "Complete week submitted to HR for approval."
-                );
-              }}
-            >
-              📤 Submit Week ({draftCount} Drafts)
-            </button>
+                  handleAction(
+                    () => submitAll(selectedDate),
+                    "Complete week submitted to Manager for review. Timesheets are now locked (one-time submission)."
+                  );
+                }}
+              >
+                📤 Submit Week ({draftCount} Drafts)
+              </button>
+            )}
           </div>
         </section>
 
@@ -713,7 +757,7 @@ function EmployeeTimesheets() {
             </div>
             <div className="kpi-stat-row">
               <span className="kpi-big-num">{submittedCount}</span>
-              <span className="kpi-badge-chip indigo">Awaiting HR</span>
+              <span className="kpi-badge-chip indigo">Awaiting Manager Review</span>
             </div>
             <div className="kpi-progress-rail">
               <div className="kpi-progress-bar indigo" style={{ width: `${submittedCount ? 100 : 0}%` }} />
@@ -757,7 +801,7 @@ function EmployeeTimesheets() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "0.75rem" }}>
-              {effectiveDailyTotals && effectiveDailyTotals.length > 0 ? effectiveDailyTotals.map((dayItem) => {
+              {workWeekDailyTotals && workWeekDailyTotals.length > 0 ? workWeekDailyTotals.map((dayItem) => {
                 const parts = dayItem.date.split("-");
                 const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
                 const dayName = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
@@ -946,12 +990,16 @@ function EmployeeTimesheets() {
             <p>
               {editingId
                 ? "Update your draft task details and click Save Changes."
-                : "Record your working time by project. Entries save as drafts until submitted to HR."}
+                : "Record your working time by project. Entries save as drafts until submitted to Manager for review."}
             </p>
 
             {isSelectedDateFuture ? (
               <div style={{ padding: "0.85rem 1rem", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "10px", color: "#475569", fontWeight: 600, fontSize: "0.85rem", marginBottom: "1.25rem" }}>
                 🗓️ <strong>Upcoming Date:</strong> Timesheets cannot be logged for future dates ({form.date || selectedDate}). You will be able to fill timesheet tasks after clocking in on this date.
+              </div>
+            ) : isDateAlreadySubmitted && !editingId ? (
+              <div style={{ padding: "0.85rem 1rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "10px", color: "#166534", fontWeight: 600, fontSize: "0.85rem", marginBottom: "1.25rem" }}>
+                🔒 <strong>Timesheet Already Submitted:</strong> Your timesheet for {targetDateStr} has already been submitted ({existingDateEntry?.status === 'pending_hr' ? 'Manager Approved ➔ Awaiting HR' : existingDateEntry?.status === 'approved' ? 'Fully Approved' : 'Awaiting Manager Review'}). As per enterprise policy, a timesheet can only be submitted one time per work day.
               </div>
             ) : !isClockedIn ? (
               <div style={{ padding: "0.85rem 1rem", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "10px", color: "#e11d48", fontWeight: 600, fontSize: "0.85rem", marginBottom: "1.25rem" }}>
@@ -1057,15 +1105,25 @@ function EmployeeTimesheets() {
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+              <div className="task-form-actions-row">
                 <button
                   type="submit"
-                  className="att-btn primary"
-                  disabled={saving || isSelectedDateFuture || !isClockedIn}
-                  title={isSelectedDateFuture ? "Timesheets cannot be logged for future dates" : !isClockedIn ? "You must clock in for attendance before logging timesheet tasks" : ""}
+                  className="att-btn primary ts-save-draft-btn"
+                  disabled={saving || isSelectedDateFuture || !isClockedIn || (isDateAlreadySubmitted && !editingId)}
+                  title={
+                    isDateAlreadySubmitted && !editingId
+                      ? "Timesheet for this date has already been submitted and cannot be submitted again"
+                      : isSelectedDateFuture
+                      ? "Timesheets cannot be logged for future dates"
+                      : !isClockedIn
+                      ? "You must clock in for attendance before logging timesheet tasks"
+                      : ""
+                  }
                 >
                   {saving
                     ? "Saving..."
+                    : isDateAlreadySubmitted && !editingId
+                    ? "🔒 Timesheet Already Submitted"
                     : isSelectedDateFuture
                     ? "🚫 Cannot Log (Future Date)"
                     : !isClockedIn
@@ -1121,7 +1179,7 @@ function EmployeeTimesheets() {
           <section className="timesheet-table-panel" aria-label="Timesheet Table">
             <div className="timesheet-table-head">
               <div>
-                <h2>Week Entries ({formatDate(week?.start || "2026-10-12")} – {formatDate(week?.end || "2026-10-16")})</h2>
+                <h2>Week Entries ({formatDate(weekStartStr)} – {formatDate(weekEndStr)})</h2>
                 <p style={{ margin: "0.25rem 0 0", color: "#64748b", fontSize: "0.84rem" }}>
                   Review all logged project hours for the selected week.
                 </p>
@@ -1179,18 +1237,36 @@ function EmployeeTimesheets() {
                       </td>
                       <td>
                         <span
-                          className={`status-chip-badge ${entry.status === "rejected" ? "late" : ""}`}
+                          className={`status-chip-badge ${
+                            entry.status === "approved"
+                              ? "present"
+                              : entry.status === "pending_hr"
+                              ? "blue"
+                              : entry.status === "submitted"
+                              ? "amber"
+                              : entry.status === "rejected"
+                              ? "late"
+                              : ""
+                          }`}
                         >
-                          {entry.status || "Draft"}
+                          {entry.status === "pending_hr"
+                            ? "🔵 Pending HR Sign-off"
+                            : entry.status === "submitted"
+                            ? "🟡 Pending Manager"
+                            : entry.status === "approved"
+                            ? "🟢 Approved"
+                            : entry.status === "rejected"
+                            ? "✕ Declined"
+                            : "Draft"}
                         </span>
                         {entry.updatedAt && (
                           <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "4px" }}>
                             Updated: {new Date(entry.updatedAt).toLocaleString()}
                           </div>
                         )}
-                        {entry.status === "rejected" && entry.rejectionReason && (
+                        {entry.status === "rejected" && (entry.rejectionReason || entry.reviewComment) && (
                           <div style={{ fontSize: "0.75rem", color: "#e11d48", marginTop: "4px", backgroundColor: "#fff1f2", padding: "4px 8px", borderRadius: "4px" }}>
-                            <strong>Rejected by {entry.reviewer}:</strong> {entry.rejectionReason}
+                            <strong>Declined by {entry.reviewer || managerDisplayName}:</strong> {entry.reviewComment || entry.rejectionReason}
                           </div>
                         )}
                       </td>
@@ -1212,7 +1288,7 @@ function EmployeeTimesheets() {
                               onClick={() =>
                                 handleAction(
                                   () => submit(entry._id),
-                                  "Task submitted to HR for approval."
+                                  "Task submitted to Manager for review. Entry is now locked (one-time submission)."
                                 )
                               }
                             >
@@ -1233,6 +1309,16 @@ function EmployeeTimesheets() {
                               Delete
                             </button>
                           )}
+                          {entry.status === "pending_hr" && (
+                            <span style={{ fontSize: "0.74rem", color: "#2563eb", fontWeight: 700 }}>
+                              ⏳ Awaiting HR Sign-off
+                            </span>
+                          )}
+                          {entry.status === "submitted" && (
+                            <span style={{ fontSize: "0.74rem", color: "#d97706", fontWeight: 700 }}>
+                              ⏳ Manager Reviewing
+                            </span>
+                          )}
                           {entry.status === "approved" && (
                             <span style={{ fontSize: "0.74rem", color: "#059669", fontWeight: 700 }}>
                               ✓ Approved
@@ -1251,7 +1337,7 @@ function EmployeeTimesheets() {
               <div>
                 <h2 style={{ color: "#0f172a" }}>Submitted / Processed Timesheets</h2>
                 <p style={{ margin: "0.25rem 0 0", color: "#64748b", fontSize: "0.84rem" }}>
-                  Timesheets that have been submitted to HR or fully approved.
+                  Timesheets submitted to Manager for review or approved.
                 </p>
               </div>
             </div>
@@ -1300,19 +1386,48 @@ function EmployeeTimesheets() {
                       <td>
                         <span
                           className={`status-chip-badge ${
-                            entry.status === "approved" ? "present" : "indigo"
+                            entry.status === "approved"
+                              ? "present"
+                              : entry.status === "pending_hr"
+                              ? "blue"
+                              : entry.status === "submitted"
+                              ? "amber"
+                              : entry.status === "rejected"
+                              ? "late"
+                              : "indigo"
                           }`}
                         >
-                          {entry.status === "submitted" ? "Waiting for HR" : "Approved"}
+                          {entry.status === "submitted"
+                            ? "🟡 Step 1/2: Pending Manager Approval"
+                            : entry.status === "pending_hr"
+                            ? "🔵 Step 2/2: Manager Approved ➔ Pending HR"
+                            : entry.status === "approved"
+                            ? "🟢 Step 2/2 Complete: Fully Approved"
+                            : "✕ Declined"}
                         </span>
                         {entry.submittedAt && (
                           <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "4px" }}>
                             Submitted: {new Date(entry.submittedAt).toLocaleString()}
                           </div>
                         )}
-                        {entry.status === "approved" && entry.reviewer && (
-                          <div style={{ fontSize: "0.7rem", color: "#059669", marginTop: "2px", fontWeight: "bold" }}>
-                            Reviewed by {entry.reviewer}
+                        {entry.status === "pending_hr" && (
+                          <div style={{ fontSize: "0.72rem", color: "#2563eb", marginTop: "3px", fontWeight: "600" }}>
+                            ✓ Approved by {entry.managerApproverName || managerDisplayName}. Forwarded to HR for final sign-off.
+                          </div>
+                        )}
+                        {entry.status === "approved" && (
+                          <div style={{ fontSize: "0.72rem", color: "#059669", marginTop: "3px", fontWeight: "600" }}>
+                            ✓ Approved by {entry.managerApproverName || managerDisplayName} & HR Ledger Verified
+                          </div>
+                        )}
+                        {entry.status === "rejected" && (
+                          <div style={{ fontSize: "0.72rem", color: "#e11d48", marginTop: "3px", fontWeight: "600" }}>
+                            Declined: {entry.reviewComment || entry.rejectionReason}
+                          </div>
+                        )}
+                        {entry.status === "submitted" && (
+                          <div style={{ fontSize: "0.72rem", color: "#d97706", marginTop: "3px", fontWeight: "500" }}>
+                            Assigned to: {managerDisplayName}
                           </div>
                         )}
                       </td>

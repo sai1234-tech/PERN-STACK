@@ -764,6 +764,17 @@
   animation: pulseAmber 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
+.ts-status-pill.pending_hr {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.ts-status-pill.pending_hr .pulse-dot {
+  background: #2563eb;
+  animation: pulseBlue 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
 .ts-status-pill.approved {
   background: #ecfdf5;
   color: #065f46;

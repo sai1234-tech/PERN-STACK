@@ -111,6 +111,85 @@
 }
 
 /* ==========================================================================
+   Dark Theme Overrides for Header Workforce Search
+   ========================================================================== */
+[data-theme="dark"] .hdr-search-box {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .hdr-search-box:hover,
+[data-theme="dark"] .hdr-search-box.is-active {
+  background: #1e293b !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+}
+
+[data-theme="dark"] .hdr-search-icon {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .hdr-search-input {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .hdr-search-input::placeholder {
+  color: #64748b !important;
+}
+
+[data-theme="dark"] .hdr-search-clear {
+  background: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .hdr-search-clear:hover {
+  background: #475569 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .hdr-search-shortcut {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .hdr-search-shortcut:hover {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .hdr-search-dropdown {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="dark"] .dropdown-header-bar {
+  background: #111827 !important;
+  border-bottom-color: #1e293b !important;
+}
+
+[data-theme="dark"] .dropdown-header-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .dropdown-esc-hint {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .dropdown-results-list::-webkit-scrollbar-track {
+  background: #0f172a !important;
+}
+
+[data-theme="dark"] .dropdown-results-list::-webkit-scrollbar-thumb {
+  background: #334155 !important;
+}
+
+/* ==========================================================================
    Spotlight Dropdown Results List
    ========================================================================== */
 

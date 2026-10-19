@@ -7,7 +7,7 @@ import {
   submitWeek,
   updateTimesheet,
 } from "../services/timesheetService";
-import { useSyncRefresh } from "../utils/syncManager";
+import { useSyncRefresh, broadcastDataChange } from "../utils/syncManager";
 
 function normalizeWeek(response) {
   const data = response?.data || response || {};
@@ -35,7 +35,7 @@ function normalizeWeek(response) {
     needsEODReminder,
     hasUnsubmittedToday,
     pendingCount: entries.filter(e => ["draft", "rejected"].includes(e.status)).length,
-    submittedCount: entries.filter(e => ["submitted", "approved"].includes(e.status)).length,
+    submittedCount: entries.filter(e => ["submitted", "pending_hr", "approved"].includes(e.status)).length,
   };
 }
 
@@ -64,10 +64,11 @@ export function useTimesheets() {
     loadWeek();
   }, [loadWeek]);
 
-  useSyncRefresh(() => loadWeek(activeDate, true), { interval: 30000, silent: true });
+  useSyncRefresh(() => loadWeek(activeDate, true), { interval: 5000, silent: true });
 
   const performAction = async (action) => {
     await action();
+    broadcastDataChange("timesheet");
     await loadWeek(activeDate, true);
   };
 

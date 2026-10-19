@@ -3,7 +3,9 @@ import {
     countHolidays,
     createHolidayRecord,
     seedDefaultHolidays,
+    deleteHolidayRecord,
 } from "../repositories/holidayRepository.js";
+
 
 // Get all holidays
 export const getAllHolidays = async (req, res) => {
@@ -19,8 +21,8 @@ export const getAllHolidays = async (req, res) => {
                 { title: "Labour Day", date: `${year}-05-01`, type: "Public Holiday", description: "International Workers Day" },
                 { title: "Independence Day", date: `${year}-08-15`, type: "National Holiday", description: "National Flag Hoisting & Address" },
                 { title: "Gandhi Jayanti", date: `${year}-10-02`, type: "National Holiday", description: "Mahatma Gandhi Birthday" },
-                { title: "Dussehra / Vijayadashami", date: `${year}-10-12`, type: "Public Holiday", description: "Vijayadashami Festival" },
-                { title: "Diwali / Deepavali", date: `${year}-11-01`, type: "Optional Holiday", description: "Festival of Lights" },
+                { title: "Dussehra / Vijayadashami", date: `${year}-10-20`, type: "Public Holiday", description: "Vijayadashami Festival" },
+                { title: "Diwali / Deepavali", date: `${year}-11-01`, type: "Public Holiday", description: "Festival of Lights" },
                 { title: "Christmas Day", date: `${year}-12-25`, type: "Public Holiday", description: "Christmas Festival" },
             ];
             await seedDefaultHolidays(defaultHolidays);
@@ -80,3 +82,18 @@ export const seedHolidays = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// Delete a holiday (Admin/HR only)
+export const deleteHoliday = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deleted = await deleteHolidayRecord(id);
+        if (!deleted) {
+            return res.status(404).json({ success: false, message: "Holiday not found" });
+        }
+        res.status(200).json({ success: true, message: "Holiday removed successfully", data: deleted });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+

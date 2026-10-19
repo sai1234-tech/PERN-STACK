@@ -51,6 +51,33 @@ export const initTimesheetTable = async () => {
 
 export const formatTimesheet = (row) => {
     if (!row) return null;
+    let reviewerName = null;
+    if (row.reviewer_first_name || row.reviewer_last_name) {
+        const full = `${row.reviewer_first_name || ''} ${row.reviewer_last_name || ''}`.trim();
+        const desig = row.reviewer_designation ? ` (${row.reviewer_designation})` : '';
+        reviewerName = `${full}${desig}`;
+    } else if (row.reviewer_name) {
+        reviewerName = row.reviewer_name;
+    } else if (row.reviewer_user_name) {
+        reviewerName = row.reviewer_user_name;
+    } else if (row.reviewed_by) {
+        reviewerName = `Reviewer #${row.reviewed_by}`;
+    }
+
+    let managerApproverName = null;
+    if (row.manager_first_name || row.manager_last_name) {
+        managerApproverName = `${row.manager_first_name || ''} ${row.manager_last_name || ''}`.trim();
+    } else if (row.manager_user_name) {
+        managerApproverName = row.manager_user_name;
+    }
+
+    let hrApproverName = null;
+    if (row.hr_first_name || row.hr_last_name) {
+        hrApproverName = `${row.hr_first_name || ''} ${row.hr_last_name || ''}`.trim();
+    } else if (row.hr_user_name) {
+        hrApproverName = row.hr_user_name;
+    }
+
     return {
         _id: row.id,
         id: row.id,
@@ -72,6 +99,16 @@ export const formatTimesheet = (row) => {
         reviewedBy: row.reviewed_by || null,
         reviewedAt: row.reviewed_at || null,
         reviewComment: row.review_comment || "",
+        rejectionReason: row.review_comment || "",
+        reviewer: reviewerName,
+        managerApprovedBy: row.manager_approved_by || null,
+        managerApprovedAt: row.manager_approved_at || null,
+        managerRemarks: row.manager_remarks || "",
+        managerApproverName,
+        hrApprovedBy: row.hr_approved_by || null,
+        hrApprovedAt: row.hr_approved_at || null,
+        hrRemarks: row.hr_remarks || "",
+        hrApproverName,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -185,9 +222,26 @@ export const findTimesheetsByEmployee = async (employeeId, filter = {}, paginati
 
 export const findTimesheetsInDateRange = async (employeeId, startDate, endDate) => {
     const queryText = `
-        SELECT * FROM timesheets
-        WHERE employee_id = $1 AND date >= $2 AND date <= $3
-        ORDER BY date ASC, created_at ASC;
+        SELECT t.*,
+               u.name AS reviewer_user_name,
+               m.first_name AS reviewer_first_name,
+               m.last_name AS reviewer_last_name,
+               m.designation AS reviewer_designation,
+               mu.name AS manager_user_name,
+               me.first_name AS manager_first_name,
+               me.last_name AS manager_last_name,
+               hu.name AS hr_user_name,
+               he.first_name AS hr_first_name,
+               he.last_name AS hr_last_name
+        FROM timesheets t
+        LEFT JOIN users u ON t.reviewed_by = u.id
+        LEFT JOIN employees m ON u.id = m.user_id
+        LEFT JOIN users mu ON t.manager_approved_by = mu.id
+        LEFT JOIN employees me ON mu.id = me.user_id
+        LEFT JOIN users hu ON t.hr_approved_by = hu.id
+        LEFT JOIN employees he ON hu.id = he.user_id
+        WHERE t.employee_id = $1 AND t.date >= $2 AND t.date <= $3
+        ORDER BY t.date ASC, t.created_at ASC;
     `;
     const { rows } = await pool.query(queryText, [employeeId, startDate, endDate]);
     return rows.map(formatTimesheet);
@@ -195,8 +249,15 @@ export const findTimesheetsInDateRange = async (employeeId, startDate, endDate) 
 
 export const findTimesheetsByDate = async (employeeId, date) => {
     const queryText = `
-        SELECT * FROM timesheets
-        WHERE employee_id = $1 AND date = $2;
+        SELECT t.*,
+               u.name AS reviewer_user_name,
+               m.first_name AS reviewer_first_name,
+               m.last_name AS reviewer_last_name,
+               m.designation AS reviewer_designation
+        FROM timesheets t
+        LEFT JOIN users u ON t.reviewed_by = u.id
+        LEFT JOIN employees m ON u.id = m.user_id
+        WHERE t.employee_id = $1 AND t.date = $2;
     `;
     const { rows } = await pool.query(queryText, [employeeId, date]);
     return rows.map(formatTimesheet);
@@ -224,10 +285,20 @@ export const findExactDuplicateTimesheet = async ({ employeeId, date, project, c
 };
 
 export const findTimesheetById = async (id, employeeId = null) => {
-    let queryText = `SELECT * FROM timesheets WHERE id = $1`;
+    let queryText = `
+        SELECT t.*,
+               u.name AS reviewer_user_name,
+               m.first_name AS reviewer_first_name,
+               m.last_name AS reviewer_last_name,
+               m.designation AS reviewer_designation
+        FROM timesheets t
+        LEFT JOIN users u ON t.reviewed_by = u.id
+        LEFT JOIN employees m ON u.id = m.user_id
+        WHERE t.id = $1
+    `;
     const values = [id];
     if (employeeId) {
-        queryText += ` AND employee_id = $2`;
+        queryText += ` AND t.employee_id = $2`;
         values.push(employeeId);
     }
     const { rows } = await pool.query(queryText, values);
@@ -253,7 +324,13 @@ export const updateTimesheetRecord = async (id, fields) => {
         submittedAt: "submitted_at",
         reviewedBy: "reviewed_by",
         reviewedAt: "reviewed_at",
-        reviewComment: "review_comment"
+        reviewComment: "review_comment",
+        managerApprovedBy: "manager_approved_by",
+        managerApprovedAt: "manager_approved_at",
+        managerRemarks: "manager_remarks",
+        hrApprovedBy: "hr_approved_by",
+        hrApprovedAt: "hr_approved_at",
+        hrRemarks: "hr_remarks"
     };
 
     const keys = Object.keys(fields);
@@ -305,10 +382,16 @@ export const findAllTimesheetsAdmin = async (filter = {}, pagination = {}) => {
             t.*,
             e.employee_code, e.first_name, e.last_name, e.email as employee_email,
             e.employment->>'department' as department, e.employment->>'designation' as designation,
-            u.name as reviewer_name, u.email as reviewer_email, u.role as reviewer_role
+            u.name as reviewer_name, u.email as reviewer_email, u.role as reviewer_role,
+            mu.name as manager_user_name, me.first_name as manager_first_name, me.last_name as manager_last_name,
+            hu.name as hr_user_name, he.first_name as hr_first_name, he.last_name as hr_last_name
         FROM timesheets t
         LEFT JOIN employees e ON t.employee_id = e.id
         LEFT JOIN users u ON t.reviewed_by = u.id
+        LEFT JOIN users mu ON t.manager_approved_by = mu.id
+        LEFT JOIN employees me ON mu.id = me.user_id
+        LEFT JOIN users hu ON t.hr_approved_by = hu.id
+        LEFT JOIN employees he ON hu.id = he.user_id
         WHERE 1=1
     `;
     const values = [];
@@ -323,6 +406,12 @@ export const findAllTimesheetsAdmin = async (filter = {}, pagination = {}) => {
     if (filter.employeeId) {
         queryText += ` AND t.employee_id = $${paramIndex}`;
         values.push(filter.employeeId);
+        paramIndex++;
+    }
+
+    if (filter.teamIds && Array.isArray(filter.teamIds) && filter.teamIds.length > 0) {
+        queryText += ` AND t.employee_id = ANY($${paramIndex}::int[])`;
+        values.push(filter.teamIds);
         paramIndex++;
     }
 

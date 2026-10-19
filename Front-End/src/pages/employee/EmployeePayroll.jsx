@@ -6,6 +6,7 @@ import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
 
 import { useEmployeePayroll } from "../../hooks/useEmployeePayroll";
+import { useEmployee } from "../../hooks/useEmployee";
 import { downloadRenderedPayslip } from "../../services/payrollService";
 import { useAuth } from "../../context/AuthContext";
 import { normalizeRole } from "../../utils/auth";
@@ -94,6 +95,7 @@ function numberToWordsINR(amount) {
 }
 
 function EmployeePayrollContent({ user, employee }) {
+  const { employee: fullEmployee } = useEmployee();
   const [period, setPeriod] = useState(initialPeriod);
   const [activeTab, setActiveTab] = useState("payslip");
   const [downloading, setDownloading] = useState(false);
@@ -234,7 +236,7 @@ function EmployeePayrollContent({ user, employee }) {
   // EMPLOYEE PROFILE INFORMATION
   // =========================================================
 
-  const profile = payslip?.employee || employee || user || {};
+  const profile = payslip?.employee || fullEmployee || employee || user || {};
 
   // Sync personal form when modal opens or profile loads
   useEffect(() => {
@@ -350,6 +352,43 @@ function EmployeePayrollContent({ user, employee }) {
         (employee?.banking?.accountNumber
           ? `${employee.banking.bankName ? `${employee.banking.bankName} - ` : ""}${employee.banking.accountNumber}`
           : "N/A");
+
+  // HR Partner resolution matching the MyProfile tab
+  const assignedHrObj =
+    profile?.assignedHr ||
+    fullEmployee?.assignedHr ||
+    employee?.assignedHr ||
+    user?.assignedHr ||
+    null;
+
+  const hrPartnerRawName =
+    assignedHrObj?.name ||
+    profile?.employment?.hrPartnerName ||
+    fullEmployee?.employment?.hrPartnerName ||
+    employee?.employment?.hrPartnerName ||
+    "Lakshmi Ragula";
+
+  const hrPartnerRawCode =
+    assignedHrObj?.employeeCode ||
+    profile?.employment?.hrPartnerCode ||
+    "EMP01";
+
+  // Prevent self-signature if employee is the HR Partner
+  const isEmployeeSelfHR = Boolean(
+    employeeName &&
+    (employeeName.toLowerCase().includes(hrPartnerRawName.toLowerCase().split(" ")[0]) ||
+     (hrPartnerRawCode && employeeCode && String(hrPartnerRawCode).toUpperCase() === String(employeeCode).toUpperCase()))
+  );
+
+  const hrSignatoryName = isEmployeeSelfHR
+    ? "Ananya Varma (HR Operations)"
+    : hrPartnerRawName;
+
+  const hrSignatoryCode = isEmployeeSelfHR
+    ? "EMP-HR001"
+    : hrPartnerRawCode;
+
+  const hrSignatoryOrg = `${hrSignatoryName}${hrSignatoryCode ? ` (${hrSignatoryCode})` : ""} · Human Resources, Quadratic Systems Inc`;
 
   // =========================================================
   // PAYSLIP & EARNINGS BREAKDOWN
@@ -1114,15 +1153,15 @@ function EmployeePayrollContent({ user, employee }) {
                 <div className="sign-column">
                   <div className="digital-signature-box">
                     <span className="signature-cursive">
-                      {profile.reportsToName || profile.managerName || "HR Manager"}
+                      {hrSignatoryName}
                     </span>
                     <div className="signature-verified-badge">
-                      ✓ DIGITALLY SIGNED
+                      ✓ DIGITALLY SIGNED · HR
                     </div>
                   </div>
-                  <span className="signatory-title">Employer Authorized Signatory</span>
+                  <span className="signatory-title">HR Authorized Signatory</span>
                   <div className="signatory-org">
-                    Quadratic Systems Inc
+                    {hrSignatoryOrg}
                   </div>
                 </div>
 

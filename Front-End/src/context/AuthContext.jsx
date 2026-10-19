@@ -105,7 +105,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("hrms_profile_photo");
       localStorage.removeItem("hrms_selected_employee_id");
       Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("hrms_")) {
+        if (key.startsWith("hrms_") && key !== "hrms_theme" && key !== "hrms_remember_email") {
           localStorage.removeItem(key);
         }
       });

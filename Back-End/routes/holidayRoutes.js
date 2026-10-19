@@ -2,6 +2,7 @@ import express from "express";
 import {
     getAllHolidays,
     createHoliday,
+    deleteHoliday,
     seedHolidays,
 } from "../controllers/holidayController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -17,7 +18,9 @@ router.use(verifyToken);
 // Employee route (view holidays)
 router.get("/", getAllHolidays);
 
-// HR/Admin route (manage holidays)
+// HR/Admin routes (manage holidays)
 router.post("/", authorizeRoles("hr", "admin"), createHoliday);
+router.delete("/:id", authorizeRoles("hr", "admin"), deleteHoliday);
 
 export default router;
+

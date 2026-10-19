@@ -306,7 +306,7 @@ function EmployeeAttendance() {
                 <tbody>
                   {filteredList.map((rec) => (
                     <tr key={rec.id || rec._id || rec.date}>
-                      <td>
+                      <td className="att-date-col">
                         <strong>{formatDate(rec.date)}</strong>
                       </td>
                       <td>
@@ -328,7 +328,7 @@ function EmployeeAttendance() {
                           ⏱️ {getRecordHours(rec)}
                         </span>
                       </td>
-                      <td style={{ color: "#64748b" }}>
+                      <td className="att-break-col">
                         {rec.checkOut ? `${rec.breakDuration || 45} mins` : rec.checkIn ? "0 mins (In progress)" : "0 mins"}
                       </td>
                       <td>
@@ -345,7 +345,7 @@ function EmployeeAttendance() {
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize: "0.76rem", color: "#059669", fontWeight: 700 }}>
+                        <span className="att-verified-badge">
                           ✓ Biometric OK
                         </span>
                       </td>

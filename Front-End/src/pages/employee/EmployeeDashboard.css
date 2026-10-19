@@ -1452,3 +1452,374 @@
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
 }
+
+/* ==========================================================================
+   Corporate Holidays List in Employee Dashboard
+   ========================================================================== */
+
+.emp-holiday-panel-card {
+  position: relative;
+}
+
+.holiday-calendar-cta {
+  font-weight: 700;
+  color: #0d9488 !important;
+  font-size: 0.82rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.holiday-calendar-cta:hover {
+  color: #0f766e !important;
+  text-decoration: underline;
+}
+
+.holidays-scroll-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.holiday-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.holiday-item-row:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  transform: translateX(3px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.holiday-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.holiday-date-pod {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.h-pod-month {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #ef4444;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.h-pod-day {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.h-pod-weekday {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.holiday-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.holiday-title-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.holiday-festive-emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.holiday-title-line h4 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.holiday-date-detail {
+  font-size: 0.76rem;
+  color: #64748b;
+  display: block;
+  margin-top: 2px;
+}
+
+.holiday-tags-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.holiday-type-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.holiday-type-pill.national-holiday,
+.holiday-type-pill.national {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.holiday-type-pill.optional-holiday,
+.holiday-type-pill.optional {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.holiday-countdown-pill {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+/* Dark Theme Overrides for Employee Dashboard Holidays */
+[data-theme="dark"] .holiday-item-row {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-item-row:hover {
+  background: #243247 !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .holiday-date-pod {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .h-pod-day {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .h-pod-weekday {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-title-line h4 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .holiday-date-detail {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .holiday-calendar-cta {
+  color: #2dd4bf !important;
+}
+
+[data-theme="dark"] .holiday-countdown-pill {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+
+/* ==========================================================================
+   IMMINENT HOLIDAY CELEBRATION NOTICE & ROW HIGHLIGHTS
+   ========================================================================== */
+
+.emp-imminent-holiday-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.85rem 1.15rem;
+  border-radius: 12px;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  animation: slideDownFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.emp-imminent-holiday-notice.tomorrow {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 60%, #fff7ed 100%);
+  border: 1.5px solid #f59e0b;
+}
+
+.emp-imminent-holiday-notice.today {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 60%, #f0fdf4 100%);
+  border: 1.5px solid #10b981;
+}
+
+.notice-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
+  background: #ffffff;
+  padding: 6px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.notice-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-details strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.notice-details p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #334155;
+  line-height: 1.35;
+}
+
+.notice-badge {
+  font-size: 0.72rem;
+  font-weight: 850;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.emp-imminent-holiday-notice.tomorrow .notice-badge {
+  background: #f59e0b;
+  color: #ffffff;
+  animation: holidayPulseRing 2s infinite;
+}
+
+.emp-imminent-holiday-notice.today .notice-badge {
+  background: #10b981;
+  color: #ffffff;
+  animation: holidayTodayPulse 2s infinite;
+}
+
+/* Imminent Holiday Item Row Highlight */
+.holiday-item-row.tomorrow-row {
+  border: 1.5px solid #f59e0b !important;
+  border-left: 4px solid #f59e0b !important;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 50%) !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15) !important;
+}
+
+.holiday-item-row.today-row {
+  border: 1.5px solid #10b981 !important;
+  border-left: 4px solid #10b981 !important;
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 50%) !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15) !important;
+}
+
+.mini-celebration-pill {
+  font-size: 0.65rem;
+  font-weight: 850;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: 6px;
+  background: #10b981;
+  color: #ffffff;
+  vertical-align: middle;
+}
+
+.mini-celebration-pill.tomorrow {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.holiday-countdown-pill.tomorrow-glow {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #f59e0b !important;
+  animation: holidayPulseRing 2s infinite;
+}
+
+.holiday-countdown-pill.today-glow {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+  border: 1px solid #10b981 !important;
+  animation: holidayTodayPulse 2s infinite;
+}
+
+/* Dark Theme Overrides */
+[data-theme="dark"] .emp-imminent-holiday-notice.tomorrow {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.4) 0%, #1e293b 100%) !important;
+  border-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .emp-imminent-holiday-notice.today {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.4) 0%, #1e293b 100%) !important;
+  border-color: #10b981 !important;
+}
+
+[data-theme="dark"] .notice-emoji {
+  background: #0f172a !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .notice-details strong {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .notice-details p {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .holiday-item-row.tomorrow-row {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.35) 0%, #1e293b 100%) !important;
+  border-color: #f59e0b !important;
+}
+
+[data-theme="dark"] .holiday-item-row.today-row {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.35) 0%, #1e293b 100%) !important;
+  border-color: #10b981 !important;
+}
+

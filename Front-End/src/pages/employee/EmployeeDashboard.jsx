@@ -289,7 +289,8 @@ function EmployeeDashboard() {
   const empStatus = (profile.employment?.status || profile.status || "Active").toLowerCase();
   const isDeactivated = empStatus === "inactive" || empStatus === "terminated" || user?.isActive === false;
 
-  const isClockInDisabled = checkedIn || isDeactivated;
+  const isShiftDurationExhausted = Number(today?.workingHours || 0) >= 8.0;
+  const isClockInDisabled = checkedIn || isDeactivated || (shiftCompleted && isShiftDurationExhausted);
   const isClockOutDisabled = !checkedIn || isDeactivated;
 
   const [clockBusy, setClockBusy] = useState(false);
@@ -324,7 +325,7 @@ function EmployeeDashboard() {
 
   useEffect(() => {
     if (!today?.checkIn) {
-      setElapsedSeconds(Math.max(0, Math.round(Number(today?.workingHours || 0) * 3600)));
+      setElapsedSeconds(Math.min(28800, Math.max(0, Math.round(Number(today?.workingHours || 0) * 3600))));
       return;
     }
 
@@ -332,15 +333,23 @@ function EmployeeDashboard() {
     const checkOutTime = today.checkOut ? new Date(today.checkOut).getTime() : Date.now();
 
     if (Number.isNaN(checkInTime)) {
-      setElapsedSeconds(Math.max(0, Math.round(Number(today?.workingHours || 0) * 3600)));
+      setElapsedSeconds(Math.min(28800, Math.max(0, Math.round(Number(today?.workingHours || 0) * 3600))));
       return;
     }
 
     const updateElapsed = () => {
       const currentTime = today.checkOut ? checkOutTime : Date.now();
-      const timestampSeconds = Math.max(0, Math.floor((currentTime - checkInTime) / 1000));
+      const rawSeconds = Math.max(0, Math.floor((currentTime - checkInTime) / 1000));
       const storedSeconds = Math.max(0, Math.round(Number(today?.workingHours || 0) * 3600));
-      setElapsedSeconds(Math.max(timestampSeconds, storedSeconds));
+      const totalSeconds = Math.max(rawSeconds, storedSeconds);
+
+      // Capped at 8 hours (28800 seconds)
+      setElapsedSeconds(Math.min(28800, totalSeconds));
+
+      // Strict 8-hour cap: If clocked in for >= 8 hours, automatically clock out
+      if (!today.checkOut && rawSeconds >= 28800 && !clockBusy) {
+        handleClockOutAction();
+      }
     };
 
     updateElapsed();
@@ -348,7 +357,7 @@ function EmployeeDashboard() {
 
     const timer = setInterval(updateElapsed, 1000);
     return () => clearInterval(timer);
-  }, [today?.checkIn, today?.checkOut, today?.workingHours]);
+  }, [today?.checkIn, today?.checkOut, today?.workingHours, clockBusy]);
 
   // Target shift: 8 hours (28800 seconds)
   const shiftProgressPercent = Math.min(

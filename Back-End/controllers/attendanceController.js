@@ -10,7 +10,8 @@ import {
     findMonthlyAttendanceReport,
     getEmployeeAttendanceSummary,
     getMonthlyAttendanceSummary,
-    autoCloseMissingClockoutsPolicy
+    autoCloseMissingClockoutsPolicy,
+    autoClockOutOverEightHours
 } from "../repositories/attendanceRepository.js";
 
 import {
@@ -75,6 +76,9 @@ export const checkIn = async (req, res) => {
             });
         }
 
+        // 1. Auto-close any active shift for this user that exceeded 8 hours
+        await autoClockOutOverEightHours(user.id);
+
         const today = getFormattedDate();
 
         // Check if attendance record already exists today
@@ -82,6 +86,25 @@ export const checkIn = async (req, res) => {
         if (existingAttendance) {
             // If already clocked in and shift is currently active
             if (!existingAttendance.check_out) {
+                const elapsedHours = (Date.now() - new Date(existingAttendance.check_in).getTime()) / (1000 * 60 * 60);
+                if (elapsedHours >= 8.0) {
+                    const autoCheckOut = new Date(new Date(existingAttendance.check_in).getTime() + 8 * 60 * 60 * 1000);
+                    const closed = await updateAttendanceRecord(existingAttendance.id, {
+                        check_out: autoCheckOut,
+                        working_hours: 8.00,
+                        overtime_hours: 0.00,
+                        remarks: "Auto clocked out: Maximum 8-hour shift limit reached"
+                    });
+                    return res.status(400).json({
+                        success: false,
+                        message: "Your shift has reached the 8-hour limit and has been automatically clocked out.",
+                        data: {
+                            employee: formatEmployee(user),
+                            attendance: formatAttendance(closed)
+                        }
+                    });
+                }
+
                 return res.status(400).json({
                     success: false,
                     message: "Already checked in today (shift active)",
@@ -92,7 +115,20 @@ export const checkIn = async (req, res) => {
                 });
             }
 
-            // If previously clocked out, allow resuming work / re-clocking in for today
+            // Check if existing completed shift already reached or exceeded 8 hours
+            const existingHours = Number(existingAttendance.working_hours || 0);
+            if (existingHours >= 8.0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Clock-in cannot exceed 8 hours. You have already completed your 8-hour shift for today.",
+                    data: {
+                        employee: formatEmployee(user),
+                        attendance: formatAttendance(existingAttendance)
+                    }
+                });
+            }
+
+            // If previously clocked out with < 8 hours, allow resuming work
             const updatedAttendance = await updateAttendanceRecord(existingAttendance.id, {
                 check_out: null,
                 status: existingAttendance.status === "half-day" ? "present" : (existingAttendance.status || "present")
@@ -195,20 +231,36 @@ export const checkOut = async (req, res) => {
             });
         }
 
-        const checkOutTime = new Date();
-        const workingHours = calculateWorkingHours(attendance.check_in, checkOutTime);
-        const overtimeHours = calculateOvertime(workingHours, 8);
+        const nowTime = new Date();
+        const checkInTime = new Date(attendance.check_in);
+        const rawWorkingHours = calculateWorkingHours(attendance.check_in, nowTime);
+
+        // Enforce maximum 8-hour shift: if more than 8 hours, clock out capped at exactly 8h
+        let checkOutTime = nowTime;
+        let workingHours = rawWorkingHours;
+        let remarks = attendance.remarks || "";
+
+        if (rawWorkingHours >= 8.0) {
+            workingHours = 8.00;
+            checkOutTime = new Date(checkInTime.getTime() + 8 * 60 * 60 * 1000);
+            remarks = "Clocked out: Capped at maximum 8-hour shift limit";
+        }
+
+        const overtimeHours = 0.00; // Overtime strictly capped
 
         let status = attendance.status;
         if (workingHours < 4) {
             status = "half-day";
+        } else if (status !== "late") {
+            status = "present";
         }
 
         const updatedAttendance = await updateAttendanceRecord(attendance.id, {
             check_out: checkOutTime,
             working_hours: workingHours,
             overtime_hours: overtimeHours,
-            status
+            status,
+            remarks
         });
 
         broadcastBackendChange("attendance", {
@@ -218,7 +270,9 @@ export const checkOut = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Check-out successful",
+            message: rawWorkingHours >= 8.0 
+                ? "Check-out successful. Shift duration capped at maximum 8 hours." 
+                : "Check-out successful",
             data: {
                 employee: formatEmployee(user),
                 attendance: formatAttendance(updatedAttendance)
@@ -246,6 +300,15 @@ export const getMyTodayAttendance = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Employee profile not found"
+            });
+        }
+
+        // Auto-clock out any shift that reached or exceeded 8 hours
+        const autoClosed = await autoClockOutOverEightHours(user.id);
+        if (autoClosed && autoClosed.length > 0) {
+            broadcastBackendChange("attendance", {
+                action: "auto-clockout-8h",
+                employeeId: user.id
             });
         }
 
@@ -304,6 +367,7 @@ export const getMyAttendance = async (req, res) => {
 
         const today = getFormattedDate();
         await autoCloseUnclosedPastRecords(user.id, today);
+        await autoClockOutOverEightHours(user.id);
 
         const attendanceList = await findAttendanceHistoryByEmployee(user.id);
 
@@ -328,6 +392,7 @@ export const getMyAttendance = async (req, res) => {
 // =====================================================
 export const getAllAttendance = async (req, res) => {
     try {
+        await autoClockOutOverEightHours();
         const records = await findAllAttendanceRecords();
 
         const data = records.map((item) => {

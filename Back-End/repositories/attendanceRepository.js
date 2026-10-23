@@ -246,3 +246,32 @@ export const autoCloseMissingClockoutsPolicy = async (todayDate) => {
 
     return closedCount;
 };
+
+/**
+ * Enforces the strict 8-hour maximum shift duration.
+ * If an employee has been clocked in for >= 8 hours, automatically clocks them out
+ * at exactly check_in + 8 hours with working_hours set to 8.00.
+ */
+export const autoClockOutOverEightHours = async (employeeId = null) => {
+    const queryText = `
+        UPDATE attendance 
+        SET 
+            check_out = check_in + INTERVAL '8 hours',
+            working_hours = 8.00,
+            overtime_hours = 0.00,
+            status = CASE 
+                WHEN status = 'absent' THEN 'present'
+                WHEN status IS NULL OR status = 'not_checked_in' THEN 'present'
+                ELSE status 
+            END,
+            remarks = COALESCE(NULLIF(remarks, ''), 'Auto clocked out: Maximum 8-hour shift limit reached')
+        WHERE check_in IS NOT NULL 
+          AND check_out IS NULL 
+          AND (check_in + INTERVAL '8 hours') <= NOW()
+          ${employeeId ? `AND employee_id = $1` : ``}
+        RETURNING *;
+    `;
+    const params = employeeId ? [employeeId] : [];
+    const { rows } = await pool.query(queryText, params);
+    return rows;
+};

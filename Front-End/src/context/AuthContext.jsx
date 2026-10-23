@@ -2,8 +2,39 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { getCurrentUser, loginUser, signupUser } from "../services/authService";
 import { normalizeRole } from "../utils/auth";
 import { getDemoFallbackSession } from "../data/demoAccounts";
+import { toast } from "react-toastify";
 
 const AuthContext = createContext(null);
+
+// Enterprise Security Policy: Maximum login session is strictly 8 hours
+export const MAX_LOGIN_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+
+export function isLoginSessionExpired() {
+  const token = sessionStorage.getItem("hrms_token");
+  if (!token) return true;
+
+  // 1. Check client-side recorded login timestamp against 8-hour limit
+  const loginTs = sessionStorage.getItem("hrms_login_timestamp");
+  if (loginTs) {
+    const elapsed = Date.now() - Number(loginTs);
+    if (elapsed >= MAX_LOGIN_DURATION_MS) {
+      return true;
+    }
+  }
+
+  // 2. Check JWT exp claim if present in token
+  try {
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      if (payload.exp && payload.exp * 1000 <= Date.now()) {
+        return true;
+      }
+    }
+  } catch (e) {}
+
+  return false;
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -32,6 +63,7 @@ export function AuthProvider({ children }) {
 
     sessionStorage.setItem("hrms_token", session.token);
     sessionStorage.setItem("hrms_user", JSON.stringify(normalizedUser));
+    sessionStorage.setItem("hrms_login_timestamp", Date.now().toString());
 
     if (session.employee) {
       sessionStorage.setItem(
@@ -105,7 +137,7 @@ export function AuthProvider({ children }) {
     );
   };
 
-  const logout = () => {
+  const logout = (reason = null) => {
     try {
       sessionStorage.clear();
       localStorage.removeItem("hrms_profile_photo");
@@ -126,6 +158,10 @@ export function AuthProvider({ children }) {
     setUser(null);
     setEmployee(null);
     window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+
+    if (reason && typeof toast !== "undefined") {
+      toast.warn(reason, { toastId: "session-expired-8h" });
+    }
   };
 
   useEffect(() => {
@@ -137,6 +173,14 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("hrms_profile_photo");
 
       if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      // Enforce strict 8-hour maximum login session limit
+      if (isLoginSessionExpired()) {
+        console.warn("[Auth] Session exceeds 8-hour policy. Purging session.");
+        logout("Your login session reached the 8-hour maximum duration and has expired. Please log in again.");
         setLoading(false);
         return;
       }
@@ -188,6 +232,19 @@ export function AuthProvider({ children }) {
     restoreSession();
   }, []);
 
+  // Periodic background heartbeat ensuring session is never active > 8 hours
+  useEffect(() => {
+    const sessionExpirationChecker = setInterval(() => {
+      const token = sessionStorage.getItem("hrms_token");
+      if (token && isLoginSessionExpired()) {
+        console.warn("[Auth] Active session reached 8 hours maximum limit. Logging out.");
+        logout("Your login session reached the 8-hour maximum duration and has expired. Please log in again.");
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(sessionExpirationChecker);
+  }, []);
+
   // Listen for real-time data sync events to update employee state
   useEffect(() => {
     const handleSync = async () => {
@@ -210,7 +267,7 @@ export function AuthProvider({ children }) {
 
     const handleAuthExpired = () => {
       console.warn("[Auth] Session expired event received. Purging expired session.");
-      logout();
+      logout("Session expired. Please log in again.");
     };
 
     window.addEventListener("hrms_data_updated", handleSync);

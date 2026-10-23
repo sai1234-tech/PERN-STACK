@@ -53,6 +53,8 @@ const AuditGovernanceCenter = lazy(() => import("../pages/admin/AuditGovernanceC
 const EnterpriseOperationsHub = lazy(() => import("../pages/admin/EnterpriseOperationsHub"));
 const TechStackArchitectureCenter = lazy(() => import("../pages/admin/TechStackArchitectureCenter"));
 const DeliveryRoadmapCenter = lazy(() => import("../pages/admin/DeliveryRoadmapCenter"));
+const DataMigrationCenter = lazy(() => import("../pages/admin/DataMigrationCenter"));
+const AiIntelligenceHub = lazy(() => import("../pages/ai/AiIntelligenceHub"));
 
 /**
  * Protect routes based on authentication and role capabilities.
@@ -186,8 +188,11 @@ function AppRoutes() {
           <Route path="/hr/timesheets"   element={<ProtectedRoute roles={["hr", "admin", "manager"]}><TimesheetManagement /></ProtectedRoute>} />
           <Route path="/hr/recruitment"  element={<ProtectedRoute roles={["hr", "admin", "recruiter"]}><RecruitmentOnboarding /></ProtectedRoute>} />
           <Route path="/hr/lifecycle"    element={<ProtectedRoute roles={["hr", "admin", "leadership", "manager"]}><EmployeeLifecycle /></ProtectedRoute>} />
-          <Route path="/lifecycle"       element={<ProtectedRoute roles={["hr", "admin", "leadership", "manager"]}><EmployeeLifecycle /></ProtectedRoute>} />
           <Route path="/hr/resources"    element={<ProtectedRoute roles={["manager", "admin", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/hr/allocations"  element={<ProtectedRoute roles={["manager", "admin", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/admin/staff-aug" element={<ProtectedRoute roles={["admin", "leadership", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/admin/client-master" element={<ProtectedRoute roles={["admin", "leadership", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/staff-aug"       element={<ProtectedRoute roles={["manager", "admin", "hr", "leadership"]}><ResourceAllocation /></ProtectedRoute>} />
           <Route path="/hr/roster"       element={<ProtectedRoute roles={["hr", "admin"]}><ShiftRoster /></ProtectedRoute>} />
           <Route path="/hr/payroll"      element={<ProtectedRoute roles={["hr", "admin", "payroll"]}><PayrollManagement /></ProtectedRoute>} />
           <Route path="/hr/helpdesk"     element={<ProtectedRoute roles={["hr", "admin"]}><Helpdesk /></ProtectedRoute>} />
@@ -228,7 +233,14 @@ function AppRoutes() {
           <Route path="/stack-selection"        element={<ProtectedRoute roles={ALL_ROLES}><TechStackArchitectureCenter /></ProtectedRoute>} />
           <Route path="/admin/delivery-roadmap" element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr", "manager"]}><DeliveryRoadmapCenter /></ProtectedRoute>} />
           <Route path="/delivery-roadmap"       element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr", "manager"]}><DeliveryRoadmapCenter /></ProtectedRoute>} />
-          <Route path="/ai-assistant"           element={<ProtectedRoute roles={ALL_ROLES}><DeliveryRoadmapCenter defaultTab="assistant" /></ProtectedRoute>} />
+          <Route path="/ai"                     element={<ProtectedRoute roles={ALL_ROLES}><AiIntelligenceHub /></ProtectedRoute>} />
+          <Route path="/ai-hub"                 element={<ProtectedRoute roles={ALL_ROLES}><AiIntelligenceHub /></ProtectedRoute>} />
+          <Route path="/ai-assistant"           element={<ProtectedRoute roles={ALL_ROLES}><AiIntelligenceHub /></ProtectedRoute>} />
+          <Route path="/hr/ai"                  element={<ProtectedRoute roles={["hr", "admin", "leadership", "manager"]}><AiIntelligenceHub /></ProtectedRoute>} />
+          <Route path="/admin/ai"               element={<ProtectedRoute roles={["admin", "leadership", "hr"]}><AiIntelligenceHub /></ProtectedRoute>} />
+          <Route path="/admin/data-migration"   element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><DataMigrationCenter /></ProtectedRoute>} />
+          <Route path="/data-migration"         element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><DataMigrationCenter /></ProtectedRoute>} />
+          <Route path="/hr/data-migration"      element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><DataMigrationCenter /></ProtectedRoute>} />
         </Route>
 
         {/* UNAUTHORIZED */}

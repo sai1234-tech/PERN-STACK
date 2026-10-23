@@ -18,8 +18,8 @@ router.patch("/preboarding/tasks/:taskId", authorizeRoles("hr", "admin", "it_adm
 router.post("/onboarding/complete/:id", authorizeRoles("hr", "admin"), onboardingGate, completeOnboarding);
 
 // Attendance regularization
-router.post("/regularizations", authorizeRoles("employee"), submitRegularization);
-router.get("/regularizations/my", authorizeRoles("employee"), getMyRegularizations);
+router.post("/regularizations", authorizeRoles("employee", "manager", "hr", "admin"), submitRegularization);
+router.get("/regularizations/my", authorizeRoles("employee", "manager", "hr", "admin"), getMyRegularizations);
 router.get("/regularizations", authorizeRoles("hr", "admin", "manager"), listRegularizations);
 router.patch("/regularizations/:id/decision", authorizeRoles("hr", "admin", "manager"), decideRegularization);
 
@@ -28,8 +28,8 @@ router.post("/payroll-inputs/generate", authorizeRoles("hr", "admin", "payroll")
 router.get("/payroll-inputs", authorizeRoles("hr", "admin", "payroll", "finance", "auditor"), listPayrollInputs);
 
 // Exit documents
-router.post("/exit-documents/generate", authorizeRoles("hr", "admin"), generateExitDocuments);
-router.get("/exit-documents/employee/:employeeId", authorizeRoles("employee"), listExitDocuments);
-router.get("/exit-documents/:id/download", authorizeRoles("employee"), downloadExitDocument);
+router.post("/exit-documents/generate", authorizeRoles("hr", "admin", "super_admin"), generateExitDocuments);
+router.get("/exit-documents/employee/:employeeId", authorizeRoles("employee", "hr", "admin", "super_admin"), listExitDocuments);
+router.get("/exit-documents/:id/download", authorizeRoles("employee", "hr", "admin", "super_admin"), downloadExitDocument);
 
 export default router;

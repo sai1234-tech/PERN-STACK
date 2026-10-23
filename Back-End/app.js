@@ -32,6 +32,9 @@ import enterpriseOperationsRoutes from "./routes/enterpriseOperationsRoutes.js";
 import techStackSelectionRoutes from "./routes/techStackSelectionRoutes.js";
 import deliveryAiRoutes from "./routes/deliveryAiRoutes.js";
 import lifecycleOpsRoutes from "./routes/lifecycleOpsRoutes.js";
+import dataMigrationRoutes from "./routes/dataMigrationRoutes.js";
+import staffAugmentationRoutes from "./routes/staffAugmentationRoutes.js";
+import aiIntelligenceRoutes from "./routes/aiIntelligenceRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { sseStreamHandler, sseBroadcastMiddleware } from "./services/sseService.js";
 import { securityHeaders, rateLimiter } from "./middleware/securityMiddleware.js";
@@ -164,7 +167,10 @@ const routeMappings = [
     { paths: ["/operations", "/operation", "/architecture-nfr", "/nfr"], handler: enterpriseOperationsRoutes },
     { paths: ["/stack-selection", "/tech-stack", "/architecture-stack"], handler: techStackSelectionRoutes },
     { paths: ["/delivery"], handler: deliveryAiRoutes },
-    { paths: ["/lifecycle-ops"], handler: lifecycleOpsRoutes }
+    { paths: ["/lifecycle-ops"], handler: lifecycleOpsRoutes },
+    { paths: ["/data-migration", "/migration"], handler: dataMigrationRoutes },
+    { paths: ["/staff-aug", "/staff-augmentation"], handler: staffAugmentationRoutes },
+    { paths: ["/ai", "/ai-intelligence"], handler: aiIntelligenceRoutes }
 ];
 
 routeMappings.forEach(({ paths, handler }) => {

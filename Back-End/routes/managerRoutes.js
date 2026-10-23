@@ -18,6 +18,7 @@ router.use(authorizeRoles("manager", "admin"));
 
 // Dashboard Overview
 router.get("/overview", getTeamOverview);
+router.get("/team", getTeamOverview);
 
 // Team Leaves
 router.get("/team-leaves", getTeamLeaves);

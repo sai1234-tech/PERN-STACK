@@ -36,7 +36,7 @@ router.patch("/projects/:id", authorizeRoles("admin", "super_admin", "hr", "mana
 router.delete("/projects/:id", authorizeRoles("admin", "super_admin", "hr"), deleteClientProject);
 
 // 3. Commercial Rate Cards (Strict RBAC Protection)
-router.get("/rate-cards", authorizeRoles("admin", "super_admin", "finance", "payroll", "leadership", "manager", "hr"), getRateCards);
+router.get("/rate-cards", authorizeRoles("admin", "super_admin", "finance", "payroll", "leadership", "manager", "hr", "employee"), getRateCards);
 router.post("/rate-cards", authorizeRoles("admin", "super_admin", "finance", "leadership"), createRateCard);
 router.delete("/rate-cards/:id", authorizeRoles("admin", "super_admin", "finance"), deleteRateCard);
 

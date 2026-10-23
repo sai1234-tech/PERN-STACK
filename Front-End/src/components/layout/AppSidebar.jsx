@@ -248,6 +248,15 @@ function AppSidebar() {
                   <span className="nav-item-icon">👤</span>
                   {!isCollapsed && <span className="nav-item-label">My Profile</span>}
                 </NavLink>
+                <NavLink to="/ai" end className="sidebar-nav-link" title="AI HR Assistant & Cognitive Intelligence Hub">
+                  <span className="nav-item-icon">🧠</span>
+                  {!isCollapsed && (
+                    <>
+                      <span className="nav-item-label">AI HR Assistant</span>
+                      <span className="sidebar-sub-badge" style={{ background: "#6366f1", color: "#fff" }}>AI</span>
+                    </>
+                  )}
+                </NavLink>
               </div>
             </>
           )}
@@ -309,6 +318,15 @@ function AppSidebar() {
                   <span className="nav-item-icon">👤</span>
                   {!isCollapsed && <span className="nav-item-label">My Profile</span>}
                 </NavLink>
+                <NavLink to="/ai" end className="sidebar-nav-link" title="AI Intelligence Hub & Smart Attendance">
+                  <span className="nav-item-icon">🧠</span>
+                  {!isCollapsed && (
+                    <>
+                      <span className="nav-item-label">AI Intelligence Hub</span>
+                      <span className="sidebar-sub-badge" style={{ background: "#6366f1", color: "#fff" }}>AI</span>
+                    </>
+                  )}
+                </NavLink>
               </div>
             </>
           )}
@@ -337,6 +355,10 @@ function AppSidebar() {
                 <NavLink to="/hr/lifecycle" end className="sidebar-nav-link" title="22-Stage Employee Lifecycle Journey">
                   <span className="nav-item-icon">🔄</span>
                   {!isCollapsed && <span className="nav-item-label">Lifecycle Journey</span>}
+                </NavLink>
+                <NavLink to="/hr/resources" end className="sidebar-nav-link" title="Staff-Augmentation SOWs, Clients & Rate Cards">
+                  <span className="nav-item-icon">💼</span>
+                  {!isCollapsed && <span className="nav-item-label">Staff-Aug & SOWs</span>}
                 </NavLink>
                 <NavLink to="/hr/departments" end className="sidebar-nav-link" title="Department Structure">
                   <span className="nav-item-icon">🏛️</span>
@@ -377,6 +399,15 @@ function AppSidebar() {
                 <NavLink to="/admin/delivery-roadmap" end className="sidebar-nav-link" title="Phase 0-4 Delivery Roadmap and AI Assistant">
                   <span className="nav-item-icon">🗺️</span>
                   {!isCollapsed && <span className="nav-item-label">Roadmap & AI Assistant</span>}
+                </NavLink>
+                <NavLink to="/ai" end className="sidebar-nav-link" title="Cognitive AI HRMS Intelligence Hub (5 Core AI Modules)">
+                  <span className="nav-item-icon">🧠</span>
+                  {!isCollapsed && (
+                    <>
+                      <span className="nav-item-label">AI Intelligence Hub</span>
+                      <span className="sidebar-sub-badge" style={{ background: "#6366f1", color: "#fff" }}>5 Modules</span>
+                    </>
+                  )}
                 </NavLink>
               </div>
 
@@ -463,6 +494,10 @@ function AppSidebar() {
                   <span className="nav-item-icon">🔄</span>
                   {!isCollapsed && <span className="nav-item-label">Lifecycle Journey</span>}
                 </NavLink>
+                <NavLink to="/admin/staff-aug" end className="sidebar-nav-link" title="Staff-Augmentation SOWs, Clients & Rate Cards">
+                  <span className="nav-item-icon">💼</span>
+                  {!isCollapsed && <span className="nav-item-label">Staff-Aug & SOWs</span>}
+                </NavLink>
                 <NavLink to="/hr/departments" end className="sidebar-nav-link" title="Departments & Pods">
                   <span className="nav-item-icon">🏢</span>
                   {!isCollapsed && <span className="nav-item-label">Departments</span>}
@@ -534,6 +569,19 @@ function AppSidebar() {
                 <NavLink to="/admin/delivery-roadmap" end className="sidebar-nav-link" title="Phase 0-4 Delivery Roadmap and AI Assistant">
                   <span className="nav-item-icon">🗺️</span>
                   {!isCollapsed && <span className="nav-item-label">Roadmap & AI Assistant</span>}
+                </NavLink>
+                <NavLink to="/admin/data-migration" end className="sidebar-nav-link" title="Legacy Data Migration & Ingestion Engine">
+                  <span className="nav-item-icon">📦</span>
+                  {!isCollapsed && <span className="nav-item-label">Data Migration</span>}
+                </NavLink>
+                <NavLink to="/ai" end className="sidebar-nav-link" title="Cognitive AI HRMS Intelligence Hub (5 Core AI Modules)">
+                  <span className="nav-item-icon">🧠</span>
+                  {!isCollapsed && (
+                    <>
+                      <span className="nav-item-label">AI Intelligence Hub</span>
+                      <span className="sidebar-sub-badge" style={{ background: "#6366f1", color: "#fff" }}>5 Modules</span>
+                    </>
+                  )}
                 </NavLink>
               </div>
 

@@ -38,7 +38,7 @@ const PREBOARDING_TASKS = [
 export const startPreboarding = async (req, res, next) => {
   try {
     const a = await actor(req);
-    const { rows } = await pool.query("SELECT * FROM candidates WHERE candidate_id = $1", [req.params.id]);
+    const { rows } = await pool.query("SELECT * FROM candidates WHERE candidate_id = $1 OR id::text = $1", [req.params.id]);
     const cand = rows[0];
     if (!cand) return res.status(404).json({ success: false, message: "Candidate not found" });
     if (cand.onboarded_employee_id) return res.status(409).json({ success: false, message: "Candidate already onboarded" });
@@ -61,7 +61,10 @@ export const startPreboarding = async (req, res, next) => {
 
 export const getPreboarding = async (req, res, next) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM preboarding_tasks WHERE candidate_id=$1 ORDER BY id", [req.params.id]);
+    const { rows } = await pool.query(
+      "SELECT * FROM preboarding_tasks WHERE candidate_id=$1 OR candidate_id IN (SELECT candidate_id FROM candidates WHERE id::text = $1) ORDER BY id",
+      [req.params.id]
+    );
     return res.json({ success: true, tasks: rows });
   } catch (e) { return next(e); }
 };
@@ -85,9 +88,10 @@ export const updatePreboardingTask = async (req, res, next) => {
 // ------------------------------------------------------------------ 2. GUARDED ONBOARDING (reuses existing handler)
 export const onboardingGate = async (req, res, next) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM candidates WHERE candidate_id = $1", [req.params.id]);
+    const { rows } = await pool.query("SELECT * FROM candidates WHERE candidate_id = $1 OR id::text = $1", [req.params.id]);
     const cand = rows[0];
     if (!cand) return res.status(404).json({ success: false, message: "Candidate not found" });
+    req.params.id = cand.candidate_id; // normalize to candidate_id for downstream handler
     const blockers = [];
     if (lc(cand.status) !== "preboarding") blockers.push(`Candidate must be in Preboarding (current: ${cand.status})`);
     const tasks = (await pool.query("SELECT * FROM preboarding_tasks WHERE candidate_id=$1", [cand.candidate_id])).rows;
@@ -171,7 +175,10 @@ export const decideRegularization = async (req, res, next) => {
 
     let before = null, after = null;
     if (decision === "APPROVED") {
-      before = (await client.query("SELECT * FROM attendance WHERE employee_id=$1 AND date=$2", [r.employee_id, r.attendance_date])).rows[0] || null;
+      const empUserRes = await client.query("SELECT user_id FROM employees WHERE id = $1", [r.employee_id]);
+      const targetUserId = empUserRes.rows[0]?.user_id || r.requested_by_user_id || r.employee_id;
+
+      before = (await client.query("SELECT * FROM attendance WHERE (employee_id=$1 OR employee_id=$2) AND date=$3", [targetUserId, r.employee_id, r.attendance_date])).rows[0] || null;
       const hours = Math.round(((new Date(r.requested_check_out) - new Date(r.requested_check_in)) / 3600000) * 100) / 100;
       after = (await client.query(
         `INSERT INTO attendance (employee_id, date, check_in, check_out, working_hours, status, is_late, late_minutes, remarks)
@@ -179,7 +186,7 @@ export const decideRegularization = async (req, res, next) => {
          ON CONFLICT (employee_id, date) DO UPDATE SET check_in=EXCLUDED.check_in, check_out=EXCLUDED.check_out,
            working_hours=EXCLUDED.working_hours, status=EXCLUDED.status, is_late=false, late_minutes=0, remarks=EXCLUDED.remarks, updated_at=NOW()
          RETURNING *`,
-        [r.employee_id, r.attendance_date, r.requested_check_in, r.requested_check_out, hours, r.requested_status, `Regularized ${r.reg_code}: ${r.reason}`]
+        [targetUserId, r.attendance_date, r.requested_check_in, r.requested_check_out, hours, r.requested_status, `Regularized ${r.reg_code}: ${r.reason}`]
       )).rows[0];
     }
     const upd = (await client.query(
@@ -259,14 +266,14 @@ export const generatePayrollInputs = async (req, res, next) => {
 
       const { rows } = await pool.query(
         `INSERT INTO payroll_inputs (input_code, employee_id, employee_code, employee_name, month, year, basic_pay, hra, special_allowance,
-           overtime_allowance, pf_deduction, tax_deduction, unpaid_leave_deductions, gross_earnings, net_payable, status, remarks)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,$12,$13,$14,'Draft',$15)
+           overtime_allowance, pf_deduction, tax_deduction, unpaid_leave_deductions, status, remarks)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,$12,'Draft',$13)
          ON CONFLICT (input_code) DO UPDATE SET basic_pay=EXCLUDED.basic_pay, hra=EXCLUDED.hra, special_allowance=EXCLUDED.special_allowance,
            overtime_allowance=EXCLUDED.overtime_allowance, pf_deduction=EXCLUDED.pf_deduction, unpaid_leave_deductions=EXCLUDED.unpaid_leave_deductions,
-           gross_earnings=EXCLUDED.gross_earnings, net_payable=EXCLUDED.net_payable, remarks=EXCLUDED.remarks
+           remarks=EXCLUDED.remarks
          WHERE payroll_inputs.status = 'Draft' RETURNING *`,
         [inputCode, emp.id, emp.employee_code, `${emp.first_name} ${emp.last_name}`.trim(), label, year, round2(basic), round2(hra), round2(special),
-          round2(overtime), round2(pf), round2(lopAmt), round2(gross), round2(net),
+          round2(overtime), round2(pf), round2(lopAmt),
           `Generated from salary ${annual}/yr; LOP days ${lopDays} (unpaid leave ${unpaidDays}, absent ${absent}); OT hours ${otHours}. TDS to be applied by payroll vendor.`]
       );
       if (!rows[0]) { skipped.push({ employeeCode: emp.employee_code, reason: "Existing input is no longer Draft (locked)" }); continue; }

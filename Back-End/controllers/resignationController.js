@@ -1,4 +1,4 @@
-import { findEmployeeByUserId, updateEmployeeRecord } from "../repositories/employeeRepository.js";
+import { findEmployeeById, findEmployeeByUserId, updateEmployeeRecord } from "../repositories/employeeRepository.js";
 import {
     findActiveResignationByEmployee,
     createResignationRecord,
@@ -35,16 +35,14 @@ export const submitResignation = async (req, res) => {
             });
         }
 
-        const {
-            requestedLastWorkingDay,
-            reasonCategory,
-            reasonDetails,
-        } = req.body || {};
+        const requestedLastWorkingDay = req.body?.requestedLastWorkingDay || req.body?.lastWorkingDay;
+        const reasonCategory = req.body?.reasonCategory || "Career Growth";
+        const reasonDetails = req.body?.reasonDetails || req.body?.reason || req.body?.comments || "";
 
-        if (!requestedLastWorkingDay || !reasonCategory || !reasonDetails?.trim()) {
+        if (!requestedLastWorkingDay || !reasonDetails.trim()) {
             return res.status(400).json({
                 success: false,
-                message: "Requested last working day, reason category, and detailed notes are required.",
+                message: "Requested last working day and detailed reason notes are required.",
             });
         }
 
@@ -195,7 +193,8 @@ export const reviewResignation = async (req, res) => {
         const { resignationId } = req.params;
         const { status, approvedLastWorkingDay, hrReviewComment } = req.body || {};
 
-        if (!["approved", "rejected", "under_review"].includes(status)) {
+        const normalizedStatus = String(status || "").toLowerCase();
+        if (!["approved", "rejected", "under_review"].includes(normalizedStatus)) {
             return res.status(400).json({
                 success: false,
                 message: "Status must be approved, rejected, or under_review",
@@ -211,13 +210,13 @@ export const reviewResignation = async (req, res) => {
         }
 
         const updateData = {
-            status,
+            status: normalizedStatus,
             hrReviewComment: hrReviewComment?.trim() || "",
             reviewedBy: req.user.userId,
             reviewedAt: new Date(),
         };
 
-        if (status === "approved") {
+        if (normalizedStatus === "approved") {
             const finalLwd = approvedLastWorkingDay
                 ? new Date(approvedLastWorkingDay)
                 : resignation.requestedLastWorkingDay;
@@ -225,8 +224,8 @@ export const reviewResignation = async (req, res) => {
             updateData.approvedLastWorkingDay = finalLwd;
 
             if (resignation.employee) {
-                const empId = typeof resignation.employee === "object" ? resignation.employee.id : resignation.employee;
-                const empObj = await findEmployeeByUserId(req.user.userId);
+                const empId = typeof resignation.employee === "object" ? (resignation.employee.id || resignation.employee._id) : resignation.employee;
+                const empObj = await findEmployeeById(empId);
                 const employment = empObj?.employment || {};
                 employment.status = "Notice Period";
                 await updateEmployeeRecord(empId, { employment });

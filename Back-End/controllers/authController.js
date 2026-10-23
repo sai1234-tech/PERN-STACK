@@ -284,6 +284,8 @@ export const signup = async (req, res) => {
         res.status(201).json({
             message: "User registered successfully",
             token,
+            expiresIn: "8h",
+            maxSessionDurationMs: 8 * 60 * 60 * 1000,
             user: {
                 id: user.id,
                 name: user.name,
@@ -335,6 +337,8 @@ export const login = async (req, res) => {
         res.status(200).json({
             message: "Login successful",
             token,
+            expiresIn: "8h",
+            maxSessionDurationMs: 8 * 60 * 60 * 1000,
             user: {
                 id: user.id,
                 name: user.name,

@@ -112,19 +112,20 @@ export const formatEmployeeResponse = (emp) => {
 // =====================================================
 export const createMultipleEmployees = async (req, res) => {
     try {
-        const employees = req.body;
+        let employees = req.body;
 
-        if (!Array.isArray(employees)) {
-            return res.status(400).json({
-                success: false,
-                message: "Request body must be an array"
-            });
+        if (employees && !Array.isArray(employees)) {
+            if (Array.isArray(employees.employees)) {
+                employees = employees.employees;
+            } else if (typeof employees === "object" && Object.keys(employees).length > 0) {
+                employees = [employees];
+            }
         }
 
-        if (employees.length === 0) {
+        if (!Array.isArray(employees) || employees.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: "At least one employee is required"
+                message: "At least one employee object is required"
             });
         }
 
@@ -280,7 +281,8 @@ export const createMultipleEmployees = async (req, res) => {
             success: true,
             message: "Employees created successfully",
             count: createdEmployees.length,
-            data: createdEmployees
+            data: createdEmployees,
+            employee: createdEmployees[0]
         });
     } catch (error) {
         console.error("CREATE EMPLOYEE ERROR:", error);

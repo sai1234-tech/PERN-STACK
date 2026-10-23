@@ -75,7 +75,7 @@ export const updateClearanceCategory = async (req, res) => {
         const { status, comments } = req.body;
         const userId = getUserId(req);
 
-        const validCategories = ["assets", "itAccess", "finance", "leaveAttendance", "documents"];
+        const validCategories = ["assets", "itAccess", "it_access", "finance", "leaveAttendance", "leave_attendance", "documents"];
         if (!validCategories.includes(category)) {
             return res.status(400).json({ success: false, message: "Invalid category" });
         }

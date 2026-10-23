@@ -166,13 +166,14 @@ export const findAllClearancesRepo = async () => {
     const { rows } = await pool.query(queryText);
     return rows.map(formatClearance);
 };
-
 export const updateClearanceCategoryRepo = async (id, category, categoryData) => {
     const colNameMap = {
         assets: "assets",
         itAccess: "it_access",
+        it_access: "it_access",
         finance: "finance",
         leaveAttendance: "leave_attendance",
+        leave_attendance: "leave_attendance",
         documents: "documents"
     };
 

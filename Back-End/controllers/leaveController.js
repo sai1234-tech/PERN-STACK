@@ -121,12 +121,10 @@ const ensureEmployeeForUser = async (userId) => {
     return employee;
 };
 
-// =====================================================
-// 1. APPLY LEAVE
-// =====================================================
 export const applyLeave = async (req, res) => {
     try {
-        const { leaveType, startDate, endDate, reason, document } = req.body;
+        const leaveType = req.body.leaveType || req.body.leaveTypeId;
+        const { startDate, endDate, reason, document } = req.body;
         const userId = req.user?.userId || req.user?.id;
 
         if (!leaveType || !startDate || !endDate || !reason?.trim()) {

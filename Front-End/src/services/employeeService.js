@@ -183,3 +183,25 @@ export async function uploadEmployeeProfilePicture(employeeId, file) {
     body: formData,
   });
 }
+
+export async function getEmployeeHistory(idOrCode = "me") {
+  try {
+    const res = await apiRequest(`/employees/${encodeURIComponent(idOrCode)}/history`);
+    return res;
+  } catch (err) {
+    console.error("Failed to fetch employee history:", err);
+    return { success: false, data: [] };
+  }
+}
+
+export async function addEmployeeHistory(idOrCode, historyData) {
+  try {
+    const res = await apiRequest(`/employees/${encodeURIComponent(idOrCode)}/history`, {
+      method: "POST",
+      body: JSON.stringify(historyData),
+    });
+    return res;
+  } catch (err) {
+    throw err;
+  }
+}

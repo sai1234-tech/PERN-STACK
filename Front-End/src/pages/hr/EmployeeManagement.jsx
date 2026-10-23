@@ -48,10 +48,14 @@ const emptyForm = {
   phone: "",
   department: "",
   designation: "",
+  entity: "Quadratic Systems Inc.",
+  function: "Engineering & Technology",
+  costCenter: "CC-101-GEN",
   reportsTo: "",
+  matrixManagerId: "",
   joiningDate: "",
   dateOfExit: "",
-  employmentType: "Full Time",
+  employmentType: "Permanent",
   status: "Active",
   salary: "",
   bankName: "",
@@ -59,6 +63,11 @@ const emptyForm = {
   ifsc: "",
   pan: "",
   uan: "",
+  aadhaar: "",
+  esiNumber: "",
+  taxRegime: "New Regime",
+  effectiveDate: "",
+  changeReason: "",
   grantLogin: false,
   loginRole: "employee",
   loginPassword: "",
@@ -370,7 +379,7 @@ function EmployeeManagement() {
     setError("");
     setNotice("");
 
-    const empCode = (form.employeeCode || "").trim() || `EMP${String(employees.length + 1).padStart(3, "0")}`;
+    const empCode = (form.employeeCode || "").trim();
     const joinDate = form.joiningDate || new Date().toISOString().slice(0, 10);
     const firstName = (form.firstName || "").trim();
     const email = (form.email || "").trim().toLowerCase();
@@ -381,19 +390,28 @@ function EmployeeManagement() {
     }
 
     const payload = {
-      employeeCode: empCode.toUpperCase(),
+      employeeCode: empCode ? empCode.toUpperCase() : undefined,
       firstName: firstName,
       lastName: (form.lastName || "").trim(),
       email: email,
       phone: (form.phone || "").trim(),
       joiningDate: joinDate,
       reportsTo: form.reportsTo || null,
+      matrixManagerId: form.matrixManagerId ? Number(form.matrixManagerId) : null,
+      entity: (form.entity || "").trim() || "Quadratic Systems Inc.",
+      function: (form.function || "").trim() || "Engineering & Technology",
+      costCenter: (form.costCenter || "").trim() || "CC-101-GEN",
       salary: form.salary ? Number(form.salary) * 12 : undefined,
+      effectiveDate: form.effectiveDate || new Date().toISOString().slice(0, 10),
+      changeReason: (form.changeReason || "").trim() || (editingId ? "Administrative employee update" : "New hire creation"),
       grantLogin: form.grantLogin,
       loginRole: form.loginRole || "employee",
       loginPassword: form.loginPassword ? form.loginPassword.trim() : undefined,
       pan: (form.pan || "").trim().toUpperCase(),
       uan: (form.uan || "").trim(),
+      aadhaar: (form.aadhaar || "").trim(),
+      esiNumber: (form.esiNumber || "").trim(),
+      taxRegime: form.taxRegime || "New Regime",
       banking: {
         bankName: (form.bankName || "").trim(),
         accountNumber: (form.accountNumber || "").trim(),
@@ -402,9 +420,12 @@ function EmployeeManagement() {
       employment: {
         department: (form.department || "").trim() || "Engineering",
         designation: (form.designation || "").trim() || "Developer",
+        entity: (form.entity || "").trim() || "Quadratic Systems Inc.",
+        function: (form.function || "").trim() || "Engineering & Technology",
+        costCenter: (form.costCenter || "").trim() || "CC-101-GEN",
         joiningDate: joinDate,
         dateOfExit: form.status !== "Active" && form.dateOfExit ? form.dateOfExit : null,
-        employmentType: form.employmentType || "Full Time",
+        employmentType: form.employmentType || "Permanent",
         status: form.status || "Active",
         salary: form.salary ? Number(form.salary) * 12 : undefined,
       },
@@ -489,7 +510,11 @@ function EmployeeManagement() {
       phone: employee.phone || employee.phoneNumber || employee.personal?.phone || "",
       department: employee.employment?.department || employee.department || "",
       designation: employee.employment?.designation || employee.designation || "",
+      entity: employee.entity || employee.employment?.entity || "Quadratic Systems Inc.",
+      function: employee.function || employee.employment?.function || "Engineering & Technology",
+      costCenter: employee.costCenter || employee.cost_center || employee.employment?.costCenter || "CC-101-GEN",
       reportsTo: reportsToVal,
+      matrixManagerId: employee.matrixReportsTo?.id || employee.matrix_manager_id || employee.matrixManagerId || "",
       salary: (employee.employment?.salary || employee.salary)
         ? String(Math.round(Number(employee.employment?.salary || employee.salary) >= 120000 ? Number(employee.employment?.salary || employee.salary) / 12 : Number(employee.employment?.salary || employee.salary)))
         : "",
@@ -499,13 +524,18 @@ function EmployeeManagement() {
       dateOfExit: employee.employment?.dateOfExit
         ? new Date(employee.employment.dateOfExit).toISOString().slice(0, 10)
         : (employee.dateOfExit ? new Date(employee.dateOfExit).toISOString().slice(0, 10) : ""),
-      employmentType: employee.employment?.employmentType || employee.employmentType || "Full Time",
+      employmentType: employee.employment?.employmentType || employee.employmentType || "Permanent",
       status: employee.employment?.status || employee.status || "Active",
       bankName: employee.banking?.bankName || employee.bankName || "",
       accountNumber: employee.banking?.accountNumber || employee.accountNumber || "",
       ifsc: employee.banking?.ifsc || employee.ifsc || "",
       pan: employee.pan || employee.statutory?.pan || "",
       uan: employee.uan || employee.statutory?.uan || "",
+      aadhaar: employee.aadhaar || employee.statutory?.aadhaar || "",
+      esiNumber: employee.esiNumber || employee.esi_number || employee.statutory?.esiNumber || "",
+      taxRegime: employee.taxRegime || employee.tax_regime || employee.statutory?.taxRegime || "New Regime",
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      changeReason: "",
       grantLogin: !!employee.user,
       loginRole: employee.user?.role || "employee",
       loginPassword: "",
@@ -818,14 +848,13 @@ function EmployeeManagement() {
             <form onSubmit={handleSubmit}>
               <div className="employee-form-grid">
                 <div className="emp-input-field">
-                  <label htmlFor="form-emp-code">Employee Code *</label>
+                  <label htmlFor="form-emp-code">Employee Code (Auto-generated if blank)</label>
                   <input
                     id="form-emp-code"
                     name="employeeCode"
                     value={form.employeeCode}
                     onChange={setField}
-                    placeholder="e.g. EMP001"
-                    required
+                    placeholder="e.g. EMP001 (or auto-assigned)"
                   />
                 </div>
 
@@ -889,6 +918,39 @@ function EmployeeManagement() {
                 </div>
 
                 <div className="emp-input-field">
+                  <label htmlFor="form-entity">Corporate Entity</label>
+                  <input
+                    id="form-entity"
+                    name="entity"
+                    value={form.entity}
+                    onChange={setField}
+                    placeholder="e.g. Quadratic Systems Inc."
+                  />
+                </div>
+
+                <div className="emp-input-field">
+                  <label htmlFor="form-function">Function / Business Line</label>
+                  <input
+                    id="form-function"
+                    name="function"
+                    value={form.function}
+                    onChange={setField}
+                    placeholder="e.g. Engineering & Technology"
+                  />
+                </div>
+
+                <div className="emp-input-field">
+                  <label htmlFor="form-cost-center">Cost Center Code</label>
+                  <input
+                    id="form-cost-center"
+                    name="costCenter"
+                    value={form.costCenter}
+                    onChange={setField}
+                    placeholder="e.g. CC-101-GEN"
+                  />
+                </div>
+
+                <div className="emp-input-field">
                   <label htmlFor="form-dept">Department</label>
                   <input
                     id="form-dept"
@@ -917,7 +979,7 @@ function EmployeeManagement() {
                 </div>
 
                 <div className="emp-input-field">
-                  <label htmlFor="form-reportsTo">Reports To (Manager)</label>
+                  <label htmlFor="form-reportsTo">Primary Reporting Manager</label>
                   <select
                     id="form-reportsTo"
                     name="reportsTo"
@@ -941,6 +1003,30 @@ function EmployeeManagement() {
                 </div>
 
                 <div className="emp-input-field">
+                  <label htmlFor="form-matrix-mgr">Matrix Reporting Manager</label>
+                  <select
+                    id="form-matrix-mgr"
+                    name="matrixManagerId"
+                    value={String(form.matrixManagerId || "")}
+                    onChange={setField}
+                  >
+                    <option value="">-- No Matrix Manager --</option>
+                    {employees
+                      .filter(
+                        (e) =>
+                          String(e._id) !== String(editingId) &&
+                          String(e.id) !== String(editingId) &&
+                          String(e.employeeCode) !== String(editingId)
+                      )
+                      .map((emp) => (
+                        <option key={emp._id || emp.id} value={String(emp.id || emp._id)}>
+                          {emp.name || `${emp.firstName} ${emp.lastName}`} ({emp.employeeCode})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="emp-input-field">
                   <label htmlFor="form-type">Employment Type</label>
                   <select
                     id="form-type"
@@ -948,10 +1034,10 @@ function EmployeeManagement() {
                     value={form.employmentType}
                     onChange={setField}
                   >
-                    <option>Full Time</option>
-                    <option>Part Time</option>
-                    <option>Contract</option>
-                    <option>Intern</option>
+                    <option value="Permanent">Permanent</option>
+                    <option value="Consultant">Consultant</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Intern">Intern</option>
                   </select>
                 </div>
 
@@ -1001,6 +1087,45 @@ function EmployeeManagement() {
                   </div>
                 )}
               </div>
+
+              {/* Editing History Tracking Callout */}
+              {editingId && (
+                <div style={{ marginTop: "1rem", padding: "1rem 1.25rem", background: "#f8fafc", borderRadius: "12px", border: "1px solid #cbd5e1" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      📜 Career & Compensation Change Audit
+                    </strong>
+                    <span style={{ fontSize: "0.72rem", background: "#e0e7ff", color: "#4338ca", padding: "0.2rem 0.55rem", borderRadius: "999px", fontWeight: 750 }}>
+                      EMP-009 History Tracker
+                    </span>
+                  </div>
+                  <p style={{ margin: "0 0 0.85rem", color: "#64748b", fontSize: "0.8rem", lineHeight: 1.4 }}>
+                    Any revisions to designation, department, reporting manager, or monthly salary will be automatically logged to the PostgreSQL employee history ledger.
+                  </p>
+                  <div className="employee-form-grid" style={{ marginBottom: 0 }}>
+                    <div className="emp-input-field">
+                      <label htmlFor="form-effective-date">Effective Date of Change *</label>
+                      <input
+                        id="form-effective-date"
+                        name="effectiveDate"
+                        type="date"
+                        value={form.effectiveDate || new Date().toISOString().slice(0, 10)}
+                        onChange={setField}
+                      />
+                    </div>
+                    <div className="emp-input-field full-col">
+                      <label htmlFor="form-change-reason">Reason / Promotion / Transfer Notes</label>
+                      <input
+                        id="form-change-reason"
+                        name="changeReason"
+                        value={form.changeReason}
+                        onChange={setField}
+                        placeholder="e.g. Annual merit appraisal promotion to Senior Architect"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Statutory & Banking Details Block */}
               <div className="emp-statutory-access-block">
@@ -1058,7 +1183,19 @@ function EmployeeManagement() {
                     />
                   </div>
 
-                  <div className="emp-input-field full-col">
+                  <div className="emp-input-field">
+                    <label htmlFor="form-aadhaar">Aadhaar Card (UIDAI)</label>
+                    <input
+                      id="form-aadhaar"
+                      name="aadhaar"
+                      value={form.aadhaar}
+                      onChange={setField}
+                      placeholder="e.g. 9876 5432 1098"
+                      className="emp-code-input"
+                    />
+                  </div>
+
+                  <div className="emp-input-field">
                     <label htmlFor="form-uan">Provident Fund (UAN)</label>
                     <input
                       id="form-uan"
@@ -1068,6 +1205,31 @@ function EmployeeManagement() {
                       placeholder="e.g. 101293847561"
                       className="emp-code-input"
                     />
+                  </div>
+
+                  <div className="emp-input-field">
+                    <label htmlFor="form-esi">ESI Number (ESIC)</label>
+                    <input
+                      id="form-esi"
+                      name="esiNumber"
+                      value={form.esiNumber}
+                      onChange={setField}
+                      placeholder="e.g. 31000123450000001"
+                      className="emp-code-input"
+                    />
+                  </div>
+
+                  <div className="emp-input-field">
+                    <label htmlFor="form-tax-regime">Income Tax Regime Declaration</label>
+                    <select
+                      id="form-tax-regime"
+                      name="taxRegime"
+                      value={form.taxRegime}
+                      onChange={setField}
+                    >
+                      <option value="New Regime">New Tax Regime (Sec 115BAC - Default)</option>
+                      <option value="Old Regime">Old Tax Regime (Deductions & Exemptions)</option>
+                    </select>
                   </div>
                 </div>
               </div>

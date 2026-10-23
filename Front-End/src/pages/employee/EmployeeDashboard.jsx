@@ -27,15 +27,23 @@ function EmployeeDashboard() {
   const [requestedDocs, setRequestedDocs] = useState([]);
   const [uploadNotice, setUploadNotice] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
-  const [dismissedDocRequests, setDismissedDocRequests] = useState(() => {
+  const getStoredDismissedRequests = () => {
     try {
+      const userOrEmpId = user?.id || sessionEmployee?.id;
+      const userKey = userOrEmpId ? JSON.parse(localStorage.getItem(`hrms_dismissed_doc_requests_${userOrEmpId}`) || "[]") : [];
       const session = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
       const local = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-      return Array.from(new Set([...(Array.isArray(session) ? session : []), ...(Array.isArray(local) ? local : [])]));
+      return Array.from(new Set([
+        ...(Array.isArray(session) ? session : []),
+        ...(Array.isArray(local) ? local : []),
+        ...(Array.isArray(userKey) ? userKey : []),
+      ]));
     } catch {
       return [];
     }
-  });
+  };
+
+  const [dismissedDocRequests, setDismissedDocRequests] = useState(() => getStoredDismissedRequests());
 
   // Fetch HR document requests for logged in employee
   useEffect(() => {
@@ -45,12 +53,7 @@ function EmployeeDashboard() {
         const res = await getMyDocuments();
         const docs = res?.data || res?.documents || res || [];
         if (mounted && Array.isArray(docs)) {
-          let dismissed = [];
-          try {
-            const s = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-            const l = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-            dismissed = Array.from(new Set([...(Array.isArray(s) ? s : []), ...(Array.isArray(l) ? l : [])]));
-          } catch {}
+          const dismissed = getStoredDismissedRequests();
           const reqs = docs.filter((d) => {
             const id = String(d._id || d.id);
             const status = String(d.status || "").toLowerCase();
@@ -87,7 +90,7 @@ function EmployeeDashboard() {
       window.removeEventListener("storage", handleSync);
       window.removeEventListener("hrms_notification_dismissed", handleDismissSync);
     };
-  }, []);
+  }, [user, sessionEmployee]);
 
   const handleDashboardUpload = async (e, reqDoc) => {
     const file = e.target.files?.[0];
@@ -110,12 +113,7 @@ function EmployeeDashboard() {
       const res = await getMyDocuments();
       const docs = res?.data || res?.documents || res || [];
       if (Array.isArray(docs)) {
-        let dismissed = [];
-        try {
-          const s = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-          const l = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-          dismissed = Array.from(new Set([...(Array.isArray(s) ? s : []), ...(Array.isArray(l) ? l : [])]));
-        } catch {}
+        const dismissed = getStoredDismissedRequests();
         setRequestedDocs(
           docs.filter((d) => {
             const id = String(d._id || d.id);
@@ -140,20 +138,16 @@ function EmployeeDashboard() {
     }
   };
 
-  const dismissDocRequest = (reqDoc) => {
-    const docId = String(reqDoc._id || reqDoc.id || "");
-    const status = String(reqDoc.status || "").toLowerCase();
-    const rawStatus = String(reqDoc.status || "");
-    const keysToAdd = [
-      docId,
-      `${docId}:${rawStatus}`,
-      `${docId}:${status}`,
-      `${docId}:requested`,
-      `${docId}:rejected`,
-    ].filter(Boolean);
+  const dismissAllDocRequests = (docsToDismiss = requestedDocs) => {
+    const list = Array.isArray(docsToDismiss) ? docsToDismiss : [docsToDismiss];
+    const docIds = list.map((d) => String(d._id || d.id || "")).filter(Boolean);
+    const keysToAdd = [];
+    docIds.forEach((id) => {
+      keysToAdd.push(id, `${id}:requested`, `${id}:rejected`);
+    });
 
-    // 1. Immediately hide the notification from the page by removing from local state
-    setRequestedDocs((prev) => prev.filter((d) => String(d._id || d.id) !== docId));
+    // 1. Immediately hide from page state
+    setRequestedDocs((prev) => prev.filter((d) => !docIds.includes(String(d._id || d.id))));
 
     // 2. Persist to dismissedDocRequests state and both sessionStorage & localStorage
     setDismissedDocRequests((current) => {
@@ -161,17 +155,29 @@ function EmployeeDashboard() {
       try {
         sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(next));
         localStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(next));
+        const userOrEmpId = user?.id || sessionEmployee?.id;
+        if (userOrEmpId) {
+          localStorage.setItem(`hrms_dismissed_doc_requests_${userOrEmpId}`, JSON.stringify(next));
+        }
       } catch {}
       return next;
     });
 
-    // 3. Inform header notifications to also clear doc notification if present
+    // 3. Inform header notifications to also clear doc notifications
     try {
       const clearedStored = JSON.parse(localStorage.getItem("hrms_cleared_notifications") || "[]");
-      const updatedCleared = Array.from(new Set([...clearedStored, `doc-${docId}`, docId]));
+      const notifKeys = docIds.flatMap((id) => [`doc-${id}`, `doc-req-${id}`, id]);
+      const updatedCleared = Array.from(new Set([...clearedStored, ...notifKeys]));
       localStorage.setItem("hrms_cleared_notifications", JSON.stringify(updatedCleared));
-      window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: `doc-${docId}`, docId } }));
+      docIds.forEach((docId) => {
+        window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: `doc-req-${docId}`, docId } }));
+        window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: `doc-${docId}`, docId } }));
+      });
     } catch {}
+  };
+
+  const dismissDocRequest = (reqDoc) => {
+    dismissAllDocRequests(reqDoc ? [reqDoc] : requestedDocs);
   };
 
   // Greeting based on current time
@@ -565,8 +571,8 @@ function EmployeeDashboard() {
           </div>
         )}
 
-        {requestedDocs
-          .filter((reqDoc) => {
+        {(() => {
+          const activeDocs = requestedDocs.filter((reqDoc) => {
             const id = String(reqDoc._id || reqDoc.id);
             const status = String(reqDoc.status || "").toLowerCase();
             const rawStatus = String(reqDoc.status || "");
@@ -577,60 +583,70 @@ function EmployeeDashboard() {
               !dismissedDocRequests.includes(`${id}:requested`) &&
               !dismissedDocRequests.includes(`${id}:rejected`)
             );
-          })
-          .map((reqDoc) => (
-          <div
-            key={reqDoc._id || reqDoc.id}
-            className="doc-request-alert"
-            role="alert"
-          >
-            <div className="doc-request-alert-message">
-              <div className="doc-request-alert-icon" aria-hidden="true">
-                📨
+          });
+
+          if (activeDocs.length === 0) return null;
+
+          // SHOW ONLY ONCE: Single consolidated alert banner in Overview
+          const primaryDoc = activeDocs[0];
+          const hasMultiple = activeDocs.length > 1;
+
+          return (
+            <div
+              key={`doc-request-consolidated-${primaryDoc._id || primaryDoc.id}`}
+              className="doc-request-alert"
+              role="alert"
+            >
+              <div className="doc-request-alert-message">
+                <div className="doc-request-alert-icon" aria-hidden="true">
+                  📨
+                </div>
+                <div className="doc-request-alert-copy">
+                  <strong className="doc-request-alert-title">
+                    {hasMultiple
+                      ? `Action Required: HR Document Requests (${activeDocs.length} Pending)`
+                      : `Action Required: HR Document Request (${primaryDoc.documentType || primaryDoc.documentName || "Document"})`}
+                  </strong>
+                  <span className="doc-request-alert-note">
+                    {hasMultiple
+                      ? `Pending submissions: ${activeDocs.map((d) => d.documentType || d.documentName).filter(Boolean).join(", ")}`
+                      : `HR Note: "${primaryDoc.requestNote || primaryDoc.verificationNotes || "Please submit requested file."}"`}
+                  </span>
+                </div>
               </div>
-              <div className="doc-request-alert-copy">
-                <strong className="doc-request-alert-title">
-                  Action Required: HR Document Request ({reqDoc.documentType || reqDoc.documentName})
-                </strong>
-                <span className="doc-request-alert-note">
-                  HR Note: "{reqDoc.requestNote || reqDoc.verificationNotes || "Please submit requested file."}"
-                </span>
+              <div className="doc-request-alert-actions">
+                <label className="att-btn primary doc-request-upload">
+                  {uploadBusy ? "Uploading..." : hasMultiple ? "📤 Upload Document" : "📤 Select & Upload File"}
+                  <input
+                    type="file"
+                    onChange={(e) => handleDashboardUpload(e, primaryDoc)}
+                    disabled={uploadBusy}
+                    hidden
+                  />
+                </label>
+                <Link
+                  to="/employee/documents"
+                  className="att-btn secondary doc-request-vault"
+                >
+                  📁 View Vault
+                </Link>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dismissAllDocRequests(activeDocs);
+                  }}
+                  aria-label="Dismiss HR document request alert"
+                  title="Dismiss alert"
+                  className="doc-request-dismiss"
+                >
+                  ×
+                </button>
               </div>
             </div>
-            <div className="doc-request-alert-actions">
-              <label
-                className="att-btn primary doc-request-upload"
-              >
-                {uploadBusy ? "Uploading..." : "📤 Select & Upload File"}
-                <input
-                  type="file"
-                  onChange={(e) => handleDashboardUpload(e, reqDoc)}
-                  disabled={uploadBusy}
-                  hidden
-                />
-              </label>
-              <Link
-                to="/employee/documents"
-                className="att-btn secondary doc-request-vault"
-              >
-                📁 View Vault
-              </Link>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  dismissDocRequest(reqDoc);
-                }}
-                aria-label="Dismiss HR document request alert"
-                title="Dismiss alert"
-                className="doc-request-dismiss"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })()}
 
         {/* =====================================================
             DAILY PULSE WELLBEING CHECKLIST & POPUP MODAL
@@ -884,7 +900,7 @@ function EmployeeDashboard() {
               </div>
               <div className="shift-labels-row">
                 <span>0.0 hrs</span>
-                <span>{shiftProgressPercent}% of 8.0 hr Target</span>
+                <span className="shift-target-badge">{shiftProgressPercent}% of 8.0 hr Target</span>
                 <span>8.0 hrs</span>
               </div>
             </div>
@@ -896,7 +912,10 @@ function EmployeeDashboard() {
                 onClick={handleClockInAction}
                 disabled={isClockInDisabled || clockBusy}
               >
-                <span>🕒</span> {clockBusy && !checkedIn ? "Clocking In..." : shiftCompleted ? "Resume Shift" : "Clock In"}
+                <span className="punch-btn-icon">🕒</span>
+                <span className="punch-btn-text">
+                  {clockBusy && !checkedIn ? "Clocking In..." : shiftCompleted ? "Resume Shift" : "Clock In"}
+                </span>
               </button>
 
               <button
@@ -905,7 +924,10 @@ function EmployeeDashboard() {
                 onClick={handleClockOutAction}
                 disabled={isClockOutDisabled || clockBusy}
               >
-                <span>⏹️</span> {clockBusy && checkedIn ? "Clocking Out..." : "Clock Out"}
+                <span className="punch-btn-icon">⏹️</span>
+                <span className="punch-btn-text">
+                  {clockBusy && checkedIn ? "Clocking Out..." : "Clock Out"}
+                </span>
               </button>
             </div>
           </div>

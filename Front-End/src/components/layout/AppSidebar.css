@@ -31,8 +31,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.15rem 1.1rem;
-  height: 68px;
+  padding: 0 1.1rem;
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+  box-sizing: border-box;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%);
   gap: 0.65rem;
@@ -129,19 +132,24 @@
 }
 
 .app-vertical-sidebar.collapsed .sidebar-brand-section {
-  padding: 0.85rem 0.4rem;
+  padding: 0 0.5rem;
   justify-content: center;
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+  box-sizing: border-box;
 }
 
 .sidebar-collapsed-expand-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 0;
   border-radius: 10px;
   transition: all 0.2s ease;
   width: 100%;
@@ -276,7 +284,11 @@
 /* Collapsed State Tweaks */
 .app-vertical-sidebar.collapsed .sidebar-brand-section {
   justify-content: center;
-  padding: 1.15rem 0.5rem;
+  padding: 0 0.5rem;
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+  box-sizing: border-box;
 }
 
 .app-vertical-sidebar.collapsed .sidebar-collapse-toggle {
@@ -811,7 +823,11 @@ html[data-theme="light"] .sidebar-mobile-close-btn:hover {
   .app-vertical-sidebar .sidebar-brand-section,
   .app-vertical-sidebar.collapsed .sidebar-brand-section {
     justify-content: space-between !important;
-    padding: 1.15rem 1.1rem !important;
+    padding: 0 1rem !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
+    box-sizing: border-box !important;
   }
 
   .app-vertical-sidebar .sidebar-nav-link,
@@ -875,6 +891,16 @@ html[data-theme="light"] .sidebar-mobile-close-btn:hover {
     display: inline-block !important;
     visibility: visible !important;
     opacity: 1 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-vertical-sidebar .sidebar-brand-section,
+  .app-vertical-sidebar.collapsed .sidebar-brand-section {
+    height: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
+    padding: 0 0.75rem !important;
   }
 }
 

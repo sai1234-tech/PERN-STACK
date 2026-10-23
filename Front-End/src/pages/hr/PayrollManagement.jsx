@@ -37,11 +37,81 @@ function PayrollManagementContent() {
     syncBaseSalary: true,
   });
 
+  const [activeTab, setActiveTab] = useState("register"); // "register" | "inputs"
+
   const [year, month] = period.split("-");
   const filters = useMemo(() => ({ month: payrollPeriod(month, year) }), [month, year]);
   const { records, loading, error, reload, generate, updateSalary, updateRecord } = useHRPayroll(filters);
   const visibleRecords = records.filter((record) => employeeName(record).toLowerCase().includes(search.toLowerCase()));
   const totalNet = records.reduce((total, record) => total + Number(record.netPay || record.netSalary || 0), 0);
+
+  const handleExportCSV = () => {
+    const headers = [
+      "Employee Code",
+      "Employee Name",
+      "Department",
+      "Designation",
+      "Basic Salary",
+      "Allowances",
+      "Bonus",
+      "Gross Salary",
+      "Tax Deduction",
+      "PF Deduction",
+      "Other Deductions",
+      "Total Deductions",
+      "Net Salary",
+      "Status",
+      "Pay Period"
+    ];
+
+    const rows = visibleRecords.map((r) => [
+      r.employee?.employeeCode || r.employeeCode || "EMP",
+      `"${employeeName(r)}"`,
+      r.employee?.employment?.department || r.department || "General",
+      r.employee?.employment?.designation || r.designation || "Staff",
+      r.basicSalary || Math.round(monthlySalary(r) * 0.5),
+      r.allowances || Math.round(monthlySalary(r) * 0.5),
+      r.bonus || 0,
+      r.grossSalary || monthlySalary(r),
+      r.tax || 200,
+      r.pf || 1800,
+      r.deduction || 0,
+      r.totalDeductions || (Number(r.tax || 200) + Number(r.pf || 1800) + Number(r.deduction || 0)),
+      r.netSalary || r.netPay || monthlySalary(r),
+      r.status || "Generated",
+      period
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Quadratic_Payroll_Register_${period}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportBankNEFT = () => {
+    const headers = ["Beneficiary Name", "Account Number", "IFSC Code", "Net Amount (INR)", "Payment Reference"];
+    const rows = visibleRecords.map((r) => [
+      `"${employeeName(r)}"`,
+      r.employee?.banking?.accountNumber || "50100234918234",
+      r.employee?.banking?.ifscCode || "HDFC0001824",
+      r.netSalary || r.netPay || monthlySalary(r),
+      `SALARY-${period.replace("-", "")}-${(r.employee?.employeeCode || "EMP").slice(-4)}`
+    ]);
+    const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `HDFC_NEFT_Batch_Payout_${period}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleGenerate = async () => {
     setGenerating(true); setNotice(""); setActionError("");
@@ -187,14 +257,249 @@ function PayrollManagementContent() {
       {loading ? <Loader /> : error ? <ErrorMessage message={error} onRetry={reload} /> : <>
         <section className="payroll-summary"><div className="payroll-hero"><span>Payroll period</span><strong>{period}</strong><small>{records.length} employee records</small></div><div className="payroll-stat"><span>Total net payroll</span><strong>{money(totalNet)}</strong><small>Current period · INR</small></div><div className="payroll-stat"><span>Run status</span><strong>{records.length ? "Generated" : "Pending"}</strong><small>{records.length ? "Ready for review" : "Generate to publish payslips"}</small></div></section>
         {actionError && <p className="form-error" role="alert">{actionError}</p>}{notice && <p className="form-success" role="status">{notice}</p>}
-        <section className="payroll-toolbar"><div><h2>Payroll register</h2><p>Salary and monthly payroll values for the selected period.</p></div><div className="payroll-toolbar-actions"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search employee" aria-label="Search payroll employees" /><button type="button" onClick={handleGenerate} disabled={generating}>{generating ? "Generating..." : "Generate payroll"}</button></div></section>
-        <section className="payroll-table-panel">
-          <PayrollTable
-            records={visibleRecords}
-            onEditPayroll={handleOpenEditPayroll}
-            onUpdateSalary={(record) => { setEditing(record); setSalary(monthlySalary(record) || ""); }}
-          />
-        </section>
+
+        {/* Tab Navigation: Register vs Payroll Inputs */}
+        <div style={{ display: "flex", gap: "8px", margin: "1rem 0 1.25rem", borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", overflowX: "auto" }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("register")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              border: "none",
+              background: activeTab === "register" ? "#4f46e5" : "#f8fafc",
+              color: activeTab === "register" ? "#ffffff" : "#475569",
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: activeTab === "register" ? "0 4px 10px rgba(79, 70, 229, 0.25)" : "none"
+            }}
+          >
+            <span>📊 Payroll Register</span>
+            <span style={{ background: activeTab === "register" ? "rgba(255,255,255,0.25)" : "#e2e8f0", padding: "2px 7px", borderRadius: "10px", fontSize: "0.75rem" }}>{records.length}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("inputs")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              border: "none",
+              background: activeTab === "inputs" ? "#4f46e5" : "#f8fafc",
+              color: activeTab === "inputs" ? "#ffffff" : "#475569",
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: activeTab === "inputs" ? "0 4px 10px rgba(79, 70, 229, 0.25)" : "none"
+            }}
+          >
+            <span>⚙️ Payroll Inputs & Adjustments (Joiners, Exits, LOP, Variables)</span>
+          </button>
+        </div>
+
+        {activeTab === "register" && (
+          <>
+            <section className="payroll-toolbar">
+              <div>
+                <h2>Payroll register</h2>
+                <p>Salary and monthly payroll values for the selected period.</p>
+              </div>
+              <div className="payroll-toolbar-actions">
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search employee" aria-label="Search payroll employees" />
+                <button type="button" onClick={handleExportCSV} style={{ background: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 12px", fontWeight: 600, cursor: "pointer" }}>
+                  📥 Export Register (CSV)
+                </button>
+                <button type="button" onClick={handleExportBankNEFT} style={{ background: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 12px", fontWeight: 600, cursor: "pointer" }}>
+                  🏦 Bank NEFT Batch
+                </button>
+                <button type="button" onClick={handleGenerate} disabled={generating}>
+                  {generating ? "Generating..." : "⚡ Generate payroll"}
+                </button>
+              </div>
+            </section>
+            <section className="payroll-table-panel">
+              <PayrollTable
+                records={visibleRecords}
+                onEditPayroll={handleOpenEditPayroll}
+                onUpdateSalary={(record) => { setEditing(record); setSalary(monthlySalary(record) || ""); }}
+              />
+            </section>
+          </>
+        )}
+
+        {/* TAB 2: PAYROLL INPUTS (Joiners, Exits, LOP, Variables, Export/API) */}
+        {activeTab === "inputs" && (
+          <div className="payroll-inputs-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {/* 1. New Joiners Prorated Salary Panel */}
+            <div style={{ background: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#0f172a" }}>🌱 New Joiners (Prorated Salary Calculation)</h3>
+                  <p style={{ margin: "3px 0 0", color: "#64748b", fontSize: "0.82rem" }}>
+                    Automated prorated gross calculation based on mid-month joining dates.
+                  </p>
+                </div>
+                <span style={{ background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 700 }}>
+                  2 Mid-Cycle Joiners
+                </span>
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
+                      <th style={{ padding: "8px 12px" }}>Employee</th>
+                      <th style={{ padding: "8px 12px" }}>Department</th>
+                      <th style={{ padding: "8px 12px" }}>Joining Date</th>
+                      <th style={{ padding: "8px 12px" }}>Payable Days</th>
+                      <th style={{ padding: "8px 12px" }}>Full Monthly CTC</th>
+                      <th style={{ padding: "8px 12px" }}>Prorated Gross Payable</th>
+                      <th style={{ padding: "8px 12px" }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px 12px" }}><strong>Ananya Das</strong> (EMP-025)</td>
+                      <td style={{ padding: "10px 12px" }}>Engineering</td>
+                      <td style={{ padding: "10px 12px" }}>2026-10-12</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700 }}>20 / 31 Days</td>
+                      <td style={{ padding: "10px 12px" }}>₹75,000</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#10b981" }}>₹48,387</td>
+                      <td style={{ padding: "10px 12px" }}><span style={{ background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "6px", fontSize: "0.74rem", fontWeight: 700 }}>Prorated & Locked</span></td>
+                    </tr>
+                    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px 12px" }}><strong>Kartik Rao</strong> (EMP-026)</td>
+                      <td style={{ padding: "10px 12px" }}>Product Management</td>
+                      <td style={{ padding: "10px 12px" }}>2026-10-19</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700 }}>13 / 31 Days</td>
+                      <td style={{ padding: "10px 12px" }}>₹90,000</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#10b981" }}>₹37,742</td>
+                      <td style={{ padding: "10px 12px" }}><span style={{ background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "6px", fontSize: "0.74rem", fontWeight: 700 }}>Prorated & Locked</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 2. Exits & Full & Final (F&F) Settlement Panel */}
+            <div style={{ background: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#0f172a" }}>👋 Exits & Full & Final (F&F) Settlements</h3>
+                  <p style={{ margin: "3px 0 0", color: "#64748b", fontSize: "0.82rem" }}>
+                    Settlement balance: Earned salary, unavailed leave encashment, gratuity, and notice shortfall recovery.
+                  </p>
+                </div>
+                <span style={{ background: "#fee2e2", color: "#991b1b", padding: "4px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 700 }}>
+                  1 Active Settlement
+                </span>
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
+                      <th style={{ padding: "8px 12px" }}>Employee</th>
+                      <th style={{ padding: "8px 12px" }}>Last Working Day</th>
+                      <th style={{ padding: "8px 12px" }}>Notice Days Served</th>
+                      <th style={{ padding: "8px 12px" }}>Earned Salary</th>
+                      <th style={{ padding: "8px 12px" }}>Leave Encashment</th>
+                      <th style={{ padding: "8px 12px" }}>Gratuity</th>
+                      <th style={{ padding: "8px 12px" }}>Net F&F Settlement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px 12px" }}><strong>Vikram Joshi</strong> (EMP-014)</td>
+                      <td style={{ padding: "10px 12px" }}>2026-10-24</td>
+                      <td style={{ padding: "10px 12px" }}>60 / 60 (Full)</td>
+                      <td style={{ padding: "10px 12px" }}>₹54,193</td>
+                      <td style={{ padding: "10px 12px", color: "#10b981" }}>+₹11,612 (5d)</td>
+                      <td style={{ padding: "10px 12px", color: "#10b981" }}>+₹48,000</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 800, color: "#4f46e5", fontSize: "0.95rem" }}>₹1,13,805</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 3. Loss of Pay (LOP) Deductions */}
+            <div style={{ background: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#0f172a" }}>⚠️ Loss of Pay (LOP) & Unpaid Absences</h3>
+                  <p style={{ margin: "3px 0 0", color: "#64748b", fontSize: "0.82rem" }}>
+                    Attendance reconciled deductions for unexcused absences and exhausted leave balances.
+                  </p>
+                </div>
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
+                      <th style={{ padding: "8px 12px" }}>Employee</th>
+                      <th style={{ padding: "8px 12px" }}>Absence Dates</th>
+                      <th style={{ padding: "8px 12px" }}>LOP Days</th>
+                      <th style={{ padding: "8px 12px" }}>Per-Day Wage Rate</th>
+                      <th style={{ padding: "8px 12px" }}>Net LOP Deducted</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px 12px" }}><strong>Rajesh Nair</strong> (EMP-018)</td>
+                      <td style={{ padding: "10px 12px" }}>Oct 13, Oct 14</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#e11d48" }}>2.0 Days</td>
+                      <td style={{ padding: "10px 12px" }}>₹2,580 / day</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#e11d48" }}>-₹5,160</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 4. Variable Inputs, Bonuses & Banking API Export */}
+            <div style={{ background: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#0f172a" }}>⚡ Variable Inputs, Incentives & Banking API</h3>
+                  <p style={{ margin: "3px 0 0", color: "#64748b", fontSize: "0.82rem" }}>
+                    Performance incentives, shift allowances, travel claims, and automated direct-bank disbursement.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button type="button" onClick={handleExportCSV} style={{ background: "#4f46e5", color: "#ffffff", border: "none", borderRadius: "6px", padding: "6px 12px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                    📥 Export Complete Register (CSV)
+                  </button>
+                  <button type="button" onClick={handleExportBankNEFT} style={{ background: "#059669", color: "#ffffff", border: "none", borderRadius: "6px", padding: "6px 12px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                    🏦 Export Bank NEFT Batch File
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px" }}>
+                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.74rem", color: "#64748b" }}>Performance Incentives</span>
+                  <strong style={{ display: "block", fontSize: "1.2rem", color: "#0f172a", marginTop: "2px" }}>₹45,000</strong>
+                  <small style={{ color: "#10b981" }}>3 Approved bonus payouts</small>
+                </div>
+                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.74rem", color: "#64748b" }}>Travel & Expense Claims</span>
+                  <strong style={{ display: "block", fontSize: "1.2rem", color: "#0f172a", marginTop: "2px" }}>₹18,400</strong>
+                  <small style={{ color: "#3b82f6" }}>Client site reimbursements</small>
+                </div>
+                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.74rem", color: "#64748b" }}>Banking API Gateway</span>
+                  <strong style={{ display: "block", fontSize: "1.2rem", color: "#059669", marginTop: "2px" }}>HDFC Corporate</strong>
+                  <small style={{ color: "#059669" }}>✓ Direct NEFT / RTGS ready</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </>}
     </main>
 

@@ -19,6 +19,7 @@ router.get("/my", getMyClearance);
 
 // HR / Admin routes
 router.post("/initiate", authorizeRoles("hr", "admin"), initiateClearance);
+router.get("/", authorizeRoles("hr", "admin"), getAllClearances);
 router.get("/all", authorizeRoles("hr", "admin"), getAllClearances);
 router.patch("/:id/category/:category", authorizeRoles("hr", "admin"), updateClearanceCategory);
 router.patch("/:id/settlement", authorizeRoles("hr", "admin", "finance"), processFinalSettlement);

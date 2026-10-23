@@ -14,7 +14,10 @@ import {
     deleteEmployeeRecord,
     countEmployees,
     isCircularReporting,
-    resolveManagerEmployee
+    resolveManagerEmployee,
+    generateNextEmployeeCode,
+    logEmployeeHistory,
+    getEmployeeHistory
 } from "../repositories/employeeRepository.js";
 
 // Helper to format employee database row into JSON
@@ -57,6 +60,16 @@ export const formatEmployeeResponse = (emp) => {
             employeeCode: emp.manager_code || "",
             name: `${emp.manager_first_name || ""} ${emp.manager_last_name || ""}`.trim()
         } : null,
+        matrixReportsTo: emp.matrix_manager_id ? {
+            id: emp.matrix_manager_id,
+            employeeCode: emp.matrix_code || "",
+            name: `${emp.matrix_first_name || ""} ${emp.matrix_last_name || ""}`.trim()
+        } : (emp.employment?.matrixReportsTo ? {
+            name: typeof emp.employment.matrixReportsTo === "object" ? emp.employment.matrixReportsTo.name : emp.employment.matrixReportsTo
+        } : null),
+        entity: emp.entity || emp.employment?.entity || "Quadratic Systems Inc.",
+        function: emp.function || emp.employment?.function || "Engineering & Technology",
+        costCenter: emp.cost_center || emp.employment?.costCenter || "CC-101-GEN",
         assignedHr: emp.hr_id ? {
             id: emp.hr_id,
             employeeCode: emp.hr_code || "",
@@ -76,6 +89,9 @@ export const formatEmployeeResponse = (emp) => {
         phone: emp.phone || "",
         pan: emp.pan || "",
         uan: emp.uan || "",
+        aadhaar: emp.aadhaar || emp.statutory?.aadhaar || "",
+        esiNumber: emp.esi_number || emp.statutory?.esiNumber || "",
+        taxRegime: emp.tax_regime || emp.statutory?.taxRegime || "New Regime",
         profilePhoto: emp.profile_photo || "",
         workLocation: emp.work_location || "",
         personal: emp.personal || {},
@@ -115,9 +131,11 @@ export const createMultipleEmployees = async (req, res) => {
         const createdEmployees = [];
 
         for (const employee of employees) {
-            if (!employee.employeeCode) {
-                return res.status(400).json({ success: false, message: "Employee code is required" });
+            let employeeCode = (employee.employeeCode && employee.employeeCode.trim().toUpperCase()) || "";
+            if (!employeeCode) {
+                employeeCode = await generateNextEmployeeCode();
             }
+
             if (!employee.firstName) {
                 return res.status(400).json({ success: false, message: "First name is required" });
             }
@@ -126,7 +144,6 @@ export const createMultipleEmployees = async (req, res) => {
             }
 
             const email = employee.email.trim().toLowerCase();
-            const employeeCode = employee.employeeCode.trim().toUpperCase();
 
             // Find or create user
             let user = await findUserByEmail(email);
@@ -162,8 +179,26 @@ export const createMultipleEmployees = async (req, res) => {
                 }
             }
 
+            // Resolve matrix manager if provided
+            let matrixReportsToId = null;
+            const rawMatrix = employee.matrixReportsTo || employee.matrix_reports_to || employee.employment?.matrixReportsTo;
+            if (rawMatrix && rawMatrix !== "" && rawMatrix !== "null" && rawMatrix !== "None") {
+                const matEmp = await resolveManagerEmployee(rawMatrix);
+                if (matEmp) {
+                    matrixReportsToId = matEmp.id;
+                }
+            }
+
             const rawSalary = employee.salary !== undefined ? employee.salary : employee.employment?.salary;
             const salaryVal = rawSalary !== undefined && rawSalary !== "" && !Number.isNaN(Number(rawSalary)) ? Number(rawSalary) : undefined;
+
+            const entityVal = employee.entity || employee.employment?.entity || "Quadratic Systems Inc.";
+            const functionVal = employee.function || employee.employment?.function || "Engineering & Technology";
+            const costCenterVal = employee.costCenter || employee.cost_center || employee.employment?.costCenter || "CC-101-GEN";
+            const aadhaarVal = employee.aadhaar ? String(employee.aadhaar).trim() : "";
+            const esiNumberVal = employee.esiNumber || employee.esi_number ? String(employee.esiNumber || employee.esi_number).trim() : "";
+            const taxRegimeVal = employee.taxRegime || employee.tax_regime || "New Regime";
+            const employmentTypeVal = employee.employment?.employmentType || employee.employmentType || "Permanent";
 
             if (existingEmployee) {
                 const existingReportsTo = reportsToId !== null ? reportsToId : (rawReportsTo === null || rawReportsTo === "" ? null : existingEmployee.reports_to);
@@ -174,15 +209,26 @@ export const createMultipleEmployees = async (req, res) => {
                     email,
                     phone: phoneVal,
                     reports_to: existingReportsTo,
+                    matrix_manager_id: matrixReportsToId !== null ? matrixReportsToId : existingEmployee.matrix_manager_id,
+                    entity: entityVal,
+                    function: functionVal,
+                    cost_center: costCenterVal,
+                    aadhaar: aadhaarVal || existingEmployee.aadhaar,
+                    esi_number: esiNumberVal || existingEmployee.esi_number,
+                    tax_regime: taxRegimeVal,
                     user_id: user ? user.id : existingEmployee.user_id,
                     employment: {
                         department: employee.employment?.department || employee.department || "Engineering",
                         designation: employee.employment?.designation || employee.designation || "Developer",
                         joiningDate: employee.employment?.joiningDate || employee.joiningDate || new Date().toISOString(),
-                        employmentType: employee.employment?.employmentType || employee.employmentType || "Full Time",
+                        employmentType: employmentTypeVal,
                         status: employee.employment?.status || employee.status || "Active",
                         salary: salaryVal !== undefined ? salaryVal : existingEmployee.employment?.salary,
-                        reportsTo: existingReportsTo
+                        reportsTo: existingReportsTo,
+                        matrixReportsTo: matrixReportsToId,
+                        entity: entityVal,
+                        function: functionVal,
+                        costCenter: costCenterVal
                     }
                 });
                 createdEmployees.push(formatEmployeeResponse(await findEmployeeById(updated.id)));
@@ -193,6 +239,7 @@ export const createMultipleEmployees = async (req, res) => {
             const newEmp = await createEmployeeRecord({
                 userId: user ? user.id : null,
                 reportsTo: reportsToId,
+                matrixManagerId: matrixReportsToId,
                 employeeCode,
                 firstName: employee.firstName.trim(),
                 lastName: employee.lastName ? employee.lastName.trim() : "",
@@ -200,16 +247,26 @@ export const createMultipleEmployees = async (req, res) => {
                 phone: phoneVal,
                 pan: employee.pan ? String(employee.pan).trim().toUpperCase() : "",
                 uan: employee.uan ? String(employee.uan).trim() : "",
+                aadhaar: aadhaarVal,
+                esiNumber: esiNumberVal,
+                taxRegime: taxRegimeVal,
+                entity: entityVal,
+                function: functionVal,
+                costCenter: costCenterVal,
                 banking: employee.banking || {},
                 personal: employee.personal || { phone: phoneVal },
                 employment: {
                     department: employee.employment?.department || employee.department || "Engineering",
                     designation: employee.employment?.designation || employee.designation || "Developer",
                     joiningDate: employee.employment?.joiningDate || employee.joiningDate || new Date().toISOString(),
-                    employmentType: employee.employment?.employmentType || employee.employmentType || "Full Time",
+                    employmentType: employmentTypeVal,
                     status: employee.employment?.status || employee.status || "Active",
                     salary: salaryVal,
-                    reportsTo: reportsToId
+                    reportsTo: reportsToId,
+                    matrixReportsTo: matrixReportsToId,
+                    entity: entityVal,
+                    function: functionVal,
+                    costCenter: costCenterVal
                 },
                 address: employee.address || {},
                 emergencyContact: employee.emergencyContact || {},
@@ -325,6 +382,13 @@ export const updateEmployee = async (req, res) => {
         if (req.body.profilePhoto) updates.profile_photo = req.body.profilePhoto;
         if (req.body.pan) updates.pan = String(req.body.pan).trim().toUpperCase();
         if (req.body.uan) updates.uan = String(req.body.uan).trim();
+        if (req.body.aadhaar !== undefined) updates.aadhaar = String(req.body.aadhaar).trim();
+        if (req.body.esiNumber !== undefined) updates.esi_number = String(req.body.esiNumber).trim();
+        if (req.body.taxRegime) updates.tax_regime = String(req.body.taxRegime).trim();
+        if (req.body.entity) updates.entity = String(req.body.entity).trim();
+        if (req.body.function) updates.function = String(req.body.function).trim();
+        if (req.body.costCenter) updates.cost_center = String(req.body.costCenter).trim();
+
         if (req.body.personal) updates.personal = { ...(employee.personal || {}), ...req.body.personal };
         if (req.body.employment) updates.employment = { ...(employee.employment || {}), ...req.body.employment };
         if (req.body.address) updates.address = { ...(employee.address || {}), ...req.body.address };
@@ -333,6 +397,23 @@ export const updateEmployee = async (req, res) => {
         if (req.body.skills) updates.skills = req.body.skills;
         if (req.body.certifications) updates.certifications = req.body.certifications;
         if (req.body.awards) updates.awards = req.body.awards;
+
+        // Matrix Manager
+        const reqMatrix = req.body.matrixReportsTo !== undefined ? req.body.matrixReportsTo : req.body.matrix_reports_to;
+        if (reqMatrix !== undefined) {
+            if (reqMatrix === null || reqMatrix === "" || reqMatrix === "null" || reqMatrix === "None") {
+                updates.matrix_manager_id = null;
+            } else {
+                const matEmp = await resolveManagerEmployee(reqMatrix);
+                if (matEmp) {
+                    updates.matrix_manager_id = matEmp.id;
+                }
+            }
+            updates.employment = {
+                ...(updates.employment || {}),
+                matrixReportsTo: updates.matrix_manager_id
+            };
+        }
 
         const reqSalary = req.body.salary !== undefined ? req.body.salary : req.body.employment?.salary;
         if (reqSalary !== undefined) {
@@ -343,7 +424,6 @@ export const updateEmployee = async (req, res) => {
                 salary: numS !== null ? numS : undefined,
             };
         }
-
 
         const reqReportsTo = req.body.reportsTo !== undefined
             ? req.body.reportsTo
@@ -397,6 +477,77 @@ export const updateEmployee = async (req, res) => {
             };
         }
 
+        // ── Detect and Log Promotions, Transfers, Salary Revisions, and Reporting Changes ──
+        const effectiveDate = req.body.effectiveDate || new Date().toISOString().slice(0, 10);
+        const changeReason = req.body.changeReason || req.body.reason || "Administrative update";
+        const changedBy = req.user?.userId || req.user?.id || null;
+
+        // 1. Designation Promotion
+        const oldDesig = employee.designation || employee.employment?.designation || "";
+        const newDesig = updates.employment?.designation || updates.designation;
+        if (newDesig && oldDesig && newDesig.toLowerCase() !== oldDesig.toLowerCase()) {
+            await logEmployeeHistory({
+                employeeId: employee.id,
+                changeType: "PROMOTION",
+                fieldChanged: "designation",
+                oldValue: oldDesig,
+                newValue: newDesig,
+                effectiveDate,
+                reason: changeReason,
+                changedBy,
+                metadata: { previousDesignation: oldDesig, newDesignation: newDesig }
+            }).catch(console.error);
+        }
+
+        // 2. Department Transfer
+        const oldDept = employee.department || employee.employment?.department || "";
+        const newDept = updates.employment?.department || updates.department;
+        if (newDept && oldDept && newDept.toLowerCase() !== oldDept.toLowerCase()) {
+            await logEmployeeHistory({
+                employeeId: employee.id,
+                changeType: "TRANSFER",
+                fieldChanged: "department",
+                oldValue: oldDept,
+                newValue: newDept,
+                effectiveDate,
+                reason: changeReason,
+                changedBy,
+                metadata: { previousDepartment: oldDept, newDepartment: newDept }
+            }).catch(console.error);
+        }
+
+        // 3. Salary Revision
+        const oldSalary = employee.employment?.salary;
+        const newSalary = updates.employment?.salary;
+        if (newSalary !== undefined && oldSalary !== undefined && Number(newSalary) !== Number(oldSalary)) {
+            await logEmployeeHistory({
+                employeeId: employee.id,
+                changeType: "SALARY_REVISION",
+                fieldChanged: "salary",
+                oldValue: String(oldSalary),
+                newValue: String(newSalary),
+                effectiveDate,
+                reason: changeReason,
+                changedBy,
+                metadata: { previousSalary: oldSalary, newSalary }
+            }).catch(console.error);
+        }
+
+        // 4. Reporting Manager Change
+        if (updates.reports_to !== undefined && updates.reports_to !== employee.reports_to) {
+            await logEmployeeHistory({
+                employeeId: employee.id,
+                changeType: "MANAGER_CHANGE",
+                fieldChanged: "reports_to",
+                oldValue: String(employee.reports_to || "None"),
+                newValue: String(updates.reports_to || "None"),
+                effectiveDate,
+                reason: changeReason,
+                changedBy,
+                metadata: { previousManagerId: employee.reports_to, newManagerId: updates.reports_to }
+            }).catch(console.error);
+        }
+
         const updated = await updateEmployeeRecord(employee.id, updates);
         const formatted = formatEmployeeResponse(await findEmployeeById(updated.id));
 
@@ -412,6 +563,89 @@ export const updateEmployee = async (req, res) => {
             message: "Failed to update employee",
             error: error.message
         });
+    }
+};
+
+// =====================================================
+// 4b. EMPLOYEE HISTORY CONTROLLERS
+// =====================================================
+export const getEmployeeHistoryController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const currentUserId = req.user?.userId || req.user?.id;
+        const currentUserRole = (req.user?.role || "").toLowerCase();
+
+        let employee;
+        if (id === "me") {
+            employee = await findEmployeeByUserId(currentUserId);
+        } else if (!isNaN(id)) {
+            employee = await findEmployeeById(Number(id));
+        } else {
+            employee = await findEmployeeByCode(id);
+        }
+
+        if (!employee) {
+            return res.status(404).json({ success: false, message: "Employee not found" });
+        }
+
+        const isSelf = employee.user_id && Number(employee.user_id) === Number(currentUserId);
+        const canViewCompensation = isSelf || ["admin", "superadmin", "hr", "finance"].includes(currentUserRole);
+
+        let history = await getEmployeeHistory(employee.id);
+
+        if (!canViewCompensation) {
+            history = history.map(item => {
+                if (item.change_type === "SALARY_REVISION" || item.field_changed === "salary") {
+                    return {
+                        ...item,
+                        old_value: "••••••",
+                        new_value: "••••••",
+                        metadata: { restricted: true }
+                    };
+                }
+                return item;
+            });
+        }
+
+        return res.status(200).json({ success: true, count: history.length, data: history });
+    } catch (error) {
+        console.error("GET EMPLOYEE HISTORY ERROR:", error);
+        return res.status(500).json({ success: false, message: "Failed to retrieve employee history" });
+    }
+};
+
+export const addEmployeeHistoryRecordController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        let employee;
+        if (id === "me") {
+            employee = await findEmployeeByUserId(req.user?.userId || req.user?.id);
+        } else if (!isNaN(id)) {
+            employee = await findEmployeeById(Number(id));
+        } else {
+            employee = await findEmployeeByCode(id);
+        }
+        if (!employee) {
+            return res.status(404).json({ success: false, message: "Employee not found" });
+        }
+
+        const { changeType, fieldChanged, oldValue, newValue, effectiveDate, reason, metadata } = req.body;
+        const record = await logEmployeeHistory({
+            employeeId: employee.id,
+            changeType: changeType || "EMPLOYMENT_UPDATE",
+            fieldChanged: fieldChanged || "",
+            oldValue: oldValue || "",
+            newValue: newValue || "",
+            effectiveDate: effectiveDate || new Date().toISOString().slice(0, 10),
+            reason: reason || "Manual administrative history entry",
+            changedBy: req.user?.userId || req.user?.id || null,
+            metadata: metadata || {}
+        });
+
+        return res.status(201).json({ success: true, message: "History record created successfully", data: record });
+    } catch (error) {
+        console.error("ADD EMPLOYEE HISTORY ERROR:", error);
+        return res.status(500).json({ success: false, message: "Failed to record employee history" });
     }
 };
 

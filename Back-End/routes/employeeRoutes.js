@@ -9,7 +9,9 @@ import {
     updateMyProfile,
     uploadMyProfilePhoto,
     uploadEmployeeProfilePhoto,
-    deleteMyProfilePhoto
+    deleteMyProfilePhoto,
+    getEmployeeHistoryController,
+    addEmployeeHistoryRecordController
 } from "../controllers/employeeController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
@@ -26,6 +28,7 @@ router.use(verifyToken);
 // ==========================================
 router.get("/me", getMyProfile);
 router.put("/me", updateMyProfile);
+router.get("/me/history", getEmployeeHistoryController);
 
 router.post("/me/photo", uploadProfilePhoto.single("photo"), uploadMyProfilePhoto);
 router.post("/me/profile-picture", uploadProfilePhoto.single("profilePicture"), uploadMyProfilePhoto);
@@ -41,6 +44,10 @@ router.get("/", getEmployee);
 
 // GET single employee by ID or employeeCode
 router.get("/:id", getSingleEmployee);
+
+// Career & compensation history routes (Promotions, Transfers, Manager changes, Salary revisions)
+router.get("/:id/history", getEmployeeHistoryController);
+router.post("/:id/history", authorizeRoles("hr", "admin", "manager"), addEmployeeHistoryRecordController);
 
 router.post(
     "/:id/profile-picture",

@@ -7,12 +7,13 @@ export const initUserTable = async () => {
             name VARCHAR(30) NOT NULL CHECK (char_length(name) >= 3),
             email VARCHAR(255) UNIQUE NOT NULL,
             password VARCHAR(255) NOT NULL,
-            role VARCHAR(50) DEFAULT 'employee' CHECK (role IN ('admin', 'hr', 'manager', 'employee')),
+            role VARCHAR(50) DEFAULT 'employee',
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     `;

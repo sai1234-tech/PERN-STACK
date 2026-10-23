@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
-import { normalizeRole, getDefaultDashboard } from "../../utils/auth";
+import { normalizeRole, getDefaultDashboard, getRoleDisplayTitle } from "../../utils/auth";
 import { formatPhotoUrl } from "../../utils/photo";
 import { useEmployee } from "../../hooks/useEmployee";
 import "./AppSidebar.css";
@@ -56,10 +56,19 @@ function AppSidebar() {
       user?.email?.toLowerCase().includes("vikas") ||
       employee?.email?.toLowerCase().includes("vikas")
     );
-  const isAdmin = role === "admin";
-  const isHr = role === "hr";
-  const isManager = role === "manager" || isVikas;
-  const isEmployee = !isAdmin && !isHr && !isManager;
+
+  const isSuperAdmin = role === "super_admin";
+  const isAdmin = role === "admin" || isSuperAdmin;
+  const isHrAdmin = role === "hr_admin" || role === "hr_operations";
+  const isHrManager = role === "hr_manager";
+  const isHr = role === "hr" || isHrAdmin || isHrManager;
+  const isRecruiter = role === "recruiter" || role === "talent_acquisition";
+  const isPayroll = role === "payroll" || role === "finance";
+  const isItAdmin = role === "it_admin" || role === "it";
+  const isLeadership = role === "leadership" || role === "executive";
+  const isAuditor = role === "auditor";
+  const isManager = (role === "manager" || role === "hiring_manager" || isVikas) && !isHr && !isAdmin;
+  const isEmployee = !isAdmin && !isHr && !isManager && !isRecruiter && !isPayroll && !isItAdmin && !isLeadership && !isAuditor;
 
   const displayName =
     (isVikas ? "Vikas Guru" : "") ||
@@ -77,21 +86,30 @@ function AppSidebar() {
     .join("") || "QS";
 
   const rawDesignation = profile.employment?.designation || profile.designation || profile.jobTitle;
-  const designation =
-    isManager
-      ? (rawDesignation && !["staff", "employee", "software engineer"].includes(rawDesignation.toLowerCase()) ? rawDesignation : "Team Manager")
-      : isHr
-      ? (rawDesignation || "HR Lead")
-      : isAdmin
-      ? (rawDesignation || "Administrator")
-      : (rawDesignation || "Software Engineer");
+  const designation = rawDesignation || getRoleDisplayTitle(role);
 
   const homeRoute = getDefaultDashboard(user, employee);
 
-  const portalBadge = isAdmin
+  const portalBadge = isSuperAdmin
+    ? "Super Admin Console"
+    : isAdmin
     ? "Executive Admin"
-    : role === "hr"
-    ? "HR Portal"
+    : isHrAdmin
+    ? "HR Admin & Operations"
+    : isHrManager
+    ? "HR Management"
+    : isHr
+    ? "HR Operations"
+    : isRecruiter
+    ? "Talent Acquisition"
+    : isPayroll
+    ? "Payroll & Finance"
+    : isItAdmin
+    ? "IT & Infrastructure"
+    : isLeadership
+    ? "Executive Leadership"
+    : isAuditor
+    ? "Statutory Audit"
     : isManager
     ? "Manager Workspace"
     : "Employee Self-Service";
@@ -168,6 +186,10 @@ function AppSidebar() {
                 <NavLink to={homeRoute} end className="sidebar-nav-link" title="Overview Dashboard">
                   <span className="nav-item-icon">📊</span>
                   {!isCollapsed && <span className="nav-item-label">Overview</span>}
+                </NavLink>
+                <NavLink to="/ai-assistant" end className="sidebar-nav-link" title="Ask HR policy questions and search">
+                  <span className="nav-item-icon">💬</span>
+                  {!isCollapsed && <span className="nav-item-label">Policy Assistant</span>}
                 </NavLink>
               </div>
 
@@ -312,6 +334,10 @@ function AppSidebar() {
                   <span className="nav-item-icon">👥</span>
                   {!isCollapsed && <span className="nav-item-label">Employees</span>}
                 </NavLink>
+                <NavLink to="/hr/lifecycle" end className="sidebar-nav-link" title="22-Stage Employee Lifecycle Journey">
+                  <span className="nav-item-icon">🔄</span>
+                  {!isCollapsed && <span className="nav-item-label">Lifecycle Journey</span>}
+                </NavLink>
                 <NavLink to="/hr/departments" end className="sidebar-nav-link" title="Department Structure">
                   <span className="nav-item-icon">🏛️</span>
                   {!isCollapsed && <span className="nav-item-label">Departments</span>}
@@ -319,6 +345,38 @@ function AppSidebar() {
                 <NavLink to="/hr/organization" end className="sidebar-nav-link" title="Enterprise Hierarchy">
                   <span className="nav-item-icon">🌳</span>
                   {!isCollapsed && <span className="nav-item-label">Org Hierarchy</span>}
+                </NavLink>
+                <NavLink to="/hr/entities" end className="sidebar-nav-link" title="Core Database Entities (41 Master Entities)">
+                  <span className="nav-item-icon">🌐</span>
+                  {!isCollapsed && <span className="nav-item-label">Database Entities</span>}
+                </NavLink>
+                <NavLink to="/hr/integrations" end className="sidebar-nav-link" title="Enterprise 8-Channel Integration Hub">
+                  <span className="nav-item-icon">🔌</span>
+                  {!isCollapsed && <span className="nav-item-label">Integrations Hub</span>}
+                </NavLink>
+                <NavLink to="/admin/governance" end className="sidebar-nav-link" title="Enterprise Security, Governance & DPDP Compliance">
+                  <span className="nav-item-icon">🔐</span>
+                  {!isCollapsed && <span className="nav-item-label">Security & Compliance</span>}
+                </NavLink>
+                <NavLink to="/hr/automations" end className="sidebar-nav-link" title="Lifecycle Automations, SLA Engines & Scheduled Reports">
+                  <span className="nav-item-icon">⚙️</span>
+                  {!isCollapsed && <span className="nav-item-label">Automations & SLAs</span>}
+                </NavLink>
+                <NavLink to="/admin/audit-governance" end className="sidebar-nav-link" title="Audit, Temporal History & Document Governance">
+                  <span className="nav-item-icon">📋</span>
+                  {!isCollapsed && <span className="nav-item-label">Audit & Governance</span>}
+                </NavLink>
+                <NavLink to="/admin/operations" end className="sidebar-nav-link" title="Enterprise Operations, NFR Benchmarks & Architecture">
+                  <span className="nav-item-icon">⚡</span>
+                  {!isCollapsed && <span className="nav-item-label">Operations & Architecture</span>}
+                </NavLink>
+                <NavLink to="/admin/tech-stack" end className="sidebar-nav-link" title="Tech Stack Selection, Multi-Cloud Topology & TCO Model">
+                  <span className="nav-item-icon">🏛️</span>
+                  {!isCollapsed && <span className="nav-item-label">Tech Stack & Cloud</span>}
+                </NavLink>
+                <NavLink to="/admin/delivery-roadmap" end className="sidebar-nav-link" title="Phase 0-4 Delivery Roadmap and AI Assistant">
+                  <span className="nav-item-icon">🗺️</span>
+                  {!isCollapsed && <span className="nav-item-label">Roadmap & AI Assistant</span>}
                 </NavLink>
               </div>
 
@@ -401,6 +459,10 @@ function AppSidebar() {
                   <span className="nav-item-icon">👥</span>
                   {!isCollapsed && <span className="nav-item-label">Employees</span>}
                 </NavLink>
+                <NavLink to="/hr/lifecycle" end className="sidebar-nav-link" title="22-Stage Employee Lifecycle Journey">
+                  <span className="nav-item-icon">🔄</span>
+                  {!isCollapsed && <span className="nav-item-label">Lifecycle Journey</span>}
+                </NavLink>
                 <NavLink to="/hr/departments" end className="sidebar-nav-link" title="Departments & Pods">
                   <span className="nav-item-icon">🏢</span>
                   {!isCollapsed && <span className="nav-item-label">Departments</span>}
@@ -441,6 +503,38 @@ function AppSidebar() {
                   <span className="nav-item-icon">🌳</span>
                   {!isCollapsed && <span className="nav-item-label">Org Tree</span>}
                 </NavLink>
+                <NavLink to="/admin/entities" end className="sidebar-nav-link" title="Core Database Entities (41 Master Entities)">
+                  <span className="nav-item-icon">🌐</span>
+                  {!isCollapsed && <span className="nav-item-label">Database Entities</span>}
+                </NavLink>
+                <NavLink to="/admin/integrations" end className="sidebar-nav-link" title="Enterprise 8-Channel Integration Hub">
+                  <span className="nav-item-icon">🔌</span>
+                  {!isCollapsed && <span className="nav-item-label">Integrations Hub</span>}
+                </NavLink>
+                <NavLink to="/admin/governance" end className="sidebar-nav-link" title="Enterprise Security, Governance & DPDP Compliance">
+                  <span className="nav-item-icon">🔐</span>
+                  {!isCollapsed && <span className="nav-item-label">Security & Compliance</span>}
+                </NavLink>
+                <NavLink to="/admin/automations" end className="sidebar-nav-link" title="Lifecycle Automations, SLA Engines & Scheduled Reports">
+                  <span className="nav-item-icon">⚙️</span>
+                  {!isCollapsed && <span className="nav-item-label">Automations & SLAs</span>}
+                </NavLink>
+                <NavLink to="/admin/audit-governance" end className="sidebar-nav-link" title="Audit, Temporal History & Document Governance">
+                  <span className="nav-item-icon">📋</span>
+                  {!isCollapsed && <span className="nav-item-label">Audit & Governance</span>}
+                </NavLink>
+                <NavLink to="/admin/operations" end className="sidebar-nav-link" title="Enterprise Operations, NFR Benchmarks & Architecture">
+                  <span className="nav-item-icon">⚡</span>
+                  {!isCollapsed && <span className="nav-item-label">Operations & Architecture</span>}
+                </NavLink>
+                <NavLink to="/admin/tech-stack" end className="sidebar-nav-link" title="Tech Stack Selection, Multi-Cloud Topology & TCO Model">
+                  <span className="nav-item-icon">🏛️</span>
+                  {!isCollapsed && <span className="nav-item-label">Tech Stack & Cloud</span>}
+                </NavLink>
+                <NavLink to="/admin/delivery-roadmap" end className="sidebar-nav-link" title="Phase 0-4 Delivery Roadmap and AI Assistant">
+                  <span className="nav-item-icon">🗺️</span>
+                  {!isCollapsed && <span className="nav-item-label">Roadmap & AI Assistant</span>}
+                </NavLink>
               </div>
 
               <div className="sidebar-nav-group">
@@ -456,6 +550,227 @@ function AppSidebar() {
                 <NavLink to="/employee/payroll" end className="sidebar-nav-link" title="My Compensation & Payslips">
                   <span className="nav-item-icon">💰</span>
                   {!isCollapsed && <span className="nav-item-label">My Payroll</span>}
+                </NavLink>
+              </div>
+            </>
+          )}
+
+          {/* 5. RECRUITER / TALENT ACQUISITION */}
+          {isRecruiter && (
+            <>
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">TALENT ACQUISITION</span>}
+                <NavLink to="/hr/recruitment" end className="sidebar-nav-link" title="Recruitment & Preboarding Pipeline">
+                  <span className="nav-item-icon">🎯</span>
+                  {!isCollapsed && <span className="nav-item-label">Hiring Pipeline</span>}
+                </NavLink>
+                <NavLink to="/hr/employees" end className="sidebar-nav-link" title="Workforce Directory">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Employees</span>}
+                </NavLink>
+                <NavLink to="/hr/departments" end className="sidebar-nav-link" title="Department Structure">
+                  <span className="nav-item-icon">🏛️</span>
+                  {!isCollapsed && <span className="nav-item-label">Departments</span>}
+                </NavLink>
+                <NavLink to="/organization" end className="sidebar-nav-link" title="Enterprise Hierarchy">
+                  <span className="nav-item-icon">🌳</span>
+                  {!isCollapsed && <span className="nav-item-label">Org Tree</span>}
+                </NavLink>
+              </div>
+
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">MY SELF-SERVICE</span>}
+                <NavLink to="/employee/attendance" end className="sidebar-nav-link" title="My Attendance">
+                  <span className="nav-item-icon">⏱️</span>
+                  {!isCollapsed && <span className="nav-item-label">My Attendance</span>}
+                </NavLink>
+                <NavLink to="/employee/leaves" end className="sidebar-nav-link" title="My Leaves">
+                  <span className="nav-item-icon">🌴</span>
+                  {!isCollapsed && <span className="nav-item-label">My Leaves</span>}
+                </NavLink>
+                <NavLink to="/employee/calendar" end className="sidebar-nav-link" title="Holiday Calendar">
+                  <span className="nav-item-icon">🗓️</span>
+                  {!isCollapsed && <span className="nav-item-label">Holiday Calendar</span>}
+                </NavLink>
+                <NavLink to="/employee/profile" end className="sidebar-nav-link" title="My Profile">
+                  <span className="nav-item-icon">👤</span>
+                  {!isCollapsed && <span className="nav-item-label">My Profile</span>}
+                </NavLink>
+              </div>
+            </>
+          )}
+
+          {/* 6. PAYROLL / FINANCE */}
+          {isPayroll && (
+            <>
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">PAYROLL & FINANCE</span>}
+                <NavLink to="/hr/payroll" end className="sidebar-nav-link" title="Payroll Processing & Run">
+                  <span className="nav-item-icon">💳</span>
+                  {!isCollapsed && <span className="nav-item-label">Payroll Run</span>}
+                </NavLink>
+                <NavLink to="/hr/employees" end className="sidebar-nav-link" title="Workforce Salary Records">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Workforce Directory</span>}
+                </NavLink>
+                <NavLink to="/hr/documents" end className="sidebar-nav-link" title="Statutory & Compliance Vault">
+                  <span className="nav-item-icon">📂</span>
+                  {!isCollapsed && <span className="nav-item-label">Tax & Compliance</span>}
+                </NavLink>
+                <NavLink to="/organization" end className="sidebar-nav-link" title="Enterprise Hierarchy">
+                  <span className="nav-item-icon">🌳</span>
+                  {!isCollapsed && <span className="nav-item-label">Org Tree</span>}
+                </NavLink>
+              </div>
+
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">MY SELF-SERVICE</span>}
+                <NavLink to="/employee/attendance" end className="sidebar-nav-link" title="My Attendance">
+                  <span className="nav-item-icon">⏱️</span>
+                  {!isCollapsed && <span className="nav-item-label">My Attendance</span>}
+                </NavLink>
+                <NavLink to="/employee/leaves" end className="sidebar-nav-link" title="My Leaves">
+                  <span className="nav-item-icon">🌴</span>
+                  {!isCollapsed && <span className="nav-item-label">My Leaves</span>}
+                </NavLink>
+                <NavLink to="/employee/profile" end className="sidebar-nav-link" title="My Profile">
+                  <span className="nav-item-icon">👤</span>
+                  {!isCollapsed && <span className="nav-item-label">My Profile</span>}
+                </NavLink>
+              </div>
+            </>
+          )}
+
+          {/* 7. IT / ADMIN */}
+          {isItAdmin && (
+            <>
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">IT PROVISIONING & ASSETS</span>}
+                <NavLink to="/admin/accounts" end className="sidebar-nav-link" title="User Account Control & Credentials">
+                  <span className="nav-item-icon">🛡️</span>
+                  {!isCollapsed && <span className="nav-item-label">User Provisioning</span>}
+                </NavLink>
+                <NavLink to="/hr/recruitment" end className="sidebar-nav-link" title="IT Preboarding Asset Allocation">
+                  <span className="nav-item-icon">💻</span>
+                  {!isCollapsed && <span className="nav-item-label">IT Checklist</span>}
+                </NavLink>
+                <NavLink to="/hr/employees" end className="sidebar-nav-link" title="Employee Directory">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Directory</span>}
+                </NavLink>
+                <NavLink to="/hr/helpdesk" end className="sidebar-nav-link" title="IT Support Tickets">
+                  <span className="nav-item-icon">🎟️</span>
+                  {!isCollapsed && <span className="nav-item-label">IT Helpdesk</span>}
+                </NavLink>
+              </div>
+
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">MY SELF-SERVICE</span>}
+                <NavLink to="/employee/attendance" end className="sidebar-nav-link" title="My Attendance">
+                  <span className="nav-item-icon">⏱️</span>
+                  {!isCollapsed && <span className="nav-item-label">My Attendance</span>}
+                </NavLink>
+                <NavLink to="/employee/leaves" end className="sidebar-nav-link" title="My Leaves">
+                  <span className="nav-item-icon">🌴</span>
+                  {!isCollapsed && <span className="nav-item-label">My Leaves</span>}
+                </NavLink>
+                <NavLink to="/employee/profile" end className="sidebar-nav-link" title="My Profile">
+                  <span className="nav-item-icon">👤</span>
+                  {!isCollapsed && <span className="nav-item-label">My Profile</span>}
+                </NavLink>
+              </div>
+            </>
+          )}
+
+          {/* 8. LEADERSHIP EXECUTIVE */}
+          {isLeadership && (
+            <>
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">EXECUTIVE GOVERNANCE</span>}
+                <NavLink to="/admin/dashboard" end className="sidebar-nav-link" title="Executive Analytics & Operations">
+                  <span className="nav-item-icon">⚡</span>
+                  {!isCollapsed && <span className="nav-item-label">Executive Console</span>}
+                </NavLink>
+                <NavLink to="/hr/employees" end className="sidebar-nav-link" title="Workforce Headcount">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Headcount Directory</span>}
+                </NavLink>
+                <NavLink to="/organization" end className="sidebar-nav-link" title="Enterprise Hierarchy">
+                  <span className="nav-item-icon">🌳</span>
+                  {!isCollapsed && <span className="nav-item-label">Org Tree</span>}
+                </NavLink>
+                <NavLink to="/hr/recruitment" end className="sidebar-nav-link" title="Hiring Pipeline Analytics">
+                  <span className="nav-item-icon">🎯</span>
+                  {!isCollapsed && <span className="nav-item-label">Hiring Pipeline</span>}
+                </NavLink>
+                <NavLink to="/hr/payroll" end className="sidebar-nav-link" title="Payroll & Compensation Metrics">
+                  <span className="nav-item-icon">💳</span>
+                  {!isCollapsed && <span className="nav-item-label">Payroll Summary</span>}
+                </NavLink>
+              </div>
+
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">MY SELF-SERVICE</span>}
+                <NavLink to="/employee/attendance" end className="sidebar-nav-link" title="My Attendance">
+                  <span className="nav-item-icon">⏱️</span>
+                  {!isCollapsed && <span className="nav-item-label">My Attendance</span>}
+                </NavLink>
+                <NavLink to="/employee/profile" end className="sidebar-nav-link" title="My Profile">
+                  <span className="nav-item-icon">👤</span>
+                  {!isCollapsed && <span className="nav-item-label">My Profile</span>}
+                </NavLink>
+              </div>
+            </>
+          )}
+
+          {/* 9. STATUTORY AUDITOR */}
+          {isAuditor && (
+            <>
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">AUDIT & COMPLIANCE</span>}
+                <NavLink to="/admin/dashboard" end className="sidebar-nav-link" title="Audit Telemetry & System Activity">
+                  <span className="nav-item-icon">🛡️</span>
+                  {!isCollapsed && <span className="nav-item-label">Audit Logs & Activity</span>}
+                </NavLink>
+                <NavLink to="/hr/employees" end className="sidebar-nav-link" title="Workforce Records (Read-Only)">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Workforce Records</span>}
+                </NavLink>
+                <NavLink to="/hr/documents" end className="sidebar-nav-link" title="Compliance Documents Vault">
+                  <span className="nav-item-icon">📂</span>
+                  {!isCollapsed && <span className="nav-item-label">Compliance Vault</span>}
+                </NavLink>
+                <NavLink to="/hr/payroll" end className="sidebar-nav-link" title="Payroll Audit Trail">
+                  <span className="nav-item-icon">💳</span>
+                  {!isCollapsed && <span className="nav-item-label">Payroll Audit</span>}
+                </NavLink>
+                <NavLink to="/admin/governance" end className="sidebar-nav-link" title="Enterprise Security, Governance & DPDP Compliance">
+                  <span className="nav-item-icon">🔐</span>
+                  {!isCollapsed && <span className="nav-item-label">Security & Compliance</span>}
+                </NavLink>
+                <NavLink to="/hr/automations" end className="sidebar-nav-link" title="Lifecycle Automations, SLA Engines & Scheduled Reports">
+                  <span className="nav-item-icon">⚙️</span>
+                  {!isCollapsed && <span className="nav-item-label">Automations & SLAs</span>}
+                </NavLink>
+                <NavLink to="/admin/audit-governance" end className="sidebar-nav-link" title="Audit, Temporal History & Document Governance">
+                  <span className="nav-item-icon">📋</span>
+                  {!isCollapsed && <span className="nav-item-label">Audit & Governance</span>}
+                </NavLink>
+                <NavLink to="/admin/operations" end className="sidebar-nav-link" title="Enterprise Operations, NFR Benchmarks & Architecture">
+                  <span className="nav-item-icon">⚡</span>
+                  {!isCollapsed && <span className="nav-item-label">Operations & Architecture</span>}
+                </NavLink>
+              </div>
+
+              <div className="sidebar-nav-group">
+                {!isCollapsed && <span className="sidebar-group-label">MY SELF-SERVICE</span>}
+                <NavLink to="/employee/attendance" end className="sidebar-nav-link" title="My Attendance">
+                  <span className="nav-item-icon">⏱️</span>
+                  {!isCollapsed && <span className="nav-item-label">My Attendance</span>}
+                </NavLink>
+                <NavLink to="/employee/profile" end className="sidebar-nav-link" title="My Profile">
+                  <span className="nav-item-icon">👤</span>
+                  {!isCollapsed && <span className="nav-item-label">My Profile</span>}
                 </NavLink>
               </div>
             </>

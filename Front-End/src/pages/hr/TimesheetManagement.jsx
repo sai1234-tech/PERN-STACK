@@ -1033,9 +1033,10 @@ function TimesheetManagement() {
                                     type="button"
                                     className="btn-approve-sm"
                                     onClick={() => handleReview(entry, "approved")}
-                                    title={isPendingHR ? "Execute HR final sign-off" : "Approve timesheet"}
+                                    title={isPendingHR ? "Execute HR final sign-off (reconcile to payroll)" : "Direct HR approval override"}
+                                    style={isPendingHR ? { background: "#059669", color: "#ffffff", borderColor: "#059669" } : {}}
                                   >
-                                    <span>✓</span> {isPendingHR ? "Final Sign-off" : "Approve"}
+                                    <span>✓</span> {isPendingHR ? "Final Sign-off" : "⚡ HR Override"}
                                   </button>
                                   <button
                                     type="button"

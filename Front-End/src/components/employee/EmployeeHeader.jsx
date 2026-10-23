@@ -7,7 +7,7 @@ import { getEmployee } from "../../services/employeeService";
 import { getMyDocuments } from "../../services/documentService";
 import { getLeaves } from "../../services/leaveService";
 import { getTodayAttendance } from "../../services/attendanceService";
-import { normalizeRole } from "../../utils/auth";
+import { normalizeRole, getRoleDisplayTitle } from "../../utils/auth";
 import { formatPhotoUrl } from "../../utils/photo";
 import { formatTime } from "../../utils/date";
 import HeaderEmployeeSearch from "./HeaderEmployeeSearch";
@@ -34,6 +34,14 @@ const ROUTE_CONTEXT_MAP = {
   "/hr/documents": { section: "Vault", title: "Company Documents" },
   "/manager/dashboard": { section: "Manager Workspace", title: "Team Approvals" },
   "/manager/projects": { section: "Manager Workspace", title: "Active Projects" },
+  "/hr/recruitment": { section: "People & Structure", title: "Recruitment & Onboarding" },
+  "/hr/lifecycle": { section: "People & Structure", title: "Employee Lifecycle Workflow" },
+  "/hr/roster": { section: "Operations", title: "Shift Roster" },
+  "/hr/helpdesk": { section: "Operations", title: "HR Helpdesk" },
+  "/hr/leaves": { section: "Operations", title: "Leave Management" },
+  "/hr/resignations": { section: "Operations", title: "Resignations" },
+  "/hr/resources": { section: "Operations", title: "Resource Allocation" },
+  "/hr/performance": { section: "Operations", title: "Appraisals & OKRs" },
   "/admin/dashboard": { section: "Admin", title: "Executive Command" },
   "/admin/accounts": { section: "Security", title: "User Accounts" },
 };
@@ -95,9 +103,15 @@ function EmployeeHeader() {
           if (Array.isArray(docs)) {
             let dismissed = [];
             try {
+              const userOrEmpId = user?.id || employee?.id;
+              const u = userOrEmpId ? JSON.parse(localStorage.getItem(`hrms_dismissed_doc_requests_${userOrEmpId}`) || "[]") : [];
               const s = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
               const l = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-              dismissed = Array.from(new Set([...(Array.isArray(s) ? s : []), ...(Array.isArray(l) ? l : [])]));
+              dismissed = Array.from(new Set([
+                ...(Array.isArray(s) ? s : []),
+                ...(Array.isArray(l) ? l : []),
+                ...(Array.isArray(u) ? u : []),
+              ]));
             } catch {}
             const reqs = docs.filter((d) => {
               const id = String(d._id || d.id);
@@ -220,13 +234,7 @@ function EmployeeHeader() {
     .join("") || "QS";
 
   const isManager = role === "manager" || isVikas;
-  const roleLabel = isManager
-    ? "Team Manager"
-    : isHr
-    ? "HR Lead"
-    : isAdmin
-    ? "Administrator"
-    : "Employee";
+  const roleLabel = getRoleDisplayTitle(role);
 
   const currentRouteMeta = useMemo(() => {
     return ROUTE_CONTEXT_MAP[location.pathname] || { section: "Portal", title: "Quadratic HRMS" };
@@ -353,14 +361,18 @@ function EmployeeHeader() {
       localStorage.setItem("hrms_cleared_notifications", JSON.stringify(newCleared));
       const docIds = rawNotifications
         .filter((item) => String(item.id).startsWith("doc-"))
-        .map((item) => String(item.id).replace(/^doc-/, ""));
+        .map((item) => String(item.id).replace(/^doc-(req-)?/, ""));
       if (docIds.length > 0) {
+        const userOrEmpId = user?.id || employee?.id;
         const storedDismissed = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
         const nextDismissed = Array.from(new Set([...storedDismissed, ...docIds]));
         localStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
         sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
+        if (userOrEmpId) {
+          localStorage.setItem(`hrms_dismissed_doc_requests_${userOrEmpId}`, JSON.stringify(nextDismissed));
+        }
         docIds.forEach((id) => {
-          window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: `doc-${id}`, docId: id } }));
+          window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: `doc-req-${id}`, docId: id } }));
         });
       }
     } catch {}
@@ -377,12 +389,16 @@ function EmployeeHeader() {
 
     // If it's a doc request notification, dismiss from requestedDocs and sync across page
     if (itemIdStr.startsWith("doc-")) {
-      const docId = itemIdStr.replace(/^doc-/, "");
+      const docId = itemIdStr.replace(/^doc-(req-)?/, "");
       try {
+        const userOrEmpId = user?.id || employee?.id;
         const storedDismissed = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
         const nextDismissed = Array.from(new Set([...storedDismissed, docId, `${docId}:requested`, `${docId}:rejected`]));
         localStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
         sessionStorage.setItem("hrms_dismissed_doc_requests", JSON.stringify(nextDismissed));
+        if (userOrEmpId) {
+          localStorage.setItem(`hrms_dismissed_doc_requests_${userOrEmpId}`, JSON.stringify(nextDismissed));
+        }
         window.dispatchEvent(new CustomEvent("hrms_notification_dismissed", { detail: { id: itemIdStr, docId } }));
       } catch {}
       setRequestedDocs((prev) => prev.filter((d) => String(d._id || d.id) !== docId));

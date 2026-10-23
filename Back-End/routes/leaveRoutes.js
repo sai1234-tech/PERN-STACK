@@ -42,15 +42,16 @@ router.patch("/:leaveId/cancel", authorizeRoles(...ALL_ROLES), cancelLeave);
 // HR / ADMIN LEAVE MANAGEMENT
 // ==========================================
 // View All Leaves (scoped to direct reports for manager role)
+router.get("/", authorizeRoles("hr", "admin", "manager"), getAllLeaves);
 router.get("/all", authorizeRoles("hr", "admin", "manager"), getAllLeaves);
 
 // Approve Leave
-router.patch("/:leaveId/approve", authorizeRoles("hr", "admin"), approveLeave);
-router.put("/:leaveId/approve", authorizeRoles("hr", "admin"), approveLeave);
+router.patch("/:leaveId/approve", authorizeRoles("hr", "admin", "manager"), approveLeave);
+router.put("/:leaveId/approve", authorizeRoles("hr", "admin", "manager"), approveLeave);
 
 // Reject Leave
-router.patch("/:leaveId/reject", authorizeRoles("hr", "admin"), rejectLeave);
-router.put("/:leaveId/reject", authorizeRoles("hr", "admin"), rejectLeave);
+router.patch("/:leaveId/reject", authorizeRoles("hr", "admin", "manager"), rejectLeave);
+router.put("/:leaveId/reject", authorizeRoles("hr", "admin", "manager"), rejectLeave);
 
 // Revert Leave Decision
 router.patch("/:leaveId/revert", authorizeRoles("hr", "admin"), revertLeaveDecision);

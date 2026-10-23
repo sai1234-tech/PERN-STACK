@@ -16,6 +16,7 @@ import {
 } from "../repositories/employeeRepository.js";
 import { findUserById } from "../repositories/userRepository.js";
 import { broadcastBackendChange } from "../services/sseService.js";
+import pool from "../config/db.js";
 
 // Ensure uploads/documents directory exists
 const uploadDirectory = path.join(process.cwd(), "uploads", "documents");
@@ -346,6 +347,83 @@ export const downloadDocument = async (req, res, next) => {
                     message: "You can only download your own documents"
                 });
             }
+        }
+
+        // =====================================================
+        // Enterprise Document Governance & Permission Control
+        // =====================================================
+        const userRole = req.user?.role || "employee";
+        const userId = req.user?.userId || req.user?.id || null;
+        const userEmail = req.user?.email || "viewer@company.com";
+        const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "127.0.0.1";
+
+        let categoryCode = "COMPANY_POLICIES_PUBLIC";
+        const typeLower = (document.document_type || "").toLowerCase();
+        if (typeLower.includes("aadhaar") || typeLower.includes("pan") || typeLower.includes("passport")) {
+            categoryCode = "GOVERNMENT_IDS_AADHAAR_PAN";
+        } else if (typeLower.includes("salary") || typeLower.includes("increment") || typeLower.includes("offer")) {
+            categoryCode = "COMPENSATION_LETTERS";
+        } else if (typeLower.includes("bgv") || typeLower.includes("verification")) {
+            categoryCode = "BGV_INVESTIGATION_REPORTS";
+        } else if (typeLower.includes("medical") || typeLower.includes("fitness")) {
+            categoryCode = "MEDICAL_RECORDS";
+        } else if (typeLower.includes("exit") || typeLower.includes("clearance") || typeLower.includes("settlement")) {
+            categoryCode = "SEPARATION_FULL_FINAL";
+        }
+
+        try {
+            const policyRes = await pool.query(
+                "SELECT * FROM document_governance_policies WHERE category_code = $1",
+                [categoryCode]
+            );
+            if (policyRes.rows.length > 0) {
+                const policy = policyRes.rows[0];
+                const downloadRoles = typeof policy.can_download_roles === "string" 
+                    ? JSON.parse(policy.can_download_roles) 
+                    : policy.can_download_roles;
+
+                const emp = req.user.role === "employee" ? await findEmployeeByUserId(req.user.userId) : null;
+                const isOwner = emp && Number(emp.id) === Number(document.employee_id);
+
+                const isAllowed = downloadRoles.includes(userRole) || (isOwner && policy.allow_owner_download);
+                if (!isAllowed) {
+                    await pool.query(`
+                        INSERT INTO document_governance_audit (
+                            document_id, document_name, document_category, employee_id,
+                            user_id, user_name, user_role, action_type, access_granted,
+                            denial_reason, ip_address
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'DOWNLOAD_REQUESTED', FALSE, $8, $9)
+                    `, [
+                        document.id, document.document_name || "Document", categoryCode, document.employee_id,
+                        userId, userEmail, userRole,
+                        `Role '${userRole}' not authorized to download files in '${policy.category_label}'`,
+                        ip
+                    ]);
+
+                    return res.status(403).json({
+                        success: false,
+                        message: `Download restricted by enterprise document governance policy: role '${userRole}' cannot download '${policy.category_label}'.`
+                    });
+                }
+
+                if (policy.requires_watermark) {
+                    const watermark = `CONFIDENTIAL - ${userEmail} - IP:${ip} - ${new Date().toISOString()}`;
+                    res.setHeader("X-Document-Watermark", watermark);
+                }
+
+                await pool.query(`
+                    INSERT INTO document_governance_audit (
+                        document_id, document_name, document_category, employee_id,
+                        user_id, user_name, user_role, action_type, access_granted,
+                        watermark_applied, ip_address
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'DOWNLOAD_REQUESTED', TRUE, $8, $9)
+                `, [
+                    document.id, document.document_name || "Document", categoryCode, document.employee_id,
+                    userId, userEmail, userRole, `Watermarked: ${userEmail}`, ip
+                ]);
+            }
+        } catch (govErr) {
+            console.warn("Document governance enforcement notice:", govErr.message);
         }
 
         let filePath = document.file_path;

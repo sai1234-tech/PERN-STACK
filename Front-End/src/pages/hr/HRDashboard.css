@@ -331,6 +331,38 @@
   box-shadow: 0 8px 20px rgba(2, 132, 199, 0.28);
 }
 
+/* 5a. Executive KPIs */
+.cmd-action-btn.cmd-kpis {
+  background: #ffffff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.cmd-action-btn.cmd-kpis:hover,
+.cmd-action-btn.cmd-kpis.active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1e40af;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
+}
+
+/* 5b. Recruitment */
+.cmd-action-btn.cmd-recruitment {
+  background: #ffffff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.cmd-action-btn.cmd-recruitment:hover,
+.cmd-action-btn.cmd-recruitment.active {
+  background: #eef2ff;
+  border-color: #6366f1;
+  color: #3730a3;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.28);
+}
+
 /* 6. Helpdesk */
 .cmd-action-btn.cmd-helpdesk {
   background: #ffffff;
@@ -344,6 +376,45 @@
   color: #c2410c;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(234, 88, 12, 0.28);
+}
+
+/* 7. Lifecycle Journey */
+.cmd-action-btn.cmd-lifecycle {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.cmd-action-btn.cmd-lifecycle:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+}
+
+/* 8. 41-Entity Master Data Platform */
+.cmd-action-btn.cmd-entities {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.cmd-action-btn.cmd-entities:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+}
+
+/* 9. 8-Channel Enterprise Integrations Hub */
+.cmd-action-btn.cmd-integrations {
+  background: linear-gradient(135deg, #0284c7 0%, #0d9488 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.cmd-action-btn.cmd-integrations:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #0f766e 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(13, 148, 136, 0.4);
 }
 
 .cmd-action-btn:disabled {
@@ -641,6 +712,23 @@
   letter-spacing: -0.01em;
 }
 
+.shortcut-chip.kpis {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px solid #93c5fd;
+  cursor: pointer;
+}
+.shortcut-chip.kpis:hover,
+.shortcut-chip.kpis.active {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+.shortcut-chip.kpis:hover .chip-name,
+.shortcut-chip.kpis.active .chip-name {
+  color: #ffffff;
+}
+
 .shortcut-chip.timesheets {
   background: #eff6ff;
   color: #1d4ed8;
@@ -727,6 +815,17 @@
   background: #fce7f3;
   border-color: #f472b6;
   color: #be185d;
+}
+
+.shortcut-chip.lifecycle {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1.5px solid #7dd3fc;
+}
+.shortcut-chip.lifecycle:hover {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0284c7;
 }
 
 .shortcut-chip:hover {
@@ -2705,6 +2804,34 @@ html[data-theme="dark"] .spotlight-empty-notice {
   color: #a7f3d0 !important;
   border-color: #10b981 !important;
 }
+
+/* ==========================================================================
+   Executive KPI Anchor & Focus Highlight
+   ========================================================================== */
+.executive-kpi-anchor {
+  scroll-margin-top: 1.5rem;
+}
+
+.kpi-focus-highlight {
+  animation: kpiFocusPulse 2.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-radius: 16px;
+}
+
+@keyframes kpiFocusPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7), 0 10px 30px rgba(37, 99, 235, 0.25);
+    outline: 3px solid #2563eb;
+  }
+  35% {
+    box-shadow: 0 0 0 12px rgba(37, 99, 235, 0.3), 0 14px 40px rgba(37, 99, 235, 0.35);
+    outline: 3px solid #3b82f6;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    outline: 3px solid transparent;
+  }
+}
+
 
 
 

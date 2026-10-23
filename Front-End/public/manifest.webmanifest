@@ -1,0 +1,19 @@
+{
+  "name": "Quadratic HRMS",
+  "short_name": "HRMS",
+  "description": "Employee self-service, approvals and HR operations on mobile.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#176b70",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Clock In/Out", "url": "/employee/attendance" },
+    { "name": "Apply Leave", "url": "/employee/leaves" },
+    { "name": "Helpdesk", "url": "/helpdesk" }
+  ]
+}

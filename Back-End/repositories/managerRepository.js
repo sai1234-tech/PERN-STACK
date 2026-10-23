@@ -264,6 +264,8 @@ export const getTeamTimesheetsRepo = async (userId, email, statusQuery = "submit
     if (statusQuery && statusQuery !== "all") {
         if (["pending", "submitted"].includes(statusQuery.toLowerCase())) {
             queryText += ` AND LOWER(t.status) = 'submitted'`;
+        } else if (statusQuery.toLowerCase() === "history") {
+            queryText += ` AND LOWER(t.status) IN ('pending_hr', 'approved', 'rejected')`;
         } else {
             queryText += ` AND LOWER(t.status) = $2`;
             values.push(statusQuery.toLowerCase());

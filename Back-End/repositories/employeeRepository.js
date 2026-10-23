@@ -42,6 +42,13 @@ export const initEmployeeTable = async () => {
         ALTER TABLE employees ADD COLUMN IF NOT EXISTS address JSONB DEFAULT '{}'::jsonb;
         ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact JSONB DEFAULT '{}'::jsonb;
         ALTER TABLE employees ADD COLUMN IF NOT EXISTS banking JSONB DEFAULT '{}'::jsonb;
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS entity VARCHAR(150) DEFAULT 'Quadratic Systems Inc.';
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS function VARCHAR(100) DEFAULT 'Engineering & Technology';
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS cost_center VARCHAR(100) DEFAULT 'CC-101-GEN';
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS matrix_manager_id INTEGER;
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS aadhaar VARCHAR(50) DEFAULT '';
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS esi_number VARCHAR(50) DEFAULT '';
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS tax_regime VARCHAR(50) DEFAULT 'New Regime';
         ALTER TABLE employees ADD COLUMN IF NOT EXISTS skills JSONB DEFAULT '[]'::jsonb;
         ALTER TABLE employees ADD COLUMN IF NOT EXISTS certifications JSONB DEFAULT '[]'::jsonb;
         ALTER TABLE employees ADD COLUMN IF NOT EXISTS awards JSONB DEFAULT '[]'::jsonb;
@@ -57,10 +64,29 @@ export const countEmployees = async () => {
     return rows[0].count;
 };
 
+export const generateNextEmployeeCode = async () => {
+    const { rows } = await pool.query(`
+        SELECT employee_code FROM employees 
+        WHERE employee_code ~ '^EMP-[0-9]+$' 
+        ORDER BY LENGTH(employee_code) DESC, employee_code DESC 
+        LIMIT 1;
+    `);
+    if (rows.length > 0) {
+        const lastCode = rows[0].employee_code;
+        const numPart = parseInt(lastCode.replace("EMP-", ""), 10);
+        if (!isNaN(numPart)) {
+            return `EMP-${String(numPart + 1).padStart(3, "0")}`;
+        }
+    }
+    const count = await countEmployees();
+    return `EMP-${String(count + 101).padStart(3, "0")}`;
+};
+
 export const createEmployeeRecord = async (data) => {
-    const {
+    let {
         userId = null,
         reportsTo = null,
+        matrixManagerId = null,
         employeeCode,
         firstName,
         lastName = "",
@@ -68,6 +94,12 @@ export const createEmployeeRecord = async (data) => {
         phone = "",
         pan = "",
         uan = "",
+        aadhaar = "",
+        esiNumber = "",
+        taxRegime = "New Regime",
+        entity = "Quadratic Systems Inc.",
+        function: empFunction = "Engineering & Technology",
+        costCenter = "CC-101-GEN",
         profilePhoto = "",
         workLocation = "",
         personal = {},
@@ -80,20 +112,27 @@ export const createEmployeeRecord = async (data) => {
         awards = []
     } = data;
 
+    if (!employeeCode || !employeeCode.trim()) {
+        employeeCode = await generateNextEmployeeCode();
+    }
+
     const queryText = `
         INSERT INTO employees (
-            user_id, reports_to, employee_code, first_name, last_name, 
-            email, phone, pan, uan, profile_photo, work_location, 
+            user_id, reports_to, matrix_manager_id, employee_code, first_name, last_name, 
+            email, phone, pan, uan, aadhaar, esi_number, tax_regime,
+            entity, function, cost_center,
+            profile_photo, work_location, 
             personal, employment, address, emergency_contact, banking, 
             skills, certifications, awards
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
         RETURNING *;
     `;
 
     const values = [
         userId,
         reportsTo,
+        matrixManagerId,
         employeeCode.toUpperCase().trim(),
         firstName.trim(),
         lastName.trim(),
@@ -101,6 +140,12 @@ export const createEmployeeRecord = async (data) => {
         phone,
         pan,
         uan,
+        aadhaar,
+        esiNumber,
+        taxRegime,
+        entity,
+        empFunction,
+        costCenter,
         profilePhoto,
         workLocation,
         JSON.stringify(personal),
@@ -123,10 +168,12 @@ export const findEmployeeById = async (id) => {
             e.*, 
             u.name as user_name, u.email as user_email, u.role as user_role, u.is_active as user_is_active,
             m.first_name as manager_first_name, m.last_name as manager_last_name, m.employee_code as manager_code,
+            matrix.first_name as matrix_first_name, matrix.last_name as matrix_last_name, matrix.employee_code as matrix_code,
             hr.first_name as hr_first_name, hr.last_name as hr_last_name, hr.email as hr_email, hr.employee_code as hr_code
         FROM employees e
         LEFT JOIN users u ON e.user_id = u.id
         LEFT JOIN employees m ON e.reports_to = m.id
+        LEFT JOIN employees matrix ON e.matrix_manager_id = matrix.id
         LEFT JOIN employees hr ON e.hr_id = hr.id
         WHERE e.id = $1;
     `;
@@ -140,10 +187,12 @@ export const findEmployeeByCode = async (code) => {
             e.*, 
             u.name as user_name, u.email as user_email, u.role as user_role, u.is_active as user_is_active,
             m.first_name as manager_first_name, m.last_name as manager_last_name, m.employee_code as manager_code,
+            matrix.first_name as matrix_first_name, matrix.last_name as matrix_last_name, matrix.employee_code as matrix_code,
             hr.first_name as hr_first_name, hr.last_name as hr_last_name, hr.email as hr_email, hr.employee_code as hr_code
         FROM employees e
         LEFT JOIN users u ON e.user_id = u.id
         LEFT JOIN employees m ON e.reports_to = m.id
+        LEFT JOIN employees matrix ON e.matrix_manager_id = matrix.id
         LEFT JOIN employees hr ON e.hr_id = hr.id
         WHERE UPPER(e.employee_code) = UPPER($1);
     `;
@@ -157,10 +206,12 @@ export const findEmployeeByUserId = async (userId) => {
             e.*, 
             u.name as user_name, u.email as user_email, u.role as user_role, u.is_active as user_is_active,
             m.first_name as manager_first_name, m.last_name as manager_last_name, m.employee_code as manager_code,
+            matrix.first_name as matrix_first_name, matrix.last_name as matrix_last_name, matrix.employee_code as matrix_code,
             hr.first_name as hr_first_name, hr.last_name as hr_last_name, hr.email as hr_email, hr.employee_code as hr_code
         FROM employees e
         LEFT JOIN users u ON (u.id = $1 OR e.user_id = u.id)
         LEFT JOIN employees m ON e.reports_to = m.id
+        LEFT JOIN employees matrix ON e.matrix_manager_id = matrix.id
         LEFT JOIN employees hr ON e.hr_id = hr.id
         WHERE e.user_id = $1
            OR (
@@ -180,10 +231,12 @@ export const findEmployeeByUserId = async (userId) => {
                 e.*, 
                 u.name as user_name, u.email as user_email, u.role as user_role, u.is_active as user_is_active,
                 m.first_name as manager_first_name, m.last_name as manager_last_name, m.employee_code as manager_code,
+                matrix.first_name as matrix_first_name, matrix.last_name as matrix_last_name, matrix.employee_code as matrix_code,
                 hr.first_name as hr_first_name, hr.last_name as hr_last_name, hr.email as hr_email, hr.employee_code as hr_code
             FROM employees e
             LEFT JOIN users u ON u.id = $1
             LEFT JOIN employees m ON e.reports_to = m.id
+            LEFT JOIN employees matrix ON e.matrix_manager_id = matrix.id
             LEFT JOIN employees hr ON e.hr_id = hr.id
             WHERE LOWER(e.email) = LOWER($2) OR LOWER(e.email) = LOWER($3)
             LIMIT 1;
@@ -217,10 +270,12 @@ export const findAllEmployees = async (search = "") => {
             e.*, 
             u.name as user_name, u.email as user_email, u.role as user_role, u.is_active as user_is_active,
             m.first_name as manager_first_name, m.last_name as manager_last_name, m.employee_code as manager_code,
+            matrix.first_name as matrix_first_name, matrix.last_name as matrix_last_name, matrix.employee_code as matrix_code,
             hr.first_name as hr_first_name, hr.last_name as hr_last_name, hr.email as hr_email, hr.employee_code as hr_code
         FROM employees e
         LEFT JOIN users u ON e.user_id = u.id
         LEFT JOIN employees m ON e.reports_to = m.id
+        LEFT JOIN employees matrix ON e.matrix_manager_id = matrix.id
         LEFT JOIN employees hr ON e.hr_id = hr.id
     `;
     const values = [];
@@ -338,3 +393,51 @@ export const resolveManagerEmployee = async (managerVal) => {
     return null;
 };
 
+export const logEmployeeHistory = async ({
+    employeeId,
+    changeType,
+    fieldChanged = "",
+    oldValue = "",
+    newValue = "",
+    effectiveDate = new Date().toISOString().slice(0, 10),
+    reason = "",
+    changedBy = null,
+    metadata = {}
+}) => {
+    const queryText = `
+        INSERT INTO employee_history (
+            employee_id, change_type, field_changed, old_value, new_value, 
+            effective_date, reason, changed_by, metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *;
+    `;
+    const values = [
+        employeeId,
+        changeType,
+        fieldChanged,
+        String(oldValue || ""),
+        String(newValue || ""),
+        effectiveDate || new Date().toISOString().slice(0, 10),
+        reason || "",
+        changedBy,
+        JSON.stringify(metadata)
+    ];
+    const { rows } = await pool.query(queryText, values);
+    return rows[0];
+};
+
+export const getEmployeeHistory = async (employeeId) => {
+    const queryText = `
+        SELECT 
+            h.*,
+            u.name as changed_by_name,
+            u.email as changed_by_email
+        FROM employee_history h
+        LEFT JOIN users u ON h.changed_by = u.id
+        WHERE h.employee_id = $1
+        ORDER BY h.effective_date DESC, h.created_at DESC, h.id DESC;
+    `;
+    const { rows } = await pool.query(queryText, [employeeId]);
+    return rows;
+};

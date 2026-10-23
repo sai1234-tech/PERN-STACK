@@ -428,13 +428,14 @@ export const getAllLeaves = async (req, res) => {
 };
 
 // =====================================================
-// 6. HR/ADMIN - APPROVE LEAVE
+// 6. APPROVE LEAVE - MANAGER (STAGE 1) / HR ADMIN (STAGE 2)
 // =====================================================
 export const approveLeave = async (req, res) => {
     try {
         const leaveId = Number(req.params.leaveId);
-        const hrUserId = req.user?.userId || req.user?.id;
-        const hrRemarks = req.body?.remarks || req.body?.hrRemarks || "Final approved by HR";
+        const userRole = (req.user?.role || "").toLowerCase();
+        const reviewerUserId = req.user?.userId || req.user?.id;
+        const remarks = req.body?.remarks || req.body?.hrRemarks || req.body?.managerRemarks || "";
         const forceOverride = Boolean(req.query?.override === "true" || req.body?.override === true);
         const leave = await findLeaveById(leaveId);
 
@@ -449,6 +450,42 @@ export const approveLeave = async (req, res) => {
             });
         }
 
+        const isManager = userRole === "manager";
+
+        if (isManager) {
+            // Stage 1: Reporting Manager review -> Forward to HR
+            const managerEmp = await findEmployeeByUserId(reviewerUserId);
+            const mgrEmpId = managerEmp ? managerEmp.id : null;
+            if (leave.reports_to && mgrEmpId && leave.reports_to !== mgrEmpId && leave.reports_to !== reviewerUserId) {
+                return res.status(403).json({ success: false, message: "Not authorized to manage this employee's leave" });
+            }
+
+            await updateLeaveRecord(leaveId, {
+                status: "Pending HR",
+                manager_approved_by: reviewerUserId,
+                manager_approved_at: new Date(),
+                manager_remarks: remarks.trim() || "Approved by Manager, forwarded to HR for final approval",
+                rejection_reason: ""
+            });
+
+            const updatedLeave = await findLeaveById(leaveId);
+            broadcastBackendChange("leaves", {
+                action: "manager_approved",
+                leaveId,
+                employeeId: leave.employee_id,
+                status: "Pending HR",
+                message: "Leave approved by Manager and forwarded to HR for final approval",
+                leaveType: updatedLeave?.leave_type_name || "Leave"
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "Leave approved by Manager and forwarded to HR for final approval",
+                data: formatLeaveResponse(updatedLeave)
+            });
+        }
+
+        // Stage 2: HR / Admin Final Approval
         const isPendingManager = ["pending manager", "pending_manager"].includes(
             String(leave.status || "").toLowerCase()
         );
@@ -475,10 +512,10 @@ export const approveLeave = async (req, res) => {
 
         await updateLeaveRecord(leaveId, {
             status: "Approved",
-            hr_approved_by: hrUserId,
+            hr_approved_by: reviewerUserId,
             hr_approved_at: new Date(),
-            hr_remarks: hrRemarks,
-            approved_by: hrUserId,
+            hr_remarks: remarks.trim() || "Final approved by HR",
+            approved_by: reviewerUserId,
             approved_at: new Date(),
             rejection_reason: ""
         });
@@ -504,26 +541,35 @@ export const approveLeave = async (req, res) => {
 };
 
 // =====================================================
-// 7. HR/ADMIN - REJECT LEAVE
+// 7. REJECT LEAVE - MANAGER / HR ADMIN
 // =====================================================
 export const rejectLeave = async (req, res) => {
     try {
         const leaveId = Number(req.params.leaveId);
-        const rejectionReason = req.body?.rejectionReason || req.body?.reason || req.query?.rejectionReason || "Rejected by HR Admin";
-        const userId = req.user?.userId || req.user?.id;
-
+        const userRole = (req.user?.role || "").toLowerCase();
+        const reviewerUserId = req.user?.userId || req.user?.id;
+        const rejectionReason = req.body?.rejectionReason || req.body?.reason || req.query?.rejectionReason || (userRole === "manager" ? "Rejected by Manager" : "Rejected by HR Admin");
 
         const leave = await findLeaveById(leaveId);
         if (!leave) {
             return res.status(404).json({ success: false, message: "Leave not found" });
         }
 
-        await updateLeaveRecord(leaveId, {
+        const isManager = userRole === "manager";
+        const updateData = {
             status: "Rejected",
-            approved_by: userId,
-            approved_at: new Date(),
-            rejection_reason: rejectionReason.trim()
-        });
+            rejection_reason: rejectionReason.trim(),
+        };
+
+        if (isManager) {
+            updateData.manager_remarks = rejectionReason.trim();
+        } else {
+            updateData.hr_remarks = rejectionReason.trim();
+            updateData.approved_by = reviewerUserId;
+            updateData.approved_at = new Date();
+        }
+
+        await updateLeaveRecord(leaveId, updateData);
 
         const updatedLeave = await findLeaveById(leaveId);
         broadcastBackendChange("leaves", {
@@ -531,13 +577,13 @@ export const rejectLeave = async (req, res) => {
             leaveId,
             employeeId: leave.employee_id,
             status: "Rejected",
-            message: "Leave request declined by HR",
+            message: isManager ? "Leave request declined by Manager" : "Leave request declined by HR",
             rejectionReason: rejectionReason.trim(),
             leaveType: updatedLeave?.leave_type_name || "Leave"
         });
         return res.status(200).json({
             success: true,
-            message: "Leave rejected successfully",
+            message: isManager ? "Leave declined by Manager" : "Leave rejected by HR",
             data: formatLeaveResponse(updatedLeave)
         });
     } catch (error) {

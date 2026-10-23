@@ -22,6 +22,7 @@ router.get("/my", getMyResignation);
 router.delete("/my", cancelResignation);
 
 // HR / Admin routes
+router.get("/", authorizeRoles("hr", "admin"), getAllResignations);
 router.get("/all", authorizeRoles("hr", "admin"), getAllResignations);
 router.patch("/:resignationId/review", authorizeRoles("hr", "admin"), reviewResignation);
 

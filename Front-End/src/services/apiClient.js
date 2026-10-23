@@ -148,12 +148,9 @@ export async function apiRequest(endpoint, options = {}) {
       
       if (response.status === 401) {
         console.warn("[API Error] 401 Unauthorized received for endpoint", endpoint);
-        // We will NOT aggressively remove the token here because if multiple concurrent
-        // requests are made, one 401 will wipe the token for the rest and mask the real error.
-        
-        // Only redirect if it's not a login attempt
-        if (!endpoint.includes("/auth/login") && window.location.pathname !== "/login") {
-          // window.location.href = "/login"; // Also disabling forced redirect to see the UI error
+        // Dispatch session expired event so context can handle clean re-authentication
+        if (!endpoint.includes("/auth/login")) {
+          window.dispatchEvent(new CustomEvent("hrms:auth_expired", { detail: { message: data?.message } }));
         }
       }
 

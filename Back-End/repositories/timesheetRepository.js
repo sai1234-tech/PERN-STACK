@@ -40,11 +40,18 @@ export const initTimesheetTable = async () => {
         ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS entry_mode VARCHAR(20) DEFAULT 'manual';
         ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS billable BOOLEAN DEFAULT TRUE;
         ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS hours NUMERIC(5, 2) DEFAULT 0;
-        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'draft';
+        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft';
+        ALTER TABLE timesheets ALTER COLUMN status TYPE VARCHAR(50);
         ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP;
         ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;
         ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;
         ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS review_comment TEXT DEFAULT '';
+        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS manager_approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS manager_approved_at TIMESTAMP;
+        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS manager_remarks TEXT DEFAULT '';
+        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS hr_approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS hr_approved_at TIMESTAMP;
+        ALTER TABLE timesheets ADD COLUMN IF NOT EXISTS hr_remarks TEXT DEFAULT '';
     `;
     await pool.query(queryText);
 };
@@ -290,10 +297,20 @@ export const findTimesheetById = async (id, employeeId = null) => {
                u.name AS reviewer_user_name,
                m.first_name AS reviewer_first_name,
                m.last_name AS reviewer_last_name,
-               m.designation AS reviewer_designation
+               m.designation AS reviewer_designation,
+               mu.name AS manager_user_name,
+               me.first_name AS manager_first_name,
+               me.last_name AS manager_last_name,
+               hu.name AS hr_user_name,
+               he.first_name AS hr_first_name,
+               he.last_name AS hr_last_name
         FROM timesheets t
         LEFT JOIN users u ON t.reviewed_by = u.id
         LEFT JOIN employees m ON u.id = m.user_id
+        LEFT JOIN users mu ON t.manager_approved_by = mu.id
+        LEFT JOIN employees me ON mu.id = me.user_id
+        LEFT JOIN users hu ON t.hr_approved_by = hu.id
+        LEFT JOIN employees he ON hu.id = he.user_id
         WHERE t.id = $1
     `;
     const values = [id];

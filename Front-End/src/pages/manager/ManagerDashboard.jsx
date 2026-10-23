@@ -69,11 +69,56 @@ function ManagerDashboard() {
   const pendingResignationsList = (resignations || []).filter(r => r.status === "pending");
   const pendingResignationsCount = pendingResignationsList.length;
 
-  const totalPending = pendingLeavesCount + (overview?.pendingTimesheets || 0) + pendingResignationsCount;
+  const [regularizations, setRegularizations] = useState(() => {
+    try {
+      const saved = localStorage.getItem("hrms_attendance_regularizations");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const pendingRegularizationsList = regularizations.filter(
+    (r) => r.status === "pending_manager" || r.status === "pending"
+  );
+  const pendingRegularizationsCount = pendingRegularizationsList.length;
+
+  const handleApproveRegularization = (regId) => {
+    const updated = regularizations.map((r) =>
+      r.id === regId
+        ? { ...r, status: "pending_hr", managerApprovedAt: new Date().toISOString().slice(0, 10) }
+        : r
+    );
+    setRegularizations(updated);
+    try {
+      localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(updated));
+    } catch {}
+    window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "attendance_regularization" } }));
+  };
+
+  const handleRejectRegularization = (regId) => {
+    const updated = regularizations.map((r) =>
+      r.id === regId
+        ? { ...r, status: "rejected", managerRejectedAt: new Date().toISOString().slice(0, 10) }
+        : r
+    );
+    setRegularizations(updated);
+    try {
+      localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(updated));
+    } catch {}
+    window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "attendance_regularization" } }));
+  };
+
+  const totalPending =
+    pendingLeavesCount +
+    (overview?.pendingTimesheets || 0) +
+    pendingResignationsCount +
+    pendingRegularizationsCount;
   const teamMembers = overview?.teamMembers || [];
 
   const leavesToDisplay = activeTab === "all" ? pendingLeavesList : leaves;
   const resignationsToDisplay = activeTab === "all" ? pendingResignationsList : resignations;
+  const regularizationsToDisplay = activeTab === "all" ? pendingRegularizationsList : regularizations;
 
   const filteredProjects = (projects || []).filter((p) => {
     if (!projectSearch.trim()) return true;
@@ -244,6 +289,13 @@ function ManagerDashboard() {
                   onClick={() => setActiveTab("resignation")}
                 >
                   Resignations <span>{pendingResignationsCount}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`filter-tab-btn ${activeTab === "regularization" ? "active" : ""}`}
+                  onClick={() => setActiveTab("regularization")}
+                >
+                  Regularizations <span>{pendingRegularizationsCount}</span>
                 </button>
               </div>
             </div>
@@ -463,20 +515,80 @@ function ManagerDashboard() {
                     </div>
                   </div>
                 ))}
+
+                {/* ATTENDANCE REGULARIZATIONS */}
+                {filterItems("regularization") && regularizationsToDisplay.map((req) => (
+                  <div key={req.id} className="approval-card-box regularization-type" style={{ borderLeftColor: "#6366f1" }}>
+                    <div className="card-profile-header">
+                      <div className="user-avatar-meta">
+                        <div className="user-avatar-circle" style={{ background: "#e0e7ff", color: "#4338ca", fontWeight: 700 }}>
+                          {(req.employeeName?.[0] || "E").toUpperCase()}
+                        </div>
+                        <div className="user-info-text">
+                          <span className="user-full-name">{req.employeeName || "Employee Request"}</span>
+                          <span className="user-emp-code">{req.employeeCode || "EMP-009"}</span>
+                        </div>
+                      </div>
+                      <span className="type-pill-tag" style={{ background: "#e0e7ff", color: "#4338ca" }}>Regularization • Step 1/2</span>
+                    </div>
+
+                    <div className="request-details-inner">
+                      <div className="req-meta-row">
+                        <span className="req-meta-label">Approval Stage:</span>
+                        <span className="req-meta-val" style={{ color: "#6366f1", fontWeight: 600 }}>
+                          🟡 Step 1: Manager Review (Pending) ➔ Step 2: HR Final Sign-off
+                        </span>
+                      </div>
+                      <div className="req-meta-row">
+                        <span className="req-meta-label">Shift Date:</span>
+                        <span className="req-meta-val">{formatDate(req.date)}</span>
+                      </div>
+                      <div className="req-meta-row">
+                        <span className="req-meta-label">Adjusted Timings:</span>
+                        <span className="req-meta-val" style={{ fontWeight: 700, color: "#4338ca" }}>{req.requestedIn} – {req.requestedOut}</span>
+                      </div>
+                      <div className="req-meta-row">
+                        <span className="req-meta-label">Reason:</span>
+                        <span className="req-meta-val">{req.reasonCategory}</span>
+                      </div>
+                      <div className="req-meta-row">
+                        <span className="req-meta-label">Employee Note:</span>
+                        <span className="req-meta-val" style={{ fontStyle: "italic", fontSize: "0.85rem" }}>"{req.remarks}"</span>
+                      </div>
+                    </div>
+
+                    <div className="card-actions-group">
+                      <button
+                        type="button"
+                        className="card-action-btn decline"
+                        onClick={() => handleRejectRegularization(req.id)}
+                      >
+                        Decline
+                      </button>
+                      <button
+                        type="button"
+                        className="card-action-btn approve"
+                        onClick={() => handleApproveRegularization(req.id)}
+                      >
+                        ✓ Approve & Forward to HR
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </>
         )}
 
         {/* =====================================================
-            VIEW SECTION 2: DIRECT REPORTS ROSTER
+            VIEW SECTION 2: DIRECT REPORTS ROSTER & TEAM ATTENDANCE
         ===================================================== */}
         {viewSection === "roster" && (
           <div>
             <div className="manager-filter-bar">
               <div className="filter-bar-info">
-                <h3>Direct Reports Directory</h3>
-                <p>Employees reporting directly to your team organization unit.</p>
+                <h3>Direct Reports & Team Attendance</h3>
+                <p>Employees reporting directly to your team organization unit with live shift status.</p>
               </div>
             </div>
 
@@ -496,6 +608,7 @@ function ManagerDashboard() {
                       <th>Designation</th>
                       <th>Department</th>
                       <th>Email</th>
+                      <th>Today's Attendance</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -514,6 +627,21 @@ function ManagerDashboard() {
                         <td>{emp.employment?.designation || "Team Member"}</td>
                         <td>{emp.employment?.department || "General"}</td>
                         <td style={{ color: "#64748b" }}>{emp.email}</td>
+                        <td>
+                          <span style={{
+                            background: "#dcfce7",
+                            color: "#166534",
+                            padding: "3px 8px",
+                            borderRadius: "10px",
+                            fontSize: "0.74rem",
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}>
+                            ✓ Present (09:30 AM)
+                          </span>
+                        </td>
                         <td>
                           <span className="active-report-badge">
                             ✓ Direct Report

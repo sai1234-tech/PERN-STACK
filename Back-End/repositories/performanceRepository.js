@@ -60,9 +60,15 @@ export const createOkrRecord = async ({ employeeId, objective }) => {
 
 export const findOkrsByEmployee = async (employeeId) => {
     const queryText = `
-        SELECT * FROM okrs
-        WHERE employee_id = $1
-        ORDER BY created_at DESC;
+        SELECT 
+            o.*,
+            e.first_name, e.last_name, e.email,
+            e.employment->>'department' as department,
+            e.employment->>'designation' as designation
+        FROM okrs o
+        LEFT JOIN employees e ON o.employee_id = e.id
+        WHERE o.employee_id = $1
+        ORDER BY o.created_at DESC;
     `;
     const { rows } = await pool.query(queryText, [employeeId]);
     return rows.map(formatOkr);

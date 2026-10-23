@@ -122,11 +122,11 @@ export const getPulseAnalytics = async (req, res) => {
 
         const averagePulseScore = todaysResponses > 0
             ? Number((todayPulses.reduce((sum, p) => sum + p.score, 0) / todaysResponses).toFixed(1))
-            : 4.2;
+            : 0;
 
         const responseRate = totalEmployees > 0
             ? Math.min(100, Math.round((todaysResponses / totalEmployees) * 100))
-            : 85;
+            : 0;
 
         // 2. Weekly Trend (Last 7 days)
         const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -142,33 +142,24 @@ export const getPulseAnalytics = async (req, res) => {
             const dayCount = dayPulses.length;
             const dayAvg = dayCount > 0
                 ? Number((dayPulses.reduce((sum, p) => sum + p.score, 0) / dayCount).toFixed(1))
-                : Number((3.8 + (i % 3) * 0.3).toFixed(1));
+                : 0;
 
             weeklyTrend.push({
                 date: dStr,
                 dayName,
                 avgScore: dayAvg,
-                responseCount: dayCount || (4 + (i * 2)),
+                responseCount: dayCount,
             });
         }
 
         // 3. Department Comparison
         const deptAgg = await aggregateDepartmentPulseByDate(todayStr);
 
-        let departmentComparison = deptAgg.map((item) => ({
+        const departmentComparison = deptAgg.map((item) => ({
             department: item.department || "General",
             avgScore: Number(Number(item.avg_score || 0).toFixed(1)),
             count: Number(item.count || 0),
         }));
-
-        if (departmentComparison.length === 0) {
-            departmentComparison = [
-                { department: "Engineering", avgScore: 4.4, count: 12 },
-                { department: "Product", avgScore: 4.1, count: 6 },
-                { department: "HR & Operations", avgScore: 4.6, count: 5 },
-                { department: "Sales & Marketing", avgScore: 3.9, count: 8 },
-            ];
-        }
 
         // 4. Employee Response List
         const rawResponses = await findRecentPulsesAdmin(30);
@@ -197,10 +188,10 @@ export const getPulseAnalytics = async (req, res) => {
         return res.status(200).json({
             success: true,
             data: {
-                todaysResponses: todaysResponses || recentResponses.length,
-                totalEmployees: totalEmployees || 32,
+                todaysResponses,
+                totalEmployees,
                 averagePulseScore,
-                responseRate: responseRate || 87.5,
+                responseRate,
                 weeklyTrend,
                 departmentComparison,
                 recentResponses,

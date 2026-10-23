@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useLocation } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import LeaveManagement from "../../components/hr/LeaveManagement";
 import MonthlyAttendanceReport from "../../components/hr/MonthlyAttendanceReport";
 import EmployeeEngagementAnalytics from "../../components/hr/EmployeeEngagementAnalytics";
+import RecruitmentOnboarding from "./RecruitmentOnboarding";
+import ExecutiveKpiCenter from "../../components/hr/ExecutiveKpiCenter";
 import Loader from "../../components/common/Loader";
 import {
   getAllAttendance,
@@ -55,22 +57,80 @@ function listFrom(response) {
   if (!response) return [];
   if (Array.isArray(response)) return response;
   const value =
-    response?.data || response?.records || response?.employees || response?.leaves || response?.attendance || [];
+    response?.data ||
+    response?.records ||
+    response?.employees ||
+    response?.leaves ||
+    response?.attendance ||
+    response?.allocations ||
+    response?.payrolls ||
+    response?.okrs ||
+    response?.clearances ||
+    response?.logs ||
+    response?.tickets ||
+    response?.candidates ||
+    response?.resignations ||
+    [];
   return Array.isArray(value) ? value : [];
 }
 
-function HRDashboard() {
+function HRDashboard({ defaultTab = "directory" }) {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const initialTab = searchParams.get("tab") || defaultTab || "directory";
   const [employees, setEmployees] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [timesheets, setTimesheets] = useState([]);
   const [holidays, setHolidays] = useState([]);
+  const [candidates, setCandidates] = useState([]);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("directory");
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  const scrollToKpis = useCallback(() => {
+    setActiveTab("kpis");
+    setTimeout(() => {
+      const el =
+        document.getElementById("executive-kpi-command-center") ||
+        document.getElementById("executive-kpi-hub") ||
+        document.getElementById("hr-tab-content-area") ||
+        document.querySelector(".hr-nav-tabs-wrapper");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.classList.add("kpi-focus-highlight");
+        setTimeout(() => el.classList.remove("kpi-focus-highlight"), 2200);
+      }
+    }, 60);
+  }, []);
+
+  const scrollToTab = useCallback((tabKey) => {
+    setActiveTab(tabKey);
+    setTimeout(() => {
+      const el =
+        document.getElementById("hr-tab-content-area") ||
+        document.querySelector(".hr-nav-tabs-wrapper");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 60);
+  }, []);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      if (tabParam === "kpis") {
+        scrollToKpis();
+      } else {
+        scrollToTab(tabParam);
+      }
+    } else if (location.hash === "#kpis" || location.hash === "#executive-kpis") {
+      scrollToKpis();
+    }
+  }, [searchParams, location.hash, scrollToKpis, scrollToTab]);
 
   // Timesheet tab state
   const [timesheetSearch, setTimesheetSearch] = useState("");
@@ -82,18 +142,47 @@ function HRDashboard() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionBusyId, setActionBusyId] = useState(null);
 
+  const [tickets, setTickets] = useState([]);
+  const [resignations, setResignations] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+  const [payrolls, setPayrolls] = useState([]);
+  const [okrs, setOkrs] = useState([]);
+  const [clearances, setClearances] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+
   const loadDashboard = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError("");
     try {
-      const [employeeResponse, attendanceResponse, leaveResponse, timesheetResponse, holidayResponse] =
-        await Promise.all([
-          getEmployees(),
-          getAllAttendance(),
-          getAllLeaves(),
-          getAllTimesheets().catch(() => ({ data: [] })),
-          apiRequest("/holidays").catch(() => ({ data: [] })),
-        ]);
+      const [
+        employeeResponse,
+        attendanceResponse,
+        leaveResponse,
+        timesheetResponse,
+        holidayResponse,
+        candidateResponse,
+        ticketResponse,
+        resignationResponse,
+        allocationResponse,
+        payrollResponse,
+        okrResponse,
+        clearanceResponse,
+        auditResponse,
+      ] = await Promise.all([
+        getEmployees(),
+        getAllAttendance(),
+        getAllLeaves(),
+        getAllTimesheets().catch(() => ({ data: [] })),
+        apiRequest("/holidays").catch(() => ({ data: [] })),
+        apiRequest("/candidates").catch(() => ({ data: [] })),
+        apiRequest("/tickets").catch(() => ({ data: [] })),
+        apiRequest("/resignations/all").catch(() => ({ data: [] })),
+        apiRequest("/allocations").catch(() => ({ data: [] })),
+        apiRequest("/payroll").catch(() => ({ data: [] })),
+        apiRequest("/performance/all").catch(() => ({ data: [] })),
+        apiRequest("/clearances/all").catch(() => ({ data: [] })),
+        apiRequest("/audit?limit=25").catch(() => ({ data: [] })),
+      ]);
       setEmployees(listFrom(employeeResponse));
       setAttendance(listFrom(attendanceResponse));
       setLeaves(listFrom(leaveResponse));
@@ -102,6 +191,20 @@ function HRDashboard() {
         ? holidayResponse
         : (holidayResponse?.data || holidayResponse?.holidays || []);
       setHolidays(hList);
+      const cList = Array.isArray(candidateResponse)
+        ? candidateResponse
+        : (candidateResponse?.data || candidateResponse?.candidates || []);
+      setCandidates(cList);
+      const tList = Array.isArray(ticketResponse)
+        ? ticketResponse
+        : (ticketResponse?.data || ticketResponse?.tickets || []);
+      setTickets(tList);
+      setResignations(listFrom(resignationResponse));
+      setAllocations(listFrom(allocationResponse));
+      setPayrolls(listFrom(payrollResponse));
+      setOkrs(listFrom(okrResponse));
+      setClearances(listFrom(clearanceResponse));
+      setAuditLogs(listFrom(auditResponse));
     } catch (requestError) {
       if (!silent) setError(requestError.message || "Failed to load dashboard data");
     } finally {
@@ -192,10 +295,35 @@ function HRDashboard() {
       if (!matchesStatus) return false;
 
       const dStr = String(t.date || "").slice(0, 10);
-      const matchesWeek =
-        timesheetWeekFilter === "all" ||
-        (timesheetWeekFilter === "current" && dStr >= "2026-10-19" && dStr <= "2026-10-23") ||
-        (timesheetWeekFilter === "previous" && dStr >= "2026-10-12" && dStr <= "2026-10-16");
+      const matchesWeek = (() => {
+        if (timesheetWeekFilter === "all") return true;
+        const now = new Date();
+        const curDay = now.getDay();
+        const diffToMon = (curDay + 6) % 7;
+        const curMon = new Date(now);
+        curMon.setDate(now.getDate() - diffToMon);
+        curMon.setHours(0, 0, 0, 0);
+        const curSun = new Date(curMon);
+        curSun.setDate(curMon.getDate() + 6);
+
+        const prevMon = new Date(curMon);
+        prevMon.setDate(curMon.getDate() - 7);
+        const prevSun = new Date(curMon);
+        prevSun.setDate(curMon.getDate() - 1);
+
+        const curMonStr = curMon.toLocaleDateString("en-CA");
+        const curSunStr = curSun.toLocaleDateString("en-CA");
+        const prevMonStr = prevMon.toLocaleDateString("en-CA");
+        const prevSunStr = prevSun.toLocaleDateString("en-CA");
+
+        if (timesheetWeekFilter === "current") {
+          return dStr >= curMonStr && dStr <= curSunStr;
+        }
+        if (timesheetWeekFilter === "previous") {
+          return dStr >= prevMonStr && dStr <= prevSunStr;
+        }
+        return true;
+      })();
 
       if (!matchesWeek) return false;
 
@@ -354,9 +482,6 @@ function HRDashboard() {
       if (!q) return true;
       const fullName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim().toLowerCase();
       const code = String(emp.employeeCode || "").toLowerCase();
-      const email = String(emp.email || emp.user?.email || "").toLowerCase();
-      const dept = String(emp.employment?.department || "").toLowerCase();
-      const desig = String(emp.employment?.designation || "").toLowerCase();
       return (
         fullName.includes(q) ||
         code.includes(q) ||
@@ -366,6 +491,35 @@ function HRDashboard() {
       );
     });
   }, [employees, deptFilter, search]);
+
+  // 7-Pillar Executive Indicators (Headcount, Joiners, Exits, Onboarding, Tickets, Attendance, Recruitment)
+  const recentJoinersCount = useMemo(() => {
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const count = employees.filter((emp) => {
+      const joinDate = emp.employment?.joiningDate ? new Date(emp.employment.joiningDate) : null;
+      return joinDate && joinDate >= sixtyDaysAgo;
+    }).length;
+    return count;
+  }, [employees]);
+
+  const activeExitsCount = useMemo(() => {
+    return resignations.filter((r) =>
+      ["pending", "manager_approved", "under_review", "approved"].includes(String(r.status || "").toLowerCase())
+    ).length;
+  }, [resignations]);
+
+  const onboardingCount = useMemo(() => {
+    return candidates.filter((c) =>
+      ["Offered", "Offer Accepted", "Hired", "Onboarding"].includes(c.status)
+    ).length;
+  }, [candidates]);
+
+  const openTicketsCount = useMemo(() => {
+    return tickets.filter((t) =>
+      !["resolved", "closed"].includes(String(t.status || "").toLowerCase())
+    ).length;
+  }, [tickets]);
 
   if (loading) return <Loader label="Loading HR Command Center..." />;
 
@@ -460,6 +614,41 @@ function HRDashboard() {
               <span className="cmd-btn-text">Org Chart</span>
             </Link>
 
+            <button
+              type="button"
+              className={`cmd-action-btn cmd-kpis ${activeTab === "kpis" ? "active" : ""}`}
+              onClick={scrollToKpis}
+              title="Open Executive 9-Domain KPI Command Center"
+            >
+              <span className="cmd-btn-icon">📊</span>
+              <span className="cmd-btn-text">Executive KPIs</span>
+            </button>
+
+            <button
+              type="button"
+              className={`cmd-action-btn cmd-recruitment ${activeTab === "recruitment" ? "active" : ""}`}
+              onClick={() => scrollToTab("recruitment")}
+              title="Open Recruitment & Onboarding Pipeline"
+            >
+              <span className="cmd-btn-icon">🎯</span>
+              <span className="cmd-btn-text">Hiring Pipeline</span>
+            </button>
+
+            <Link to="/hr/lifecycle" className="cmd-action-btn cmd-lifecycle" title="Employee Lifecycle 22-Stage Workflow Journey">
+              <span className="cmd-btn-icon">🔄</span>
+              <span className="cmd-btn-text">Lifecycle Journey</span>
+            </Link>
+
+            <Link to="/hr/entities" className="cmd-action-btn cmd-entities" title="Enterprise 41-Entity Master Data Platform">
+              <span className="cmd-btn-icon">🌐</span>
+              <span className="cmd-btn-text">41-Entity Master</span>
+            </Link>
+
+            <Link to="/hr/integrations" className="cmd-action-btn cmd-integrations" title="Enterprise 8-Channel Integration Hub">
+              <span className="cmd-btn-icon">🔌</span>
+              <span className="cmd-btn-text">Integrations</span>
+            </Link>
+
             <Link to="/hr/helpdesk" className="cmd-action-btn cmd-helpdesk" title="HR Support & Tickets">
               <span className="cmd-btn-icon">🎧</span>
               <span className="cmd-btn-text">Helpdesk</span>
@@ -467,18 +656,76 @@ function HRDashboard() {
           </div>
         </section>
 
-        {/* Global Alert Notification */}
-        {error && (
-          <div className="hr-alert-box" role="alert">
-            <div className="alert-content">
-              <span className="alert-icon">⚠️</span>
-              <span>{error}</span>
+        {/* 7-Pillar Executive Indicators Strip (Headcount, Joiners, Exits, Onboarding, Tickets, Attendance, Recruitment) */}
+        <section className="hr-7pillar-strip" aria-label="Executive 7-Pillar Overview" style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: "10px",
+          marginBottom: "1.25rem"
+        }}>
+          <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>👥 Headcount</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <strong style={{ fontSize: "1.35rem", color: "#0f172a", fontWeight: 800 }}>{employees.length}</strong>
+              <small style={{ fontSize: "0.74rem", color: "#10b981", fontWeight: 600 }}>{activeEmployees.length} active</small>
             </div>
-            <button type="button" onClick={loadDashboard}>
-              Try Again
-            </button>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Total roster</span>
           </div>
-        )}
+
+          <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>🌱 Joiners</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <strong style={{ fontSize: "1.35rem", color: "#0f172a", fontWeight: 800 }}>{recentJoinersCount}</strong>
+              <small style={{ fontSize: "0.74rem", color: "#0284c7", fontWeight: 600 }}>Last 60d</small>
+            </div>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>New additions</span>
+          </div>
+
+          <Link to="/hr/resignations" style={{ textDecoration: "none", background: "#ffffff", padding: "12px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "4px", transition: "transform 0.15s ease", cursor: "pointer" }}>
+            <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>👋 Exits</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <strong style={{ fontSize: "1.35rem", color: activeExitsCount > 0 ? "#e11d48" : "#0f172a", fontWeight: 800 }}>{activeExitsCount}</strong>
+              <small style={{ fontSize: "0.74rem", color: activeExitsCount > 0 ? "#e11d48" : "#64748b", fontWeight: 600 }}>In notice</small>
+            </div>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Resignation flow ➔</span>
+          </Link>
+
+          <button type="button" onClick={() => scrollToTab("recruitment")} style={{ textAlign: "left", background: "#ffffff", padding: "12px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "4px", cursor: "pointer" }}>
+            <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>📋 Onboarding</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <strong style={{ fontSize: "1.35rem", color: "#0f172a", fontWeight: 800 }}>{onboardingCount}</strong>
+              <small style={{ fontSize: "0.74rem", color: "#8b5cf6", fontWeight: 600 }}>Preboarding</small>
+            </div>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Checklist & BGV ➔</span>
+          </button>
+
+          <Link to="/hr/helpdesk" style={{ textDecoration: "none", background: "#ffffff", padding: "12px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "4px", cursor: "pointer" }}>
+            <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>🎧 Tickets</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <strong style={{ fontSize: "1.35rem", color: openTicketsCount > 0 ? "#f59e0b" : "#0f172a", fontWeight: 800 }}>{openTicketsCount}</strong>
+              <small style={{ fontSize: "0.74rem", color: openTicketsCount > 0 ? "#f59e0b" : "#10b981", fontWeight: 600 }}>Active SLA</small>
+            </div>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Helpdesk queue ➔</span>
+          </Link>
+
+          <button type="button" onClick={() => scrollToTab("attendance")} style={{ textAlign: "left", background: "#ffffff", padding: "12px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "4px", cursor: "pointer" }}>
+            <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>⏱️ Attendance</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <strong style={{ fontSize: "1.35rem", color: "#10b981", fontWeight: 800 }}>{presentToday}</strong>
+              <small style={{ fontSize: "0.74rem", color: "#10b981", fontWeight: 600 }}>Present</small>
+            </div>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Daily shift punches ➔</span>
+          </button>
+
+          <button type="button" onClick={() => scrollToTab("recruitment")} style={{ textAlign: "left", background: "#ffffff", padding: "12px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "4px", cursor: "pointer" }}>
+            <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>🎯 Recruitment</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <strong style={{ fontSize: "1.35rem", color: "#4f46e5", fontWeight: 800 }}>{candidates.length}</strong>
+              <small style={{ fontSize: "0.74rem", color: "#4f46e5", fontWeight: 600 }}>Candidates</small>
+            </div>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Hiring pipeline ➔</span>
+          </button>
+        </section>
 
         {/* Next-Level 4-Column KPI Grid */}
         <section className="hr-kpi-grid">
@@ -599,13 +846,22 @@ function HRDashboard() {
                 <span className="chip-icon">🏢</span>
                 <span className="chip-name">Teams</span>
               </Link>
-              <Link to="/hr/recruitment" className="shortcut-chip recruitment" title="Recruitment & Onboarding">
+              <button
+                type="button"
+                className={`shortcut-chip recruitment ${activeTab === "recruitment" ? "active" : ""}`}
+                onClick={() => scrollToTab("recruitment")}
+                title="Recruitment & Onboarding Pipeline"
+              >
                 <span className="chip-icon">🎯</span>
-                <span className="chip-name">Hiring</span>
-              </Link>
+                <span className="chip-name">Hiring ({candidates.length})</span>
+              </button>
               <Link to="/hr/resignations" className="shortcut-chip resignations" title="Resignation Approvals">
                 <span className="chip-icon">👋</span>
                 <span className="chip-name">Resignations</span>
+              </Link>
+              <Link to="/hr/lifecycle" className="shortcut-chip lifecycle" title="22-Stage Lifecycle Journey">
+                <span className="chip-icon">🔄</span>
+                <span className="chip-name">Lifecycle</span>
               </Link>
               <Link to="/hr/helpdesk" className="shortcut-chip helpdesk" title="HR Helpdesk">
                 <span className="chip-icon">🎧</span>
@@ -701,8 +957,8 @@ function HRDashboard() {
                     </div>
                     <p>
                       {isToday
-                        ? "Office is officially closed today for Vijayadashami celebration. Regular shift punches, attendance rules, and late-mark tracking are auto-exempted."
-                        : "Mandatory corporate holiday scheduled for tomorrow. Office desks closed, attendance auto-reconciled, and shift hours paused."}
+                        ? `Office is officially closed today for ${imminentHoliday.title}. Regular shift punches, attendance rules, and late-mark tracking are auto-exempted.`
+                        : `Mandatory corporate holiday (${imminentHoliday.title}) scheduled for tomorrow. Office desks closed, attendance auto-reconciled, and shift hours paused.`}
                     </p>
                   </div>
                 </div>
@@ -787,8 +1043,22 @@ function HRDashboard() {
         </section>
 
         {/* Executive Segmented Navigation Tabs */}
-        <section className="hr-nav-tabs-wrapper">
+        <section id="hr-tab-content-area" className="hr-nav-tabs-wrapper">
           <nav className="hr-segmented-nav" aria-label="Dashboard views">
+            <button
+              type="button"
+              className={`nav-tab-btn ${
+                activeTab === "kpis" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("kpis")}
+            >
+              <span className="tab-icon">📊</span>
+              <span className="tab-label">Executive KPIs</span>
+              <span className="tab-count-pill" style={{ background: "#2563eb", color: "#ffffff", fontWeight: 800 }}>
+                9 Domains
+              </span>
+            </button>
+
             <button
               type="button"
               className={`nav-tab-btn ${
@@ -848,6 +1118,22 @@ function HRDashboard() {
             <button
               type="button"
               className={`nav-tab-btn ${
+                activeTab === "recruitment" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("recruitment")}
+            >
+              <span className="tab-icon">🎯</span>
+              <span className="tab-label">Recruitment & Hiring</span>
+              {candidates.length > 0 && (
+                <span className="tab-count-pill alert">
+                  {candidates.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`nav-tab-btn ${
                 activeTab === "monthly" ? "active" : ""
               }`}
               onClick={() => setActiveTab("monthly")}
@@ -857,6 +1143,26 @@ function HRDashboard() {
             </button>
           </nav>
         </section>
+
+        {/* Tab 0: Executive KPI Command Center (9 Domains) */}
+        {activeTab === "kpis" && (
+          <div id="executive-kpi-command-center" className="executive-kpi-anchor">
+            <ExecutiveKpiCenter
+              employees={employees}
+              attendance={attendance}
+              leaves={leaves}
+              timesheets={timesheets}
+              candidates={candidates}
+              tickets={tickets}
+              resignations={resignations}
+              clearances={clearances}
+              allocations={allocations}
+              payrolls={payrolls}
+              okrs={okrs}
+              auditLogs={auditLogs}
+            />
+          </div>
+        )}
 
         {/* Tab 1: Employee Directory */}
         {activeTab === "directory" && (
@@ -1531,10 +1837,17 @@ function HRDashboard() {
           </div>
         )}
 
-        {/* Tab 4: Monthly Attendance Report */}
+        {/* Tab 5: Monthly Attendance Report */}
         {activeTab === "monthly" && (
           <div className="tab-pane-container">
             <MonthlyAttendanceReport allEmployees={employees} />
+          </div>
+        )}
+
+        {/* Tab 6: Recruitment & Onboarding Pipeline */}
+        {activeTab === "recruitment" && (
+          <div className="tab-pane-container">
+            <RecruitmentOnboarding isEmbedded={true} />
           </div>
         )}
       </main>

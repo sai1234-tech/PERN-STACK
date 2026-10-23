@@ -18,7 +18,13 @@ export function AuthProvider({ children }) {
     try {
       sessionStorage.clear();
       Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("hrms_")) {
+        if (
+          key.startsWith("hrms_") &&
+          key !== "hrms_theme" &&
+          key !== "hrms_remember_email" &&
+          !key.startsWith("hrms_dismissed_doc_requests") &&
+          !key.startsWith("hrms_cleared_notifications")
+        ) {
           localStorage.removeItem(key);
         }
       });
@@ -105,7 +111,13 @@ export function AuthProvider({ children }) {
       localStorage.removeItem("hrms_profile_photo");
       localStorage.removeItem("hrms_selected_employee_id");
       Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("hrms_") && key !== "hrms_theme" && key !== "hrms_remember_email") {
+        if (
+          key.startsWith("hrms_") &&
+          key !== "hrms_theme" &&
+          key !== "hrms_remember_email" &&
+          !key.startsWith("hrms_dismissed_doc_requests") &&
+          !key.startsWith("hrms_cleared_notifications")
+        ) {
           localStorage.removeItem(key);
         }
       });
@@ -196,11 +208,18 @@ export function AuthProvider({ children }) {
       } catch (e) {}
     };
 
+    const handleAuthExpired = () => {
+      console.warn("[Auth] Session expired event received. Purging expired session.");
+      logout();
+    };
+
     window.addEventListener("hrms_data_updated", handleSync);
     window.addEventListener("hrms:data_changed", handleSync);
+    window.addEventListener("hrms:auth_expired", handleAuthExpired);
     return () => {
       window.removeEventListener("hrms_data_updated", handleSync);
       window.removeEventListener("hrms:data_changed", handleSync);
+      window.removeEventListener("hrms:auth_expired", handleAuthExpired);
     };
   }, []);
 

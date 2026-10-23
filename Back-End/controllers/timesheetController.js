@@ -13,6 +13,7 @@ import {
     submitWeekTimesheets,
     findAllTimesheetsAdmin
 } from "../repositories/timesheetRepository.js";
+import { getTeamMemberIds } from "../repositories/managerRepository.js";
 import { broadcastBackendChange } from "../services/sseService.js";
 
 // =====================================================
@@ -1304,6 +1305,17 @@ export const reviewTimesheet = async (req, res) => {
 
         const isManager = userRole === "manager";
         const isHRorAdmin = ["hr", "admin"].includes(userRole);
+
+        if (isManager) {
+            const { teamIds } = await getTeamMemberIds(reviewerUserId, req.user?.email || "");
+            const tsEmpId = timesheet.employee || timesheet.employee_id;
+            if (teamIds.length > 0 && !teamIds.includes(tsEmpId)) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Not authorized to manage this employee's timesheet",
+                });
+            }
+        }
 
         let finalStatus = status;
         let updateFields = {};

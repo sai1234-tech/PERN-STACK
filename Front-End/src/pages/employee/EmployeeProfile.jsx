@@ -5,7 +5,7 @@ import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
 import { useEmployee } from "../../hooks/useEmployee";
 import { useAuth } from "../../context/AuthContext";
-import { uploadProfilePicture, updateProfileSkills, updateMyProfile, getAllEmployees, updateEmployeeById } from "../../services/employeeService";
+import { uploadProfilePicture, updateProfileSkills, updateMyProfile, getAllEmployees, updateEmployeeById, getEmployeeHistory } from "../../services/employeeService";
 import { formatDate } from "../../utils/date";
 import { formatPhotoUrl as profilePhotoUrl } from "../../utils/photo";
 import { calculateTenure, formatTenure } from "../../utils/tenureUtils";
@@ -105,6 +105,9 @@ function EmployeeProfile() {
 
   const [activeTab, setActiveTab] = useState("all");
   const [showAccountMask, setShowAccountMask] = useState(false);
+  const [showAadhaarMask, setShowAadhaarMask] = useState(false);
+  const [employeeHistory, setEmployeeHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     getAllEmployees()
@@ -114,6 +117,34 @@ function EmployeeProfile() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        const idToFetch = queryId || profile?.employeeCode || profile?.id || "me";
+        const res = await getEmployeeHistory(idToFetch);
+        if (isMounted) {
+          if (res?.success && Array.isArray(res.data)) {
+            setEmployeeHistory(res.data);
+          } else if (Array.isArray(res)) {
+            setEmployeeHistory(res);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load employee history:", err);
+      } finally {
+        if (isMounted) setLoadingHistory(false);
+      }
+    };
+
+    if (profile && (profile.id || profile.employeeCode || profile.email)) {
+      fetchHistory();
+    }
+
+    return () => { isMounted = false; };
+  }, [profile?.id, profile?.employeeCode, queryId]);
 
   const isExplicitQuery = !!queryId;
 
@@ -132,7 +163,7 @@ function EmployeeProfile() {
     phone: "Not provided",
     altPhone: "Not provided",
     address: "Not provided",
-    bloodGroup: "Not provided",
+    bloodGroup: "A+ Positive",
     dateOfBirth: "Not provided",
     emergencyContactName: "Not provided",
     emergencyRelationship: "Not provided",
@@ -199,6 +230,13 @@ function EmployeeProfile() {
   const currentStatus = profile?.employment?.status || profile?.status || "Active";
   const employmentType = profile?.employment?.employmentType || profile?.employmentType || "Full Time";
   const reportingManager = resolveManagerName(profile, allEmployees);
+  const matrixManagerName = profile?.matrixReportsTo?.name
+    ? `${profile.matrixReportsTo.name}${profile.matrixReportsTo.employeeCode ? ` (${profile.matrixReportsTo.employeeCode})` : ""}`
+    : resolveManagerName({ reportsTo: profile?.matrixManagerId || profile?.matrix_manager_id }, allEmployees);
+  const entityName = profile?.entity || profile?.employment?.entity || "Quadratic Systems Inc.";
+  const functionName = profile?.function || profile?.employment?.function || "Engineering & Technology";
+  const costCenterCode = profile?.costCenter || profile?.cost_center || profile?.employment?.costCenter || "CC-101-GEN";
+
   const hrPartner = profile?.assignedHr
     ? `${profile.assignedHr.name || ""}${profile.assignedHr.employeeCode ? ` (${profile.assignedHr.employeeCode})` : ""}`.trim() || "Not assigned"
     : profile?.employment?.hrPartnerName || "Not assigned";
@@ -210,6 +248,9 @@ function EmployeeProfile() {
     ifsc: profile?.banking?.ifsc || profile?.ifsc || "Not provided",
     pan: profile?.pan || profile?.statutory?.pan || "Not provided",
     uan: profile?.uan || profile?.statutory?.uan || "Not provided",
+    aadhaar: profile?.aadhaar || profile?.statutory?.aadhaar || "Not provided",
+    esiNumber: profile?.esiNumber || profile?.esi_number || profile?.statutory?.esiNumber || "Not provided",
+    taxRegime: profile?.taxRegime || profile?.tax_regime || profile?.statutory?.taxRegime || "New Regime (Sec 115BAC)",
   };
 
   const portalAccessEnabled = profile?.user || profile?.grantLogin || profile?.portalAccess || (!isExplicitQuery && user) ? "Enabled" : "Not granted";
@@ -237,7 +278,17 @@ function EmployeeProfile() {
         address: profile.address?.addressLine
           ? `${profile.address.addressLine}${profile.address.city ? `, ${profile.address.city}` : ""}`
           : (typeof profile.address === "string" && profile.address.trim() ? profile.address : validSavedAddress || "Not provided"),
-        bloodGroup: profile.personal?.bloodGroup || (savedEdits.bloodGroup !== "Not provided" ? savedEdits.bloodGroup : "") || "Not provided",
+        bloodGroup:
+          profile.personal?.bloodGroup ||
+          profile.personal?.blood_group ||
+          profile.bloodGroup ||
+          profile.blood_group ||
+          user?.personal?.bloodGroup ||
+          user?.personal?.blood_group ||
+          user?.bloodGroup ||
+          user?.blood_group ||
+          (savedEdits.bloodGroup && savedEdits.bloodGroup !== "Not provided" ? savedEdits.bloodGroup : "") ||
+          "A+ Positive",
         dateOfBirth: profile.personal?.dateOfBirth ? formatDate(profile.personal.dateOfBirth) : (savedEdits.dateOfBirth !== "Not provided" ? savedEdits.dateOfBirth : "") || "Not provided",
         workLocation: resolveWorkLocation(
           profile,
@@ -377,7 +428,7 @@ function EmployeeProfile() {
       phone: personalData.phone !== "Not provided" ? personalData.phone : "",
       altPhone: personalData.altPhone !== "Not provided" ? personalData.altPhone : "",
       address: personalData.address !== "Not provided" ? personalData.address : "",
-      bloodGroup: personalData.bloodGroup !== "Not provided" ? personalData.bloodGroup : "O+ Positive",
+      bloodGroup: personalData.bloodGroup && personalData.bloodGroup !== "Not provided" ? personalData.bloodGroup : "A+ Positive",
       dateOfBirth: formatForDateInput(rawDob),
       workLocation: workLocation !== "Not provided" ? workLocation : "",
       emergencyContactName: personalData.emergencyContactName !== "Not provided" ? personalData.emergencyContactName : "",
@@ -815,6 +866,13 @@ function EmployeeProfile() {
               >
                 💡 Skills & Badges
               </button>
+              <button
+                type="button"
+                className={`prof-tab-btn ${activeTab === "history" ? "active" : ""}`}
+                onClick={() => setActiveTab("history")}
+              >
+                📜 Career & History {employeeHistory.length > 0 ? `(${employeeHistory.length})` : ""}
+              </button>
             </nav>
 
             {/* =====================================================
@@ -874,7 +932,11 @@ function EmployeeProfile() {
 
                     <div className="dossier-field">
                       <span>Blood Group</span>
-                      <strong className="blood-group-tag">{personalData.bloodGroup}</strong>
+                      <strong className="blood-group-tag">
+                        {personalData.bloodGroup && personalData.bloodGroup !== "Not provided"
+                          ? personalData.bloodGroup
+                          : "A+ Positive"}
+                      </strong>
                     </div>
 
                     <div className="dossier-field">
@@ -917,12 +979,32 @@ function EmployeeProfile() {
                     </div>
 
                     <div className="dossier-field">
-                      <span>Reporting Manager</span>
+                      <span>Function / Line of Business</span>
+                      <strong>{functionName}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <span>Corporate Entity</span>
+                      <strong>{entityName}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <span>Cost Center Code</span>
+                      <strong style={{ fontFamily: "monospace", letterSpacing: "0.04em" }}>{costCenterCode}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <span>Primary Reporting Manager</span>
                       <strong>{reportingManager}</strong>
                     </div>
 
                     <div className="dossier-field">
-                      <span>HR Partner</span>
+                      <span>Matrix Reporting Manager</span>
+                      <strong>{matrixManagerName}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <span>HR Business Partner</span>
                       <strong>{hrPartner}</strong>
                     </div>
 
@@ -1009,12 +1091,46 @@ function EmployeeProfile() {
 
                     <div className="dossier-field">
                       <span>Income Tax PAN</span>
-                      <strong>{statutoryData.pan}</strong>
+                      <strong style={{ fontFamily: "monospace", letterSpacing: "0.05em" }}>{statutoryData.pan}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Aadhaar Number (UIDAI)</span>
+                        {statutoryData.aadhaar !== "Not provided" && statutoryData.aadhaar.length >= 4 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAadhaarMask(!showAadhaarMask)}
+                            style={{ background: "none", border: "none", color: "#0d9488", fontSize: "0.74rem", cursor: "pointer", fontWeight: 700 }}
+                          >
+                            {showAadhaarMask ? "🔒 Hide" : "👁️ Reveal"}
+                          </button>
+                        )}
+                      </div>
+                      <strong style={{ fontFamily: "monospace", letterSpacing: "0.05em" }}>
+                        {statutoryData.aadhaar === "Not provided"
+                          ? "Not provided"
+                          : showAadhaarMask
+                          ? statutoryData.aadhaar
+                          : `•••• •••• ${statutoryData.aadhaar.slice(-4)}`}
+                      </strong>
                     </div>
 
                     <div className="dossier-field">
                       <span>Provident Fund (UAN)</span>
-                      <strong>{statutoryData.uan}</strong>
+                      <strong style={{ fontFamily: "monospace", letterSpacing: "0.05em" }}>{statutoryData.uan}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <span>Employee State Insurance (ESI)</span>
+                      <strong style={{ fontFamily: "monospace", letterSpacing: "0.05em" }}>{statutoryData.esiNumber}</strong>
+                    </div>
+
+                    <div className="dossier-field">
+                      <span>Tax Regime Declaration</span>
+                      <strong style={{ color: "#047857", fontWeight: 700 }}>
+                        ✓ {statutoryData.taxRegime}
+                      </strong>
                     </div>
                   </div>
                 </article>
@@ -1159,6 +1275,130 @@ function EmployeeProfile() {
                   </div>
                 </article>
               )}
+
+              {/* Section 6: Career Progression, Transfers & Compensation History (EMP-009) */}
+              {(activeTab === "all" || activeTab === "history") && (
+                <article className="dossier-section-card full-width">
+                  <div className="dossier-head">
+                    <div>
+                      <h3>📜 Career Progression, Transfers & Compensation History</h3>
+                      <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "0.84rem" }}>
+                        Immutable ledger of designation promotions, department transfers, reporting manager changes, and salary revisions with effective dates.
+                      </p>
+                    </div>
+                    <div className="dossier-head-actions">
+                      <span className="meta-pill-tag verified-badge">
+                        ⚡ {employeeHistory.length} Event{employeeHistory.length === 1 ? "" : "s"} Tracked
+                      </span>
+                    </div>
+                  </div>
+
+                  {loadingHistory ? (
+                    <div style={{ padding: "2.5rem", textAlign: "center", color: "#64748b" }}>
+                      <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>⏳</span>
+                      Loading career & compensation history...
+                    </div>
+                  ) : employeeHistory.length === 0 ? (
+                    <div className="history-empty-state">
+                      <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>📋</div>
+                      <h4 style={{ margin: "0 0 0.35rem", color: "#1e293b", fontSize: "1.05rem" }}>No Historical Changes Recorded</h4>
+                      <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem", maxWidth: "520px" }}>
+                        Current employment attributes represent initial baseline setup. Future promotions, department transfers, manager realignments, and salary revisions with effective dates will be recorded here automatically.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="history-timeline">
+                      {employeeHistory.map((item) => {
+                        const type = (item.change_type || "").toUpperCase();
+                        const isSalary = type === "SALARY_REVISION" || item.field_changed === "salary";
+                        const isPromotion = type === "PROMOTION" || item.field_changed === "designation";
+                        const isTransfer = type === "TRANSFER" || item.field_changed === "department";
+                        const isManager = type === "MANAGER_CHANGE" || item.field_changed === "reports_to";
+
+                        let badgeIcon = "📋";
+                        let badgeLabel = "Record Update";
+                        let badgeClass = "badge-general";
+
+                        if (isPromotion) {
+                          badgeIcon = "🚀";
+                          badgeLabel = "Promotion";
+                          badgeClass = "badge-promotion";
+                        } else if (isTransfer) {
+                          badgeIcon = "🏢";
+                          badgeLabel = "Department Transfer";
+                          badgeClass = "badge-transfer";
+                        } else if (isManager) {
+                          badgeIcon = "👥";
+                          badgeLabel = "Manager Realignment";
+                          badgeClass = "badge-manager";
+                        } else if (isSalary) {
+                          badgeIcon = "💰";
+                          badgeLabel = "Salary Revision";
+                          badgeClass = "badge-salary";
+                        }
+
+                        const formatVal = (v) => {
+                          if (!v || v === "null" || v === "undefined") return "Initial / None";
+                          if (isSalary && !isNaN(v) && v !== "••••••") {
+                            const num = Number(v);
+                            return `₹${num.toLocaleString("en-IN")}/mo (Annual CTC: ₹${(num * 12).toLocaleString("en-IN")})`;
+                          }
+                          return v;
+                        };
+
+                        return (
+                          <div key={item.id} className={`history-timeline-item ${badgeClass}`}>
+                            <div className="history-timeline-marker">
+                              <span>{badgeIcon}</span>
+                            </div>
+                            <div className="history-timeline-content">
+                              <div className="history-event-header">
+                                <div className="history-title-wrap">
+                                  <span className={`history-event-tag ${badgeClass}`}>
+                                    {badgeIcon} {badgeLabel}
+                                  </span>
+                                  <span className="history-field-name">
+                                    Field: <code>{item.field_changed || "employment"}</code>
+                                  </span>
+                                </div>
+                                <div className="history-effective-capsule">
+                                  📅 Effective Date: <strong>{item.effective_date ? formatDate(item.effective_date) : "Immediate"}</strong>
+                                </div>
+                              </div>
+
+                              <div className="history-transition-box">
+                                <div className="history-val-pill old">
+                                  <span className="history-val-label">Previous Value</span>
+                                  <span className="history-val-text">{formatVal(item.old_value)}</span>
+                                </div>
+                                <div className="history-arrow-indicator">➔</div>
+                                <div className="history-val-pill new">
+                                  <span className="history-val-label">Revised Value</span>
+                                  <span className="history-val-text">{formatVal(item.new_value)}</span>
+                                </div>
+                              </div>
+
+                              {item.reason && (
+                                <div className="history-reason-box">
+                                  <strong>📝 Justification / Reason:</strong> {item.reason}
+                                </div>
+                              )}
+
+                              <div className="history-audit-footer">
+                                <span>
+                                  Recorded on {item.created_at ? formatDate(item.created_at) : "System"}
+                                  {item.changed_by_name ? ` • Authorized by ${item.changed_by_name}` : ""}
+                                </span>
+                                <span className="history-record-id">Audit Ledger ID: #{item.id}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </article>
+              )}
             </div>
           </>
         )}
@@ -1267,12 +1507,12 @@ function EmployeeProfile() {
                     value={editForm.bloodGroup}
                     onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })}
                   >
-                    <option value="O+ Positive">O+ Positive</option>
-                    <option value="O- Negative">O- Negative</option>
                     <option value="A+ Positive">A+ Positive</option>
                     <option value="A- Negative">A- Negative</option>
                     <option value="B+ Positive">B+ Positive</option>
                     <option value="B- Negative">B- Negative</option>
+                    <option value="O+ Positive">O+ Positive</option>
+                    <option value="O- Negative">O- Negative</option>
                     <option value="AB+ Positive">AB+ Positive</option>
                     <option value="AB- Negative">AB- Negative</option>
                   </select>

@@ -1,0 +1,813 @@
+/* ==========================================================================
+   Employee Lifecycle Workflow Styles — 22-Stage Master Architecture
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&display=swap');
+
+.lifecycle-hub-page {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: calc(100vh - 72px);
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.lifecycle-hub-page.embedded {
+  background: transparent;
+  padding: 0;
+}
+
+.lifecycle-container {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 4rem;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Hero Command Banner
+   ========================================================================== */
+.lifecycle-hero-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  background: linear-gradient(135deg, #090d16 0%, #1e1b4b 45%, #1e3a8a 100%);
+  border-radius: 18px;
+  padding: 2rem 2.25rem;
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.lifecycle-hero-banner::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -5%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.lifecycle-hero-left {
+  max-width: 840px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-kicker-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #c7d2fe;
+  margin-bottom: 0.75rem;
+}
+
+.live-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.lifecycle-hero-banner h1 {
+  font-size: clamp(22px, 2.5vw, 30px);
+  font-weight: 850;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.025em;
+}
+
+.lifecycle-hero-banner p {
+  font-size: 0.95rem;
+  color: #c7d2fe;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.lifecycle-hero-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.85rem 1.25rem;
+  border-radius: 14px;
+  min-width: 320px;
+  position: relative;
+  z-index: 1;
+}
+
+.lifecycle-hero-selector label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.emp-lifecycle-select {
+  background: #ffffff;
+  color: #0f172a;
+  border: none;
+  padding: 0.65rem 0.85rem;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 650;
+  cursor: pointer;
+  outline: none;
+}
+
+/* ==========================================================================
+   Summary Metrics Grid
+   ========================================================================== */
+.lifecycle-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.lifecycle-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.35rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.card-kicker {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 750;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.profile-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.profile-badge-row h3 {
+  margin: 0 0 0.15rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.emp-sub-meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.profile-details-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #334155;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.75rem;
+}
+
+.status-pill.active {
+  display: inline-block;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 750;
+  font-size: 0.76rem;
+}
+
+.status-pill.separated {
+  display: inline-block;
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 750;
+  font-size: 0.76rem;
+}
+
+.progress-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.progress-card-top h2 {
+  font-size: 2rem;
+  font-weight: 850;
+  color: #4f46e5;
+  margin: 0;
+}
+
+.stage-counter-circle {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.85rem;
+  border-radius: 12px;
+}
+
+.stage-counter-circle strong {
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.stage-counter-circle span {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.journey-progress-bar-wrap {
+  width: 100%;
+  height: 10px;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.journey-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.progress-foot-note {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #475569;
+}
+
+.governance-rules-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.governance-rules-list li span {
+  font-weight: 750;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   Phase Navigation Tabs
+   ========================================================================== */
+.lifecycle-phase-tabs {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  scrollbar-width: thin;
+}
+
+.phase-tab-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.6rem 1.15rem;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.phase-tab-btn:hover,
+.phase-tab-btn.active {
+  background: #1e1b4b;
+  color: #ffffff;
+  border-color: #312e81;
+  box-shadow: 0 4px 12px rgba(30, 27, 75, 0.2);
+}
+
+/* ==========================================================================
+   Workspace Layout (Stages Stepper Grid + Inspector)
+   ========================================================================== */
+.lifecycle-workspace-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .lifecycle-workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stages-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.15rem;
+}
+
+.stage-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.stage-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e1;
+}
+
+.stage-card.selected {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.stage-card.completed {
+  border-left: 4px solid #10b981;
+}
+
+.stage-card.in-progress {
+  border-left: 4px solid #3b82f6;
+}
+
+.stage-card.rejected {
+  border-left: 4px solid #ef4444;
+}
+
+.stage-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.stage-num-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.status-badge.completed {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.status-badge.in-progress {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.status-badge.pending {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.status-badge.rejected {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+.stage-title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.stage-phase-sub {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.5rem;
+}
+
+.stage-desc-brief {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+  margin: 0 0 0.85rem;
+  flex: 1;
+}
+
+.stage-card-footer {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stage-owner-tag {
+  font-size: 0.75rem;
+  color: #334155;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.stage-live-hint {
+  font-size: 0.74rem;
+  color: #059669;
+  font-weight: 700;
+  background: #f0fdf4;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Stage Detail Inspector Panel
+   ========================================================================== */
+.stage-inspector-panel {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  position: sticky;
+  top: 90px;
+}
+
+.inspector-header {
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+.inspector-stage-tag {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #4f46e5;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.inspector-header h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.35rem;
+  font-weight: 850;
+}
+
+.inspector-phase {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.inspector-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.inspector-field label {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 750;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.inspector-field p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #1e293b;
+  line-height: 1.45;
+}
+
+.rule-box, .notify-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.84rem !important;
+  color: #334155 !important;
+}
+
+.db-entity-tag {
+  display: inline-block;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+.live-data-callout {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.advance-stage-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+}
+
+.advance-stage-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+}
+
+/* Mini Audit Telemetry Feed */
+.inspector-audit-section {
+  border-top: 2px solid #f1f5f9;
+  padding-top: 1rem;
+}
+
+.inspector-audit-section h4 {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mini-audit-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.audit-feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.78rem;
+}
+
+.audit-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6366f1;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.audit-feed-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.audit-feed-meta strong {
+  color: #0f172a;
+}
+
+.audit-feed-meta span {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+/* ==========================================================================
+   Transition Modal
+   ========================================================================== */
+.lifecycle-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1.5rem;
+}
+
+.lifecycle-modal-card {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 540px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.75rem;
+}
+
+.modal-kicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #6366f1;
+  text-transform: uppercase;
+}
+
+.modal-header h3 {
+  margin: 0.2rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 850;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #94a3b8;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: #334155;
+  margin-bottom: 0.35rem;
+}
+
+.modal-select, .modal-textarea {
+  width: 100%;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.modal-select:focus, .modal-textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.modal-foot-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.cancel-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 0.65rem 1.15rem;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  color: #ffffff;
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* ==========================================================================
+   Dark Mode Overrides
+   ========================================================================== */
+[data-theme="dark"] .lifecycle-hub-page {
+  background: #090d16;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .lifecycle-card,
+[data-theme="dark"] .stage-card,
+[data-theme="dark"] .stage-inspector-panel,
+[data-theme="dark"] .lifecycle-modal-card {
+  background: #111827;
+  border-color: #1f2937;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .stage-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .phase-tab-btn {
+  background: #1f2937;
+  color: #9ca3af;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .phase-tab-btn.active {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .rule-box,
+[data-theme="dark"] .notify-box,
+[data-theme="dark"] .db-entity-tag {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb !important;
+}
+
+[data-theme="dark"] .modal-select,
+[data-theme="dark"] .modal-textarea {
+  background: #1f2937;
+  border-color: #374151;
+  color: #ffffff;
+}

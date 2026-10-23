@@ -276,7 +276,7 @@ html[data-theme="dark"],
 [data-theme="dark"] .balance-title,
 [data-theme="dark"] .signatory-title,
 [data-theme="dark"] .leave-item-type,
-[data-theme="dark"] .dossier-field strong,
+[data-theme="dark"] .dossier-field strong:not(.blood-group-tag),
 [data-theme="dark"] .payslip-meta-item strong,
 [data-theme="dark"] .shift-detail-item strong,
 [data-theme="dark"] .leave-type-head strong,
@@ -473,6 +473,23 @@ html[data-theme="dark"],
 [data-theme="dark"] .workday-punch-station {
   background: #111827 !important;
   border-color: #1e293b !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .location-marker-text {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .shift-rail {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .shift-target-badge {
+  background: rgba(13, 148, 136, 0.2) !important;
+  border-color: rgba(45, 212, 191, 0.3) !important;
+  color: #5eead4 !important;
 }
 
 [data-theme="dark"] .punch-console-right {
@@ -484,6 +501,14 @@ html[data-theme="dark"],
   border-bottom-color: #1e293b !important;
 }
 
+[data-theme="dark"] .shift-detail-item span {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .shift-detail-item strong {
+  color: #f1f5f9 !important;
+}
+
 [data-theme="dark"] .launchpad-card {
   background: #111827 !important;
   border-color: #1e293b !important;
@@ -492,6 +517,62 @@ html[data-theme="dark"],
 [data-theme="dark"] .launchpad-icon {
   background: #172554 !important;
   color: #38bdf8 !important;
+}
+
+/* Staff Augmentation Dark Mode */
+[data-theme="dark"] .staff-tab-pill {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .staff-tab-pill:hover {
+  background: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .staff-tab-pill.active {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .master-table-card,
+[data-theme="dark"] .report-summary-card {
+  background: #111827 !important;
+  border-color: #1e293b !important;
+}
+
+[data-theme="dark"] .master-table-header h2,
+[data-theme="dark"] .report-summary-card strong {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .master-data-table th {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border-bottom-color: #334155 !important;
+}
+
+[data-theme="dark"] .master-data-table td {
+  border-bottom-color: #1e293b !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .master-data-table tr:hover td {
+  background: #172033 !important;
+}
+
+[data-theme="dark"] .badge-code {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .commercial-notice-box {
+  background: #172554 !important;
+  border-color: #1e3a8a !important;
+  color: #93c5fd !important;
 }
 
 [data-theme="dark"] .dash-panel-card {
@@ -708,7 +789,7 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .employee-profile-hub .dossier-head h3,
-[data-theme="dark"] .employee-profile-hub .dossier-field strong,
+[data-theme="dark"] .employee-profile-hub .dossier-field strong:not(.blood-group-tag),
 [data-theme="dark"] .employee-profile-hub .prof-summary-value,
 [data-theme="dark"] .employee-profile-hub .cert-details strong {
   color: #f8fafc !important;
@@ -737,6 +818,22 @@ html[data-theme="dark"],
 [data-theme="dark"] .employee-profile-hub .cert-validity,
 [data-theme="dark"] .employee-profile-hub .tenure-highlight {
   color: #6ee7b7 !important;
+}
+
+/* ── Blood Group Medical Pill Tag in Dark Theme ────────────── */
+[data-theme="dark"] .blood-group-tag,
+html[data-theme="dark"] .blood-group-tag,
+body[data-theme="dark"] .blood-group-tag,
+.dark .blood-group-tag,
+[data-theme="dark"] .dossier-field strong.blood-group-tag,
+[data-theme="dark"] .employee-profile-hub .dossier-field strong.blood-group-tag {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(248, 113, 113, 0.4) !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.22) !important;
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 /* ==========================================================================
@@ -2112,6 +2209,33 @@ html [class*="spinner"] {
   border-color: #38bdf8 !important;
 }
 
+[data-theme="dark"] .cmd-action-btn.cmd-kpis {
+  background: #172033 !important;
+  color: #93c5fd !important;
+  border-color: #2563eb !important;
+}
+
+[data-theme="dark"] .cmd-action-btn.cmd-kpis:hover,
+[data-theme="dark"] .cmd-action-btn.cmd-kpis.active {
+  background: #1e3a8a !important;
+  color: #dbeafe !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35) !important;
+}
+
+[data-theme="dark"] .cmd-action-btn.cmd-recruitment {
+  background: #172033 !important;
+  color: #a5b4fc !important;
+  border-color: #4f46e5 !important;
+}
+
+[data-theme="dark"] .cmd-action-btn.cmd-recruitment:hover,
+[data-theme="dark"] .cmd-action-btn.cmd-recruitment.active {
+  background: #1e1b4b !important;
+  color: #c7d2fe !important;
+  border-color: #6366f1 !important;
+}
+
 [data-theme="dark"] .cmd-action-btn.cmd-helpdesk {
   background: #172033 !important;
   color: #fdba74 !important;
@@ -2208,6 +2332,28 @@ html [class*="spinner"] {
 
 [data-theme="dark"] .shortcut-chip .chip-name {
   font-weight: 750 !important;
+}
+
+[data-theme="dark"] .shortcut-chip.kpis {
+  background: rgba(37, 99, 235, 0.22) !important;
+  color: #93c5fd !important;
+  border: 1.5px solid rgba(96, 165, 250, 0.6) !important;
+}
+
+[data-theme="dark"] .shortcut-chip.kpis .chip-name {
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .shortcut-chip.kpis:hover,
+[data-theme="dark"] .shortcut-chip.kpis.active {
+  background: #2563eb !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .shortcut-chip.kpis:hover .chip-name,
+[data-theme="dark"] .shortcut-chip.kpis.active .chip-name {
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .shortcut-chip.timesheets {

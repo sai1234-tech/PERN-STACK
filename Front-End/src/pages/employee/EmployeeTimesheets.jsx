@@ -224,12 +224,45 @@ function EmployeeTimesheets() {
     return "";
   }, [rawJoining]);
 
-  const managerDisplayName = useMemo(() => {
+  const reportingManagerName = useMemo(() => {
+    if (currentEmp?.reportsTo?.name) return currentEmp.reportsTo.name;
     if (currentEmp?.manager_first_name || currentEmp?.manager_last_name) {
-      return `${currentEmp.manager_first_name || ""} ${currentEmp.manager_last_name || ""}`.trim() + " (Team Manager)";
+      return `${currentEmp.manager_first_name || ""} ${currentEmp.manager_last_name || ""}`.trim();
     }
-    return "Vikas Guru (Team Manager)";
+    if (typeof currentEmp?.reportsTo === "string" && currentEmp.reportsTo) return currentEmp.reportsTo;
+    return "Vikas Guru";
   }, [currentEmp]);
+
+  const managerDisplayName = useMemo(() => {
+    return `${reportingManagerName} (Team Manager)`;
+  }, [reportingManagerName]);
+
+  const hrPartnerName = useMemo(() => {
+    if (currentEmp?.assignedHr?.name) return currentEmp.assignedHr.name;
+    if (currentEmp?.hrPartner?.name) return currentEmp.hrPartner.name;
+    if (currentEmp?.employment?.hrPartnerName) return currentEmp.employment.hrPartnerName;
+    if (currentEmp?.hrPartnerName) return currentEmp.hrPartnerName;
+    if (typeof currentEmp?.hrPartner === "string" && currentEmp.hrPartner) return currentEmp.hrPartner;
+    return "Lakshmi Ragula";
+  }, [currentEmp]);
+
+  const managerInitials = useMemo(() => {
+    return reportingManagerName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join("") || "VG";
+  }, [reportingManagerName]);
+
+  const hrInitials = useMemo(() => {
+    return hrPartnerName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join("") || "LR";
+  }, [hrPartnerName]);
 
   const {
     entries,
@@ -1035,15 +1068,33 @@ function EmployeeTimesheets() {
                     onChange={handleChange}
                     required
                   >
-                    <option value="" disabled>Select WBS Code</option>
-                    <option value="WBS-DEV-001: Backend Core">WBS-DEV-001: Backend Core</option>
-                    <option value="WBS-FE-002: UI Components">WBS-FE-002: UI Components</option>
-                    <option value="WBS-QA-003: Automated Tests">WBS-QA-003: Automated Tests</option>
-                    <option value="WBS-OP-004: DevOps/Infra">WBS-OP-004: DevOps/Infra</option>
-                    <option value="WBS-TRN-900: Bench/Training">WBS-TRN-900: Bench/Training</option>
-                    <option value="WBS-INT-999: Internal Meetings">WBS-INT-999: Internal Meetings</option>
+                    <option value="" disabled>Select Project / WBS Code</option>
+                    <optgroup label="🏢 Client SOW Engagements">
+                      <option value="PRJ-TITAN-01: Project Titan (SOW-2026-ENG-001)">PRJ-TITAN-01: Project Titan (SOW-2026-ENG-001)</option>
+                      <option value="PRJ-PHOENIX-02: Project Phoenix (SOW-2026-FIN-002)">PRJ-PHOENIX-02: Project Phoenix (SOW-2026-FIN-002)</option>
+                      <option value="PRJ-APOLLO-03: Project Apollo (SOW-2026-AI-003)">PRJ-APOLLO-03: Project Apollo (SOW-2026-AI-003)</option>
+                    </optgroup>
+                    <optgroup label="⚙️ Internal Engineering Delivery">
+                      <option value="WBS-DEV-001: Backend Core">WBS-DEV-001: Backend Core</option>
+                      <option value="WBS-FE-002: UI Components">WBS-FE-002: UI Components</option>
+                      <option value="WBS-QA-003: Automated Tests">WBS-QA-003: Automated Tests</option>
+                      <option value="WBS-OP-004: DevOps/Infra">WBS-OP-004: DevOps/Infra</option>
+                      <option value="WBS-TRN-900: Bench/Training">WBS-TRN-900: Bench/Training</option>
+                      <option value="WBS-INT-999: Internal Meetings">WBS-INT-999: Internal Meetings</option>
+                    </optgroup>
                   </select>
                 </div>
+              </div>
+
+              <div className="form-field-group" style={{ marginBottom: "1rem" }}>
+                <label>Client VMS Reference / External Task Ref (Optional)</label>
+                <input
+                  type="text"
+                  name="clientVmsRef"
+                  value={form.clientVmsRef || ""}
+                  onChange={handleChange}
+                  placeholder="e.g. Fieldglass Ref #94821 / Beeline SOW Milestone"
+                />
               </div>
 
               <div className="form-field-group">
@@ -1103,6 +1154,57 @@ function EmployeeTimesheets() {
                   onChange={handleChange}
                   placeholder="Summarize deliverables, pull requests, or client meetings..."
                 />
+              </div>
+
+              {/* 2-Step Timesheet Approval Hierarchy Banner */}
+              <div
+                style={{
+                  margin: "1.25rem 0",
+                  padding: "0.9rem 1rem",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#475569" }}>
+                    2-Step Timesheet Approval Hierarchy
+                  </span>
+                  <span style={{ fontSize: "0.74rem", background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
+                    ✓ Verified Hierarchy
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "0.75rem", marginTop: "0.2rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "#ffffff", padding: "0.55rem 0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#6366f1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}>
+                      {managerInitials}
+                    </div>
+                    <div style={{ minWidth: 0, overflow: "hidden" }}>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{reportingManagerName}</div>
+                      <div style={{ fontSize: "0.71rem", color: "#64748b" }}>Step 1: Reporting Manager Review</div>
+                    </div>
+                  </div>
+
+                  <span style={{ fontSize: "1.1rem", color: "#94a3b8", fontWeight: 700 }}>➔</span>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", background: "#ecfdf5", padding: "0.55rem 0.75rem", borderRadius: "8px", border: "1px solid #a7f3d0" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#059669", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}>
+                      {hrInitials}
+                    </div>
+                    <div style={{ minWidth: 0, overflow: "hidden" }}>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#065f46", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{hrPartnerName}</div>
+                      <div style={{ fontSize: "0.71rem", color: "#047857" }}>Step 2: HR Partner (Final Sign-off)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                  * Submissions are endorsed first by manager <strong>{reportingManagerName}</strong>, then reconciled to payroll ledger by HR partner <strong>{hrPartnerName}</strong>.
+                </div>
               </div>
 
               <div className="task-form-actions-row">
@@ -1250,15 +1352,25 @@ function EmployeeTimesheets() {
                           }`}
                         >
                           {entry.status === "pending_hr"
-                            ? "🔵 Pending HR Sign-off"
+                            ? `🔵 Step 2/2: Manager Approved ➔ Pending HR (${hrPartnerName})`
                             : entry.status === "submitted"
-                            ? "🟡 Pending Manager"
+                            ? `🟡 Step 1/2: Pending Manager Approval (${reportingManagerName})`
                             : entry.status === "approved"
-                            ? "🟢 Approved"
+                            ? "🟢 Step 2/2 Complete: Approved by HR"
                             : entry.status === "rejected"
                             ? "✕ Declined"
                             : "Draft"}
                         </span>
+                        {entry.managerRemarks && (
+                          <div style={{ fontSize: "0.72rem", color: "#0369a1", marginTop: "3px" }}>
+                            <strong>Mgr:</strong> {entry.managerRemarks}
+                          </div>
+                        )}
+                        {entry.hrRemarks && (
+                          <div style={{ fontSize: "0.72rem", color: "#047857", marginTop: "2px" }}>
+                            <strong>HR:</strong> {entry.hrRemarks}
+                          </div>
+                        )}
                         {entry.updatedAt && (
                           <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "4px" }}>
                             Updated: {new Date(entry.updatedAt).toLocaleString()}

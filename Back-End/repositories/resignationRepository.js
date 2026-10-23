@@ -42,9 +42,13 @@ export const formatResignation = (row) => {
             lastName: row.last_name || "",
             email: row.email || "",
             profilePhoto: row.profile_photo || "",
+            department: row.department || "",
+            designation: row.designation || "",
+            salary: Number(row.salary || 0),
             employment: {
                 department: row.department || "",
                 designation: row.designation || "",
+                salary: Number(row.salary || 0)
             }
         } : row.employee_id,
         resignationDate: row.resignation_date,
@@ -74,9 +78,17 @@ export const formatResignation = (row) => {
 
 export const findActiveResignationByEmployee = async (employeeId, activeStatuses = ["pending", "manager_approved", "under_review", "approved"]) => {
     const queryText = `
-        SELECT * FROM resignations
-        WHERE employee_id = $1 AND status = ANY($2)
-        ORDER BY created_at DESC
+        SELECT 
+            r.*,
+            e.employee_code, e.first_name, e.last_name, e.email, e.profile_photo,
+            e.employment->>'department' as department, e.employment->>'designation' as designation,
+            (e.employment->>'salary')::numeric as salary,
+            u.name as reviewed_by_name, u.email as reviewed_by_email, u.role as reviewed_by_role
+        FROM resignations r
+        LEFT JOIN employees e ON r.employee_id = e.id
+        LEFT JOIN users u ON r.reviewed_by = u.id
+        WHERE r.employee_id = $1 AND r.status = ANY($2)
+        ORDER BY r.created_at DESC
         LIMIT 1;
     `;
     const { rows } = await pool.query(queryText, [employeeId, activeStatuses]);
@@ -116,15 +128,19 @@ export const createResignationRecord = async (data) => {
     ];
 
     const { rows } = await pool.query(queryText, values);
-    return formatResignation(rows[0]);
+    return findResignationById(rows[0].id);
 };
 
 export const findResignationByEmployee = async (employeeId) => {
     const queryText = `
         SELECT 
             r.*,
+            e.employee_code, e.first_name, e.last_name, e.email, e.profile_photo,
+            e.employment->>'department' as department, e.employment->>'designation' as designation,
+            (e.employment->>'salary')::numeric as salary,
             u.name as reviewed_by_name, u.email as reviewed_by_email, u.role as reviewed_by_role
         FROM resignations r
+        LEFT JOIN employees e ON r.employee_id = e.id
         LEFT JOIN users u ON r.reviewed_by = u.id
         WHERE r.employee_id = $1
         ORDER BY r.created_at DESC

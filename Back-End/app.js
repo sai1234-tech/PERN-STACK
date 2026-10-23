@@ -18,8 +18,24 @@ import holidayRoutes from "./routes/holidayRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import managerRoutes from "./routes/managerRoutes.js";
 import clearanceRoutes from "./routes/clearanceRoutes.js";
+import allocationRoutes from "./routes/allocationRoutes.js";
+import candidateRoutes from "./routes/candidateRoutes.js";
+import auditRoutes from "./routes/auditRoutes.js";
+import lifecycleRoutes from "./routes/lifecycleRoutes.js";
+import clientMasterRoutes from "./routes/clientMasterRoutes.js";
+import enterpriseEntityRoutes from "./routes/enterpriseEntityRoutes.js";
+import integrationRoutes from "./routes/integrationRoutes.js";
+import securityGovernanceRoutes from "./routes/securityGovernanceRoutes.js";
+import enterpriseAutomationsRoutes from "./routes/enterpriseAutomationsRoutes.js";
+import auditEffectiveDatingRoutes from "./routes/auditEffectiveDatingRoutes.js";
+import enterpriseOperationsRoutes from "./routes/enterpriseOperationsRoutes.js";
+import techStackSelectionRoutes from "./routes/techStackSelectionRoutes.js";
+import deliveryAiRoutes from "./routes/deliveryAiRoutes.js";
+import lifecycleOpsRoutes from "./routes/lifecycleOpsRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { sseStreamHandler, sseBroadcastMiddleware } from "./services/sseService.js";
+import { securityHeaders, rateLimiter } from "./middleware/securityMiddleware.js";
+import { performanceMonitor } from "./middleware/performanceMonitorMiddleware.js";
 
 import { initUserTable } from "./repositories/userRepository.js";
 import { initEmployeeTable } from "./repositories/employeeRepository.js";
@@ -36,9 +52,19 @@ import { initClearanceTable } from "./repositories/clearanceRepository.js";
 import { initTicketTable } from "./repositories/ticketRepository.js";
 import { initDepartmentTable } from "./repositories/departmentRepository.js";
 import { initHolidayTable } from "./repositories/holidayRepository.js";
+import { initAllocationTable } from "./repositories/allocationRepository.js";
+import { initCandidateTable } from "./repositories/candidateRepository.js";
+import { initAuditTable } from "./repositories/auditRepository.js";
+import { initClientTables } from "./repositories/clientMasterRepository.js";
 
 const app = express();
 const backendDir = path.dirname(fileURLToPath(import.meta.url));
+
+// Enterprise HTTP Security Headers & Rate Limiting
+app.use(securityHeaders);
+app.use(rateLimiter);
+app.use(performanceMonitor);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -79,6 +105,14 @@ const initDB = async () => {
         console.log("Departments table initialized.");
         await initHolidayTable();
         console.log("Holidays table initialized.");
+        await initAllocationTable();
+        console.log("Project Allocations table initialized.");
+        await initCandidateTable();
+        console.log("Candidates table initialized.");
+        await initAuditTable();
+        console.log("Audit Logs table initialized.");
+        await initClientTables();
+        console.log("Client Master, SOW, Rate-Card & Transition tables initialized.");
     } catch (err) {
         console.error("Database initialization notice:", err.message);
     }
@@ -116,7 +150,21 @@ const routeMappings = [
     { paths: ["/ticket", "/tickets"], handler: ticketRoutes },
     { paths: ["/department", "/departments"], handler: departmentRoutes },
     { paths: ["/holiday", "/holidays"], handler: holidayRoutes },
-    { paths: ["/event", "/events"], handler: eventRoutes }
+    { paths: ["/event", "/events"], handler: eventRoutes },
+    { paths: ["/allocation", "/allocations"], handler: allocationRoutes },
+    { paths: ["/candidate", "/candidates"], handler: candidateRoutes },
+    { paths: ["/audit", "/audits"], handler: auditRoutes },
+    { paths: ["/lifecycle"], handler: lifecycleRoutes },
+    { paths: ["/client-master", "/client-masters", "/clients"], handler: clientMasterRoutes },
+    { paths: ["/entities", "/entity"], handler: enterpriseEntityRoutes },
+    { paths: ["/integrations", "/integration"], handler: integrationRoutes },
+    { paths: ["/governance", "/security"], handler: securityGovernanceRoutes },
+    { paths: ["/automations", "/automation", "/workflow-slas"], handler: enterpriseAutomationsRoutes },
+    { paths: ["/audit-governance", "/audit-effective", "/compliance-governance"], handler: auditEffectiveDatingRoutes },
+    { paths: ["/operations", "/operation", "/architecture-nfr", "/nfr"], handler: enterpriseOperationsRoutes },
+    { paths: ["/stack-selection", "/tech-stack", "/architecture-stack"], handler: techStackSelectionRoutes },
+    { paths: ["/delivery"], handler: deliveryAiRoutes },
+    { paths: ["/lifecycle-ops"], handler: lifecycleOpsRoutes }
 ];
 
 routeMappings.forEach(({ paths, handler }) => {

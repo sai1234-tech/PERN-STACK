@@ -29,25 +29,13 @@ export function EmployeeEngagementAnalytics() {
   }
 
   const analytics = data || {
-    todaysResponses: 28,
-    totalEmployees: 32,
-    averagePulseScore: 4.2,
-    responseRate: 87.5,
-    weeklyTrend: [
-      { dayName: "Mon", avgScore: 4.1, responseCount: 22 },
-      { dayName: "Tue", avgScore: 4.3, responseCount: 25 },
-      { dayName: "Wed", avgScore: 3.9, responseCount: 26 },
-      { dayName: "Thu", avgScore: 4.4, responseCount: 27 },
-      { dayName: "Fri", avgScore: 4.2, responseCount: 28 },
-      { dayName: "Sat", avgScore: 4.5, responseCount: 14 },
-      { dayName: "Sun", avgScore: 4.6, responseCount: 10 },
-    ],
-    departmentComparison: [
-      { department: "Engineering", avgScore: 4.4, count: 12 },
-      { department: "Product & Design", avgScore: 4.1, count: 6 },
-      { department: "HR & People", avgScore: 4.6, count: 5 },
-      { department: "Sales & Marketing", avgScore: 3.9, count: 8 },
-    ],
+    todaysResponses: 0,
+    totalEmployees: 0,
+    averagePulseScore: 0,
+    responseRate: 0,
+    weeklyTrend: [],
+    departmentComparison: [],
+    recentResponses: [],
   };
 
   return (
@@ -73,20 +61,38 @@ export function EmployeeEngagementAnalytics() {
 
         <div className="engagement-kpi-card">
           <span className="eng-kpi-label">AVERAGE PULSE SCORE</span>
-          <div className="eng-kpi-val text-amber">{analytics.averagePulseScore} <small>/ 5.0</small></div>
-          <span className="eng-kpi-sub text-emerald">⭐ Workload Manageable</span>
+          <div className="eng-kpi-val text-amber">
+            {analytics.averagePulseScore > 0 ? analytics.averagePulseScore : "--"} <small>/ 5.0</small>
+          </div>
+          <span className="eng-kpi-sub text-emerald">
+            {analytics.averagePulseScore >= 4
+              ? "⭐ Workload Manageable"
+              : analytics.averagePulseScore > 0
+              ? "⚡ Moderate Workload"
+              : "Awaiting Pulses"}
+          </span>
         </div>
 
         <div className="engagement-kpi-card">
           <span className="eng-kpi-label">RESPONSE RATE</span>
           <div className="eng-kpi-val text-indigo">{analytics.responseRate}%</div>
-          <span className="eng-kpi-sub text-sky">🎯 High Participation</span>
+          <span className="eng-kpi-sub text-sky">
+            {analytics.responseRate >= 70
+              ? "🎯 High Participation"
+              : analytics.responseRate > 0
+              ? "📈 Active Polling"
+              : "No Responses Yet"}
+          </span>
         </div>
 
         <div className="engagement-kpi-card">
           <span className="eng-kpi-label">ENGAGEMENT STATUS</span>
-          <div className="eng-kpi-val text-emerald" style={{ fontSize: "1.35rem" }}>🟢 Healthy</div>
-          <span className="eng-kpi-sub">Optimal Workload Balance</span>
+          <div className="eng-kpi-val text-emerald" style={{ fontSize: "1.35rem" }}>
+            {analytics.todaysResponses > 0 ? "🟢 Live Feed" : "⚪ Awaiting Check-ins"}
+          </div>
+          <span className="eng-kpi-sub">
+            {analytics.todaysResponses > 0 ? "Real-time responses synced" : "Shift responses pending"}
+          </span>
         </div>
       </div>
 
@@ -100,22 +106,28 @@ export function EmployeeEngagementAnalytics() {
           </div>
 
           <div className="weekly-trend-bars">
-            {analytics.weeklyTrend.map((day, idx) => {
-              const heightPct = Math.round((day.avgScore / 5) * 100);
+            {analytics.weeklyTrend && analytics.weeklyTrend.length > 0 ? (
+              analytics.weeklyTrend.map((day, idx) => {
+                const heightPct = Math.round((day.avgScore / 5) * 100);
 
-              return (
-                <div key={idx} className="trend-bar-col">
-                  <span className="bar-val-text">{day.avgScore}</span>
-                  <div className="bar-rail">
-                    <div
-                      className="bar-fill"
-                      style={{ height: `${heightPct}%` }}
-                    />
+                return (
+                  <div key={idx} className="trend-bar-col">
+                    <span className="bar-val-text">{day.avgScore > 0 ? day.avgScore : "--"}</span>
+                    <div className="bar-rail">
+                      <div
+                        className="bar-fill"
+                        style={{ height: `${heightPct}%` }}
+                      />
+                    </div>
+                    <span className="bar-day-text">{day.dayName}</span>
                   </div>
-                  <span className="bar-day-text">{day.dayName}</span>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div style={{ padding: "1.5rem", textAlign: "center", color: "#64748b", width: "100%" }}>
+                No weekly telemetry recorded yet.
+              </div>
+            )}
           </div>
         </div>
 
@@ -127,21 +139,27 @@ export function EmployeeEngagementAnalytics() {
           </div>
 
           <div className="dept-comp-list">
-            {analytics.departmentComparison.map((dept, idx) => {
-              const pct = Math.round((dept.avgScore / 5) * 100);
+            {analytics.departmentComparison && analytics.departmentComparison.length > 0 ? (
+              analytics.departmentComparison.map((dept, idx) => {
+                const pct = Math.round((dept.avgScore / 5) * 100);
 
-              return (
-                <div key={idx} className="dept-comp-item">
-                  <div className="dept-comp-meta">
-                    <span className="dept-name-text">{dept.department}</span>
-                    <span className="dept-score-val">{dept.avgScore} / 5.0 ({dept.count} votes)</span>
+                return (
+                  <div key={idx} className="dept-comp-item">
+                    <div className="dept-comp-meta">
+                      <span className="dept-name-text">{dept.department}</span>
+                      <span className="dept-score-val">{dept.avgScore} / 5.0 ({dept.count} votes)</span>
+                    </div>
+                    <div className="dept-progress-rail">
+                      <div className="dept-progress-fill" style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                  <div className="dept-progress-rail">
-                    <div className="dept-progress-fill" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div style={{ padding: "1.5rem", textAlign: "center", color: "#64748b" }}>
+                No department pulse responses recorded today yet.
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -52,8 +52,13 @@ export const formatClearance = (row) => {
             lastName: row.last_name || "",
             employeeCode: row.employee_code || "",
             email: row.email || "",
+            department: row.department || "",
+            designation: row.designation || "",
+            salary: Number(row.salary || 0),
             employment: {
-                department: row.department || ""
+                department: row.department || "",
+                designation: row.designation || "",
+                salary: Number(row.salary || 0)
             }
         } : row.employee_id,
         resignation: row.resignation_date ? {
@@ -82,7 +87,10 @@ export const findClearanceByResignationId = async (resignationId) => {
     const queryText = `
         SELECT 
             c.*,
-            e.employee_code, e.first_name, e.last_name, e.email, e.employment->>'department' as department,
+            e.employee_code, e.first_name, e.last_name, e.email, 
+            e.employment->>'department' as department, 
+            e.employment->>'designation' as designation, 
+            (e.employment->>'salary')::numeric as salary,
             r.resignation_date, r.requested_last_working_day, r.approved_last_working_day, r.status as resignation_status, r.reason_category
         FROM clearances c
         LEFT JOIN employees e ON c.employee_id = e.id
@@ -97,7 +105,10 @@ export const findClearanceByEmployeeId = async (employeeId) => {
     const queryText = `
         SELECT 
             c.*,
-            e.employee_code, e.first_name, e.last_name, e.email, e.employment->>'department' as department,
+            e.employee_code, e.first_name, e.last_name, e.email, 
+            e.employment->>'department' as department, 
+            e.employment->>'designation' as designation, 
+            (e.employment->>'salary')::numeric as salary,
             r.resignation_date, r.requested_last_working_day, r.approved_last_working_day, r.status as resignation_status, r.reason_category
         FROM clearances c
         LEFT JOIN employees e ON c.employee_id = e.id
@@ -114,7 +125,10 @@ export const findClearanceById = async (id) => {
     const queryText = `
         SELECT 
             c.*,
-            e.employee_code, e.first_name, e.last_name, e.email, e.employment->>'department' as department,
+            e.employee_code, e.first_name, e.last_name, e.email, 
+            e.employment->>'department' as department, 
+            e.employment->>'designation' as designation, 
+            (e.employment->>'salary')::numeric as salary,
             r.resignation_date, r.requested_last_working_day, r.approved_last_working_day, r.status as resignation_status, r.reason_category
         FROM clearances c
         LEFT JOIN employees e ON c.employee_id = e.id
@@ -139,7 +153,10 @@ export const findAllClearancesRepo = async () => {
     const queryText = `
         SELECT 
             c.*,
-            e.employee_code, e.first_name, e.last_name, e.email, e.employment->>'department' as department,
+            e.employee_code, e.first_name, e.last_name, e.email, 
+            e.employment->>'department' as department, 
+            e.employment->>'designation' as designation, 
+            (e.employment->>'salary')::numeric as salary,
             r.resignation_date, r.requested_last_working_day, r.approved_last_working_day, r.status as resignation_status, r.reason_category
         FROM clearances c
         LEFT JOIN employees e ON c.employee_id = e.id

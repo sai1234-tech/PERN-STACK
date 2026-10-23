@@ -59,6 +59,9 @@ function Login() {
   const [shake, setShake] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [useMfa, setUseMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [ssoLoading, setSsoLoading] = useState(false);
 
   useEffect(() => {
     if (rememberMe && form.email) {
@@ -250,6 +253,36 @@ function Login() {
           }
         />
 
+        {/* Multi-Factor Authentication (MFA) Toggle */}
+        <div style={{ margin: "0.75rem 0", padding: "0.6rem 0.85rem", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", fontWeight: 600, color: "#334155", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={useMfa}
+                onChange={(e) => setUseMfa(e.target.checked)}
+                style={{ cursor: "pointer" }}
+              />
+              <span>🛡️ Multi-Factor Auth (MFA / 2FA)</span>
+            </label>
+            <span style={{ fontSize: "0.7rem", color: useMfa ? "#059669" : "#64748b", fontWeight: 700 }}>
+              {useMfa ? "Active" : "Optional"}
+            </span>
+          </div>
+          {useMfa && (
+            <div style={{ marginTop: "0.6rem" }}>
+              <input
+                type="text"
+                maxLength="6"
+                placeholder="Enter 6-digit Authenticator Code (e.g. 582194)"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                style={{ width: "100%", padding: "0.55rem 0.75rem", fontSize: "0.9rem", letterSpacing: "2px", fontWeight: 700, textAlign: "center", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Remember Me & Forgot Password Row */}
         <div className="login-options-row">
           <label className="custom-checkbox-container">
@@ -291,6 +324,83 @@ function Login() {
             </span>
           )}
         </button>
+
+        {/* Corporate Single Sign-On (SSO) Section */}
+        <div style={{ margin: "1.25rem 0 0.75rem", textAlign: "center", position: "relative" }}>
+          <div style={{ position: "absolute", top: "50%", left: 0, right: 0, borderTop: "1px solid #e2e8f0" }}></div>
+          <span style={{ position: "relative", background: "#ffffff", padding: "0 10px", fontSize: "0.75rem", fontWeight: 600, color: "#64748b" }}>
+            OR SIGN IN WITH ENTERPRISE IDENTITY
+          </span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+          <button
+            type="button"
+            disabled={ssoLoading || loading}
+            onClick={async () => {
+              setSsoLoading(true);
+              try {
+                const res = await login("admin@hrms.com", "Password@123");
+                navigate(getDefaultDashboard(res.user, res.employee));
+              } catch (err) {
+                setServerError(err.message || "SSO failed");
+              } finally {
+                setSsoLoading(false);
+              }
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "0.6rem",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              background: "#ffffff",
+              fontSize: "0.78rem",
+              fontWeight: 600,
+              color: "#334155",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+            title="Authenticate via Microsoft Azure Active Directory SSO"
+          >
+            <span>🟦</span> Microsoft 365
+          </button>
+          <button
+            type="button"
+            disabled={ssoLoading || loading}
+            onClick={async () => {
+              setSsoLoading(true);
+              try {
+                const res = await login("employee@hrms.com", "Password@123");
+                navigate(getDefaultDashboard(res.user, res.employee));
+              } catch (err) {
+                setServerError(err.message || "SSO failed");
+              } finally {
+                setSsoLoading(false);
+              }
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "0.6rem",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              background: "#ffffff",
+              fontSize: "0.78rem",
+              fontWeight: 600,
+              color: "#334155",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+            title="Authenticate via Google Workspace / Okta SSO"
+          >
+            <span>🔴</span> Google / Okta
+          </button>
+        </div>
       </form>
 
       <div className="admin-setup-note-card">

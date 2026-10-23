@@ -23,6 +23,115 @@ const initialForm = {
   salary: "",
 };
 
+export const ENTERPRISE_ROLE_OPTIONS = [
+  {
+    key: "super_admin",
+    name: "Super Admin",
+    icon: "👑",
+    desc: "Configuration, masters, roles, workflows, audit",
+    defaultDept: "Executive Leadership",
+    defaultDesig: "Chief Executive Officer / Super Admin",
+    badgeClass: "super-admin"
+  },
+  {
+    key: "hr_admin",
+    name: "HR Admin / Operations",
+    icon: "💼",
+    desc: "Employee lifecycle, onboarding, documents, leave, attendance, tickets",
+    defaultDept: "Human Resources",
+    defaultDesig: "HR Operations Lead",
+    badgeClass: "hr-admin"
+  },
+  {
+    key: "hr",
+    name: "HR Manager",
+    icon: "📋",
+    desc: "Approvals, escalations, dashboards & workforce oversight",
+    defaultDept: "Human Resources",
+    defaultDesig: "Senior HR Manager",
+    badgeClass: "hr"
+  },
+  {
+    key: "recruiter",
+    name: "Recruiter / TA",
+    icon: "🎯",
+    desc: "Requisitions, candidates, interviews, offers & preboarding",
+    defaultDept: "Talent Acquisition",
+    defaultDesig: "Lead Technical Recruiter",
+    badgeClass: "recruiter"
+  },
+  {
+    key: "manager",
+    name: "Hiring / Team Manager",
+    icon: "👥",
+    desc: "Requisition, candidate feedback, leave, attendance, onboarding, performance",
+    defaultDept: "Engineering",
+    defaultDesig: "Engineering Delivery Manager",
+    badgeClass: "manager"
+  },
+  {
+    key: "payroll",
+    name: "Payroll / Finance",
+    icon: "💰",
+    desc: "Restricted payroll and compensation data, salary runs & taxes",
+    defaultDept: "Finance & Accounts",
+    defaultDesig: "Payroll & Compensation Lead",
+    badgeClass: "payroll"
+  },
+  {
+    key: "it_admin",
+    name: "IT / Admin",
+    icon: "💻",
+    desc: "Provisioning and assets with minimum necessary employee data",
+    defaultDept: "IT & Infrastructure",
+    defaultDesig: "IT Systems Administrator",
+    badgeClass: "it-admin"
+  },
+  {
+    key: "employee",
+    name: "Standard Employee",
+    icon: "👤",
+    desc: "Self-service profile, leave, attendance, documents, tickets, performance",
+    defaultDept: "Engineering",
+    defaultDesig: "Software Engineer",
+    badgeClass: "employee"
+  },
+  {
+    key: "leadership",
+    name: "Leadership Executive",
+    icon: "🏢",
+    desc: "Controlled strategic dashboards/reports & headcount analytics",
+    defaultDept: "Executive Board",
+    defaultDesig: "VP of Strategic Operations",
+    badgeClass: "leadership"
+  },
+  {
+    key: "auditor",
+    name: "Statutory Auditor",
+    icon: "🛡️",
+    desc: "Read-only approved records and audit trails (compliance & logs)",
+    defaultDept: "Compliance & Risk",
+    defaultDesig: "Internal Compliance Auditor",
+    badgeClass: "auditor"
+  }
+];
+
+export const getRoleMeta = (rawRole = "", dept = "") => {
+  const r = String(rawRole).toLowerCase().replace(/[-\s]+/g, "_");
+  const found = ENTERPRISE_ROLE_OPTIONS.find((opt) => opt.key === r);
+  if (found) return found;
+  if (r.includes("super")) return ENTERPRISE_ROLE_OPTIONS[0];
+  if (r.includes("recruiter") || r.includes("talent")) return ENTERPRISE_ROLE_OPTIONS[3];
+  if (r.includes("payroll") || r.includes("finance")) return ENTERPRISE_ROLE_OPTIONS[5];
+  if (r.includes("it")) return ENTERPRISE_ROLE_OPTIONS[6];
+  if (r.includes("leader") || r.includes("exec")) return ENTERPRISE_ROLE_OPTIONS[8];
+  if (r.includes("audit")) return ENTERPRISE_ROLE_OPTIONS[9];
+  if (r.includes("manager") || r.includes("lead")) return ENTERPRISE_ROLE_OPTIONS[4];
+  if (r.includes("hr") || dept.toLowerCase().includes("hr")) return ENTERPRISE_ROLE_OPTIONS[1];
+  if (r.includes("admin")) return { key: "admin", name: "System Administrator", icon: "⚡", badgeClass: "admin" };
+  return ENTERPRISE_ROLE_OPTIONS[7]; // Standard Employee
+};
+
 function AccountManagement() {
   const [activeTab, setActiveTab] = useState("directory"); // "directory" | "provision"
   const [form, setForm] = useState(initialForm);
@@ -111,8 +220,9 @@ function AccountManagement() {
         salary: form.salary ? Number(form.salary) : 0,
       });
 
+      const roleLabel = ENTERPRISE_ROLE_OPTIONS.find((r) => r.key === form.role)?.name || form.role;
       setNotice(
-        `${form.role === "hr" ? "HR Manager" : "Employee"} account for ${form.firstName} (${form.email}) was provisioned successfully!`
+        `${roleLabel} account for ${form.firstName} (${form.email}) was provisioned successfully!`
       );
       setForm(initialForm);
       await loadData(true);
@@ -144,11 +254,13 @@ function AccountManagement() {
         dept.includes(q) ||
         desig.includes(q);
 
+      const roleMeta = getRoleMeta(role, dept);
       const matchesRole =
         roleFilter === "all" ||
-        (roleFilter === "admin" && (role === "admin" || email.includes("admin"))) ||
-        (roleFilter === "hr" && (role === "hr" || dept.includes("hr"))) ||
-        (roleFilter === "employee" && role !== "admin" && role !== "hr" && !dept.includes("hr"));
+        roleFilter === role ||
+        roleFilter === roleMeta.key ||
+        (roleFilter === "admin" && (role === "admin" || role === "super_admin" || email.includes("admin"))) ||
+        (roleFilter === "hr" && (role === "hr" || role === "hr_manager" || role === "hr_admin" || dept.includes("hr")));
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -324,10 +436,18 @@ function AccountManagement() {
                   onChange={(e) => setRoleFilter(e.target.value)}
                   className="acct-select"
                 >
-                  <option value="all">All Roles</option>
-                  <option value="admin">👑 Administrators</option>
-                  <option value="hr">💼 HR Managers</option>
-                  <option value="employee">👤 Employees</option>
+                  <option value="all">All Roles (10 Enterprise Roles)</option>
+                  <option value="super_admin">👑 Super Admin</option>
+                  <option value="admin">⚡ System Administrator</option>
+                  <option value="hr_admin">💼 HR Admin / Operations</option>
+                  <option value="hr">📋 HR Manager</option>
+                  <option value="recruiter">🎯 Recruiter / TA</option>
+                  <option value="manager">👥 Hiring / Team Manager</option>
+                  <option value="payroll">💰 Payroll / Finance</option>
+                  <option value="it_admin">💻 IT / Admin</option>
+                  <option value="employee">👤 Standard Employee</option>
+                  <option value="leadership">🏢 Leadership Executive</option>
+                  <option value="auditor">🛡️ Statutory Auditor</option>
                 </select>
 
                 <select
@@ -411,8 +531,7 @@ function AccountManagement() {
                       const dept = emp.employment?.department || emp.department || "Engineering";
                       const desig = emp.employment?.designation || emp.designation || "Specialist";
                       const role = (emp.role || emp.user?.role || emp.user_role || "").toLowerCase();
-                      const isAdmin = role === "admin";
-                      const isHr = !isAdmin && (role === "hr" || dept.toLowerCase().includes("hr"));
+                      const meta = getRoleMeta(role, dept);
                       const code = emp.employeeCode || `QSI-${emp._id?.slice(-4) || "001"}`;
                       const status = emp.employment?.status || emp.status || "Active";
                       const date = emp.employment?.joiningDate || emp.joiningDate || "2023-01-15";
@@ -421,8 +540,8 @@ function AccountManagement() {
                         <tr key={emp._id || code}>
                           <td>
                             <div className="acct-user-cell">
-                              <div className={`acct-avatar ${isAdmin ? "admin" : isHr ? "hr" : "employee"}`}>
-                                {isAdmin ? "👑" : name.charAt(0).toUpperCase()}
+                              <div className={`acct-avatar ${meta.badgeClass || "employee"}`}>
+                                {meta.icon}
                               </div>
                               <div className="acct-user-meta">
                                 <strong>{name}</strong>
@@ -431,8 +550,8 @@ function AccountManagement() {
                             </div>
                           </td>
                           <td>
-                            <span className={`role-badge ${isAdmin ? "admin" : isHr ? "hr" : "employee"}`}>
-                              {isAdmin ? "👑 Admin / CEO" : isHr ? "💼 HR Manager" : "👤 Employee"}
+                            <span className={`role-badge ${meta.badgeClass || "employee"}`}>
+                              {meta.icon} {meta.name}
                             </span>
                           </td>
                           <td>
@@ -480,41 +599,37 @@ function AccountManagement() {
 
             {/* Role Selection */}
             <div className="acct-form-section">
-              <label className="section-label">1. Select Account Role Privilege *</label>
+              <label className="section-label">1. Select Account Role Privilege (10 Enterprise Roles) *</label>
               <div className="acct-role-radio-grid">
-                <label className={`role-option-card ${form.role === "employee" ? "selected" : ""}`}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="employee"
-                    checked={form.role === "employee"}
-                    onChange={setField}
-                  />
-                  <div className="role-option-content">
-                    <span className="role-icon">👤</span>
-                    <div>
-                      <strong>Standard Employee</strong>
-                      <p>Self-service dashboard, punch clock, leave requests, timesheets & payslips</p>
+                {ENTERPRISE_ROLE_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.key}
+                    className={`role-option-card ${form.role === opt.key ? "selected" : ""}`}
+                    onClick={() => {
+                      setForm((prev) => ({
+                        ...prev,
+                        role: opt.key,
+                        department: !prev.department || prev.department === "Engineering" || prev.department === "Human Resources" ? opt.defaultDept : prev.department,
+                        designation: !prev.designation || prev.designation === "Software Engineer" || prev.designation === "Senior HR Operations Manager" ? opt.defaultDesig : prev.designation,
+                      }));
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value={opt.key}
+                      checked={form.role === opt.key}
+                      onChange={() => {}}
+                    />
+                    <div className="role-option-content">
+                      <span className="role-icon">{opt.icon}</span>
+                      <div>
+                        <strong>{opt.name}</strong>
+                        <p>{opt.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                </label>
-
-                <label className={`role-option-card ${form.role === "hr" ? "selected" : ""}`}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="hr"
-                    checked={form.role === "hr"}
-                    onChange={setField}
-                  />
-                  <div className="role-option-content">
-                    <span className="role-icon">💼</span>
-                    <div>
-                      <strong>HR Manager</strong>
-                      <p>People operations, workforce roster, leave approvals, payroll run & documents</p>
-                    </div>
-                  </div>
-                </label>
+                  </label>
+                ))}
               </div>
             </div>
 

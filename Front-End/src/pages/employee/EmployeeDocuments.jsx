@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
@@ -23,6 +23,24 @@ function EmployeeDocuments() {
   const [message, setMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [deletedIds, setDeletedIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("hrms_deleted_employee_doc_ids") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  // Real-time synchronization when HR submits a request from another tab/window
+  useEffect(() => {
+    const handleSync = () => reload(true);
+    window.addEventListener("hrms:data_changed", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("hrms:data_changed", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, [reload]);
 
   const formatFileSize = (bytes) => {
     if (!bytes || bytes === 0) return "0 Bytes";
@@ -77,9 +95,9 @@ function EmployeeDocuments() {
 
   const rawDocs = documents || [];
 
-  // Realistic sample corporate documents if backend vault is empty
+  // Realistic corporate documents or backend documents
   const displayDocs = useMemo(() => {
-    let list = rawDocs.length > 0 ? rawDocs : [
+    let list = rawDocs.length > 0 ? [...rawDocs] : [
       {
         _id: "doc-1",
         documentType: "Signed Employment Agreement",
@@ -132,7 +150,9 @@ function EmployeeDocuments() {
       },
     ];
 
-    return list.filter((doc) => {
+    const filtered = list.filter((doc) => {
+      // Always show requested or rejected documents
+      if (doc.status === "requested" || doc.status === "rejected") return true;
       if (
         (doc.documentType === "General Document" || doc.documentType === "General Document General Document") &&
         (doc.documentName === "General Document" || !doc.documentName) &&
@@ -142,20 +162,34 @@ function EmployeeDocuments() {
       }
       return true;
     });
-  }, [rawDocs]);
+
+    const activeList = filtered.filter((d) => !deletedIds.includes(String(d._id || d.id)));
+
+    // Priority sort: Requested and Rejected actions always appear first at the top!
+    return [...activeList].sort((a, b) => {
+      const aReq = a.status === "requested" || a.status === "rejected" ? 1 : 0;
+      const bReq = b.status === "requested" || b.status === "rejected" ? 1 : 0;
+      if (aReq !== bReq) return bReq - aReq;
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+  }, [rawDocs, deletedIds]);
 
   // Counts
   const totalCount = displayDocs.length;
   const verifiedCount = displayDocs.filter((d) => d.status === "verified").length;
   const inReviewCount = displayDocs.filter((d) => ["pending", "in_review", "submitted"].includes(d.status)).length;
-  const requestedCount = displayDocs.filter((d) => d.status === "requested").length;
+  const requestedCount = displayDocs.filter((d) => d.status === "requested" || d.status === "rejected").length;
+
+  const pendingRequests = useMemo(() => {
+    return displayDocs.filter((d) => d.status === "requested" || d.status === "rejected");
+  }, [displayDocs]);
 
   // Filtered documents
   const filteredDocs = useMemo(() => {
     if (activeFilter === "all") return displayDocs;
     if (activeFilter === "verified") return displayDocs.filter((d) => d.status === "verified");
     if (activeFilter === "in_review") return displayDocs.filter((d) => ["pending", "in_review", "submitted"].includes(d.status));
-    if (activeFilter === "requested") return displayDocs.filter((d) => d.status === "requested");
+    if (activeFilter === "requested") return displayDocs.filter((d) => d.status === "requested" || d.status === "rejected");
     return displayDocs;
   }, [displayDocs, activeFilter]);
 
@@ -237,6 +271,38 @@ function EmployeeDocuments() {
     } finally {
       setBusy(false);
       e.target.value = "";
+    }
+  };
+
+  const handleDeleteDocument = async (doc) => {
+    const docId = String(doc._id || doc.id);
+    const title = doc.documentName || doc.originalName || doc.documentType || "this document";
+    if (!window.confirm(`Are you sure you want to delete "${title}" from your vault?`)) {
+      return;
+    }
+    setActionError("");
+    setMessage("");
+    try {
+      setBusy(true);
+      const nextDeleted = Array.from(new Set([...deletedIds, docId]));
+      setDeletedIds(nextDeleted);
+      try {
+        localStorage.setItem("hrms_deleted_employee_doc_ids", JSON.stringify(nextDeleted));
+      } catch {}
+
+      if (!isNaN(docId) && Number(docId) > 0) {
+        await remove(docId);
+      } else {
+        await reload(true);
+      }
+      setMessage(`"${title}" has been deleted from your vault.`);
+      try {
+        window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      } catch {}
+    } catch (err) {
+      setActionError(err.message || "Failed to delete document.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -407,7 +473,12 @@ function EmployeeDocuments() {
             <span className="kpi-subtext">Verification SLA: 48 business hours</span>
           </div>
 
-          <div className="kpi-card-box rose">
+          <div
+            className="kpi-card-box rose"
+            onClick={() => setActiveFilter((prev) => (prev === "requested" ? "all" : "requested"))}
+            style={{ cursor: "pointer", transition: "transform 0.2s ease, box-shadow 0.2s ease" }}
+            title="Click to filter to HR requested actions"
+          >
             <div className="kpi-card-head">
               <span className="kpi-title-text">Requested Actions</span>
               <div className="kpi-icon-pod rose">⚠️</div>
@@ -415,13 +486,15 @@ function EmployeeDocuments() {
             <div className="kpi-stat-row">
               <span className="kpi-big-num">{requestedCount}</span>
               <span className={`kpi-badge-chip ${requestedCount ? "rose" : "positive"}`}>
-                {requestedCount ? "Action Required" : "All Clear"}
+                {requestedCount ? `${requestedCount} Action Required` : "All Clear"}
               </span>
             </div>
             <div className="kpi-progress-rail">
               <div className="kpi-progress-bar rose" style={{ width: `${requestedCount ? 100 : 0}%` }} />
             </div>
-            <span className="kpi-subtext">No pending compliance document requests</span>
+            <span className="kpi-subtext">
+              {requestedCount > 0 ? `${requestedCount} file(s) requested by HR` : "No pending compliance document requests"}
+            </span>
           </div>
         </section>
 
@@ -658,6 +731,151 @@ function EmployeeDocuments() {
         </section>
 
         {/* =====================================================
+            PENDING HR DOCUMENT REQUESTS BANNER (UNMISSABLE ALERT)
+        ===================================================== */}
+        {pendingRequests.length > 0 && (
+          <section
+            className="doc-pending-requests-banner"
+            style={{
+              background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)",
+              border: "2px solid #ea580c",
+              borderRadius: "14px",
+              padding: "1.25rem 1.5rem",
+              marginBottom: "1.75rem",
+              boxShadow: "0 8px 24px -4px rgba(234, 88, 12, 0.18)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "10px",
+                marginBottom: "1rem",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "1.6rem" }}>⚠️</span>
+                <div>
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: "1.1rem",
+                      fontWeight: "800",
+                      color: "#9a3412",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    Action Required: Documents Requested by HR
+                    <span
+                      style={{
+                        background: "#ea580c",
+                        color: "white",
+                        padding: "2px 9px",
+                        borderRadius: "12px",
+                        fontSize: "0.75rem",
+                        fontWeight: "700",
+                      }}
+                    >
+                      {pendingRequests.length} Pending
+                    </span>
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.84rem", color: "#c2410c" }}>
+                    HR has requested the following compliance verification documents. Please upload the required files below to maintain corporate compliance.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {pendingRequests.map((reqDoc) => (
+                <div
+                  key={reqDoc._id || reqDoc.id}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #fed7aa",
+                    borderRadius: "10px",
+                    padding: "0.9rem 1.15rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "12px",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: "260px" }}>
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "8px",
+                        background: "#ffedd5",
+                        color: "#ea580c",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.25rem",
+                      }}
+                    >
+                      📄
+                    </div>
+                    <div>
+                      <strong style={{ fontSize: "0.96rem", color: "#0f172a", display: "block" }}>
+                        {reqDoc.documentType || reqDoc.documentName || "Requested Document"}
+                      </strong>
+                      <div style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "2px" }}>
+                        {reqDoc.requestNote || reqDoc.verificationNotes ? (
+                          <span style={{ marginRight: "6px" }}>
+                            HR Note:{" "}
+                            <strong style={{ color: "#c2410c" }}>
+                              "{reqDoc.requestNote || reqDoc.verificationNotes}"
+                            </strong>
+                            {" • "}
+                          </span>
+                        ) : null}
+                        <span>Requested on {formatDate(reqDoc.createdAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      className="doc-btn download"
+                      style={{
+                        background: "linear-gradient(135deg, #ea580c 0%, #c2410c 100%)",
+                        color: "white",
+                        padding: "0.55rem 1.15rem",
+                        borderRadius: "8px",
+                        fontWeight: "700",
+                        fontSize: "0.85rem",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        boxShadow: "0 2px 8px rgba(234, 88, 12, 0.3)",
+                        border: "none",
+                      }}
+                    >
+                      <span>📤</span> Select & Upload File
+                      <input
+                        type="file"
+                        onChange={(e) => handleUploadFileForRequest(e, reqDoc)}
+                        disabled={busy}
+                        hidden
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* =====================================================
             DOCUMENT REPOSITORY VAULT
         ===================================================== */}
         {loading || (error && String(typeof error === "string" ? error : error?.message || "").toLowerCase().includes("authorization")) ? (
@@ -686,6 +904,23 @@ function EmployeeDocuments() {
                 </button>
                 <button
                   type="button"
+                  className={`doc-filter-btn ${activeFilter === "requested" ? "active" : ""}`}
+                  onClick={() => setActiveFilter("requested")}
+                  style={
+                    requestedCount > 0
+                      ? {
+                          borderColor: "#ea580c",
+                          color: activeFilter === "requested" ? "#fff" : "#ea580c",
+                          backgroundColor: activeFilter === "requested" ? "#ea580c" : "#fff7ed",
+                          fontWeight: "700",
+                        }
+                      : {}
+                  }
+                >
+                  ⚠️ Requested by HR ({requestedCount})
+                </button>
+                <button
+                  type="button"
                   className={`doc-filter-btn ${activeFilter === "verified" ? "active" : ""}`}
                   onClick={() => setActiveFilter("verified")}
                 >
@@ -703,6 +938,7 @@ function EmployeeDocuments() {
 
             <div className="doc-card-grid">
               {filteredDocs.map((doc) => {
+                const isRequested = doc.status === "requested" || doc.status === "rejected";
                 const displayType = doc.documentType || "General Document";
                 const titleText =
                   doc.originalName && doc.originalName !== displayType
@@ -714,9 +950,26 @@ function EmployeeDocuments() {
                 const isTitleSameAsType = titleText.toLowerCase() === displayType.toLowerCase();
 
                 return (
-                  <div key={doc._id || doc.id} className="vault-doc-card">
+                  <div
+                    key={doc._id || doc.id}
+                    className={`vault-doc-card ${isRequested ? "urgent-request" : ""}`}
+                    style={
+                      isRequested
+                        ? {
+                            border: "2px solid #ea580c",
+                            backgroundColor: "#fffaf5",
+                            boxShadow: "0 6px 18px -4px rgba(234, 88, 12, 0.15)",
+                          }
+                        : {}
+                    }
+                  >
                     <div className="doc-card-top">
-                      <div className="doc-type-icon">📄</div>
+                      <div
+                        className="doc-type-icon"
+                        style={isRequested ? { background: "#ffedd5", color: "#ea580c" } : {}}
+                      >
+                        {isRequested ? "⚠️" : "📄"}
+                      </div>
                       <div className="doc-meta-info">
                         <h4>{titleText}</h4>
                         <p>
@@ -726,6 +979,11 @@ function EmployeeDocuments() {
                               ? "The uploaded file is listed separately and awaiting HR review."
                               : "Official verified employee record on file.")}
                         </p>
+                        {isRequested && doc.requestNote && (
+                          <div style={{ color: "#ea580c", fontSize: "0.8rem", fontWeight: "700", marginTop: "4px" }}>
+                            HR Note: "{doc.requestNote}"
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -740,7 +998,9 @@ function EmployeeDocuments() {
                           </span>
                         </div>
                         <small className="doc-file-date">
-                          Uploaded {formatDate(doc.createdAt)} {doc.fileSize && `• ${doc.fileSize}`}
+                          {isRequested
+                            ? `Requested on ${formatDate(doc.createdAt)}`
+                            : `Uploaded ${formatDate(doc.createdAt)} ${doc.fileSize ? `• ${doc.fileSize}` : ""}`}
                         </small>
                       </div>
 
@@ -791,6 +1051,16 @@ function EmployeeDocuments() {
                           📥 Download
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        className="doc-btn delete"
+                        onClick={() => handleDeleteDocument(doc)}
+                        title="Delete Document"
+                        disabled={busy}
+                      >
+                        🗑️ Delete
+                      </button>
                     </div>
                   </div>
                 </div>

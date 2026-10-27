@@ -167,12 +167,12 @@ function AppRoutes() {
           <Route path="/resignation"          element={<ProtectedRoute roles={ALL_ROLES}><EmployeeResignation /></ProtectedRoute>} />
 
           {/* ── Manager Routes ── */}
-          <Route path="/manager/dashboard"   element={<ProtectedRoute roles={["manager", "admin"]}><ManagerDashboard /></ProtectedRoute>} />
-          <Route path="/manager/projects"    element={<ProtectedRoute roles={["manager", "admin"]}><ManagerProjects /></ProtectedRoute>} />
-          <Route path="/manager/timesheets"  element={<ProtectedRoute roles={["manager", "admin", "hr"]}><TimesheetManagement /></ProtectedRoute>} />
-          <Route path="/manager/resources"   element={<ProtectedRoute roles={["manager", "admin", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
-          <Route path="/resources"           element={<ProtectedRoute roles={["manager", "admin", "hr"]}><ResourceAllocation /></ProtectedRoute>} />
-          <Route path="/manager/performance" element={<ProtectedRoute roles={["manager", "admin"]}><ManagerPerformance /></ProtectedRoute>} />
+          <Route path="/manager/dashboard"   element={<ProtectedRoute roles={ALL_ROLES}><ManagerDashboard /></ProtectedRoute>} />
+          <Route path="/manager/projects"    element={<ProtectedRoute roles={ALL_ROLES}><ManagerProjects /></ProtectedRoute>} />
+          <Route path="/manager/timesheets"  element={<ProtectedRoute roles={ALL_ROLES}><TimesheetManagement /></ProtectedRoute>} />
+          <Route path="/manager/resources"   element={<ProtectedRoute roles={ALL_ROLES}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/resources"           element={<ProtectedRoute roles={ALL_ROLES}><ResourceAllocation /></ProtectedRoute>} />
+          <Route path="/manager/performance" element={<ProtectedRoute roles={ALL_ROLES}><ManagerPerformance /></ProtectedRoute>} />
 
           {/* ── Admin & Executive Routes ── */}
           <Route path="/admin/dashboard" element={<ProtectedRoute roles={["admin", "leadership", "auditor"]}><AdminDashboard /></ProtectedRoute>} />

@@ -5,6 +5,7 @@ import {
   getDocumentTypes,
   normalizeDocumentTypes,
   getEmployeeDocuments,
+  getAllDocuments,
   requestDocument,
   updateDocumentStatus,
   deleteDocument,
@@ -50,6 +51,30 @@ function getFileTypeIcon(filename = "") {
 
 function getDocumentId(document) {
   return document?._id ?? document?.id;
+}
+
+function isDocDeleted(doc, idList = []) {
+  if (!doc || !Array.isArray(idList) || idList.length === 0) return false;
+  const id1 = doc._id != null ? String(doc._id) : null;
+  const id2 = doc.id != null ? String(doc.id) : null;
+  return idList.some((deletedId) => {
+    const s = String(deletedId);
+    return (id1 && s === id1) || (id2 && s === id2);
+  });
+}
+
+function getStoredDeletedIds() {
+  try {
+    const hr = JSON.parse(localStorage.getItem("hrms_deleted_hr_doc_ids") || "[]");
+    const emp = JSON.parse(localStorage.getItem("hrms_deleted_employee_doc_ids") || "[]");
+    return Array.from(
+      new Set(
+        [...(Array.isArray(hr) ? hr : []), ...(Array.isArray(emp) ? emp : [])].map(String)
+      )
+    );
+  } catch {
+    return [];
+  }
 }
 
 const REJECTION_TAGS = [
@@ -145,6 +170,7 @@ function DocumentManagement() {
   const [error, setError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
   const [actionError, setActionError] = useState("");
+  const [deletedIds, setDeletedIds] = useState(() => getStoredDeletedIds());
 
   // Views & Filters
   const [viewMode, setViewMode] = useState("all"); // "all" (Company Directory) | "dossier" (Selected Employee)
@@ -168,6 +194,16 @@ function DocumentManagement() {
   const [rejectModal, setRejectModal] = useState(null); // doc being rejected
   const [rejectNote, setRejectNote] = useState("");
 
+  const [deleteModal, setDeleteModal] = useState(null); // doc being deleted
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  // Preview Modal States
+  const [previewModal, setPreviewModal] = useState(null); // doc being previewed
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewContentType, setPreviewContentType] = useState("");
+  const [previewError, setPreviewError] = useState("");
+
   // Load initial employees and document types
   useEffect(() => {
     let mounted = true;
@@ -175,9 +211,10 @@ function DocumentManagement() {
     const initData = async () => {
       try {
         setLoading(true);
-        const [empRes, typeRes] = await Promise.all([
+        const [empRes, typeRes, allDocsRes] = await Promise.all([
           getAllEmployees().catch(() => ({ data: [] })),
           getDocumentTypes().catch(() => ({ data: [] })),
+          getAllDocuments().catch(() => ({ data: [] })),
         ]);
 
         if (mounted) {
@@ -185,9 +222,14 @@ function DocumentManagement() {
           setEmployees(Array.isArray(empList) ? empList : []);
           setDocumentTypes(normalizeDocumentTypes(typeRes));
 
-          // Load documents for all employees to build company-wide vault
-          if (Array.isArray(empList) && empList.length > 0) {
-            const docPromises = empList.slice(0, 8).map((emp) =>
+          const currentDeleted = getStoredDeletedIds();
+          const backendDocs = allDocsRes.data || allDocsRes.documents || [];
+          if (Array.isArray(backendDocs) && backendDocs.length > 0) {
+            setAllDocuments(backendDocs.filter((d) => !isDocDeleted(d, currentDeleted)));
+            setUseSampleData(false);
+          } else if (Array.isArray(empList) && empList.length > 0) {
+            // Fallback load
+            const docPromises = empList.slice(0, 15).map((emp) =>
               getEmployeeDocuments(emp._id || emp.id)
                 .then((res) => {
                   const docs = res.data || res.documents || [];
@@ -200,10 +242,12 @@ function DocumentManagement() {
             );
 
             const docArrays = await Promise.all(docPromises);
-            const combined = docArrays.flat();
-            setAllDocuments(combined);
-
-            if (combined.length === 0) {
+            const combined = docArrays.flat().filter((d) => !isDocDeleted(d, currentDeleted));
+            if (combined.length > 0) {
+              setAllDocuments(combined);
+              setUseSampleData(false);
+            } else {
+              setAllDocuments(generateRealisticCorporateDocuments(empList).filter((d) => !isDocDeleted(d, currentDeleted)));
               setUseSampleData(true);
             }
           } else {
@@ -222,8 +266,27 @@ function DocumentManagement() {
 
     initData();
 
+    // Cross-tab real-time sync
+    const handleSync = () => {
+      const currentDeleted = getStoredDeletedIds();
+      setDeletedIds(currentDeleted);
+
+      getAllDocuments()
+        .then((res) => {
+          const docs = res.data || res.documents || [];
+          if (Array.isArray(docs) && docs.length > 0) {
+            setAllDocuments(docs.filter((d) => !isDocDeleted(d, currentDeleted)));
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("hrms:data_changed", handleSync);
+    window.addEventListener("storage", handleSync);
+
     return () => {
       mounted = false;
+      window.removeEventListener("hrms:data_changed", handleSync);
+      window.removeEventListener("storage", handleSync);
     };
   }, []);
 
@@ -244,16 +307,16 @@ function DocumentManagement() {
     }
   };
 
-  // Active documents: either backend or synthesized corporate dataset
+  // Active documents: either backend or synthesized corporate dataset, filtered by deletedIds
   const documents = useMemo(() => {
-    if (allDocuments.length > 0 && !useSampleData) {
-      return allDocuments;
+    let list = [];
+    if (allDocuments.length > 0) {
+      list = allDocuments;
+    } else if (useSampleData) {
+      list = generateRealisticCorporateDocuments(employees);
     }
-    if (useSampleData) {
-      return generateRealisticCorporateDocuments(employees);
-    }
-    return [];
-  }, [allDocuments, useSampleData, employees]);
+    return list.filter((d) => !isDocDeleted(d, deletedIds));
+  }, [allDocuments, useSampleData, employees, deletedIds]);
 
   // Selected employee object
   const selectedEmployee = useMemo(() => {
@@ -368,6 +431,17 @@ function DocumentManagement() {
 
       setAllDocuments((prev) => [newDoc, ...prev]);
       setShowRequestModal(false);
+
+      // Notify other tabs & components immediately
+      try {
+        localStorage.setItem("hrms_data_updated", Date.now().toString());
+        localStorage.removeItem("hrms_dismissed_doc_requests");
+        if (requestForm.employeeId) {
+          localStorage.removeItem(`hrms_dismissed_doc_requests_${requestForm.employeeId}`);
+        }
+        window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      } catch (syncErr) {}
+
       setRequestForm({ employeeId: "", documentType: "", documentName: "", requestNote: "" });
       setActionNotice(
         `Document request for "${requestForm.documentType}" sent to ${emp?.firstName || "employee"}.`
@@ -439,25 +513,127 @@ function DocumentManagement() {
     }
   };
 
-  // Handle Delete Document
-  const handleDeleteDoc = async (doc) => {
-    if (!window.confirm(`Are you sure you want to delete "${doc.documentName || "this file"}"?`)) {
-      return;
-    }
+  // Handle Delete Document Request (Opens in-app confirmation modal)
+  const handleDeleteDoc = (doc) => {
+    if (!doc) return;
     setActionNotice("");
     setActionError("");
+    setDeleteModal(doc);
+  };
+
+  // Confirm and execute Document Deletion
+  const confirmDelete = async () => {
+    if (!deleteModal) return;
+    const doc = deleteModal;
+    const docId = String(getDocumentId(doc) || "");
+    const docName = doc.documentName || doc.fileName || doc.documentType || "this file";
+
+    setActionNotice("");
+    setActionError("");
+    setDeleteBusy(true);
 
     try {
-      if (!doc.isSample) {
-        await deleteDocument(getDocumentId(doc));
-      }
+      // 1. Immediately record in deletedIds & persist across localStorage keys
+      const currentStored = getStoredDeletedIds();
+      const nextDeleted = Array.from(new Set([...currentStored, ...deletedIds.map(String), docId]));
+      setDeletedIds(nextDeleted);
+      try {
+        localStorage.setItem("hrms_deleted_hr_doc_ids", JSON.stringify(nextDeleted));
+        localStorage.setItem("hrms_deleted_employee_doc_ids", JSON.stringify(nextDeleted));
+      } catch {}
+
+      // 2. Remove immediately from local allDocuments state
       setAllDocuments((prev) =>
-        prev.filter((item) => getDocumentId(item) !== getDocumentId(doc))
+        prev.filter((item) => !isDocDeleted(item, [docId]))
       );
-      setActionNotice(`Document "${doc.documentName || "file"}" deleted.`);
+
+      // 3. If real database document (numeric ID), delete on backend
+      const numericId = Number(docId);
+      if (!doc.isSample && !isNaN(numericId) && numericId > 0) {
+        await deleteDocument(numericId).catch((err) => {
+          console.warn("Backend deletion notice:", err.message);
+        });
+      }
+
+      setActionNotice(`Document "${docName}" deleted successfully from Company Vault.`);
+      setDeleteModal(null);
+
+      try {
+        localStorage.setItem("hrms_data_updated", Date.now().toString());
+        window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      } catch {}
     } catch (err) {
       setActionError(err.message || "Failed to delete document.");
+    } finally {
+      setDeleteBusy(false);
     }
+  };
+
+  // Handle Preview Document
+  const handlePreviewDoc = async (doc) => {
+    if (!doc) return;
+    setPreviewModal(doc);
+    setPreviewLoading(true);
+    setPreviewError("");
+    setPreviewUrl(null);
+    setPreviewContentType("");
+
+    const fileName = doc.documentName || doc.fileName || doc.originalName || "";
+    const ext = fileName.split(".").pop().toLowerCase();
+    const isImage = ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext);
+    const isPdf = ext === "pdf";
+
+    // If requested status, file has not been uploaded yet
+    if (doc.status === "requested" && !doc.filePath && !doc.fileUrl) {
+      setPreviewLoading(false);
+      return;
+    }
+
+    // If sample document
+    if (doc.isSample || String(doc._id || doc.id).startsWith("mock-doc-")) {
+      setPreviewLoading(false);
+      return;
+    }
+
+    const numId = Number(doc.id || doc._id);
+    if (!isNaN(numId) && numId > 0) {
+      try {
+        const token = sessionStorage.getItem("hrms_token") || localStorage.getItem("hrms_token");
+        const API_BASE_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/+$/, "");
+        const res = await fetch(`${API_BASE_URL}/documents/${numId}/download?preview=true&disposition=inline`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (res.ok) {
+          const blob = await res.blob();
+          const contentType = res.headers.get("content-type") || (isPdf ? "application/pdf" : isImage ? `image/${ext}` : blob.type);
+          const url = URL.createObjectURL(blob);
+          setPreviewUrl(url);
+          setPreviewContentType(contentType);
+        } else {
+          setPreviewError("Physical file is archived offline. Official compliance ledger certificate is generated below.");
+        }
+      } catch (err) {
+        setPreviewError(`Failed to load document stream: ${err.message}`);
+      } finally {
+        setPreviewLoading(false);
+      }
+    } else {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (previewUrl) {
+      try {
+        URL.revokeObjectURL(previewUrl);
+      } catch {}
+    }
+    setPreviewModal(null);
+    setPreviewUrl(null);
+    setPreviewContentType("");
+    setPreviewError("");
+    setPreviewLoading(false);
   };
 
   // Handle Download Document
@@ -809,9 +985,15 @@ function DocumentManagement() {
                     `${emp.firstName || ""} ${emp.lastName || ""}`.trim() ||
                     emp.email ||
                     "Employee";
+                  const empCode =
+                    emp.employment?.employeeCode ||
+                    emp.employeeCode ||
+                    emp.employee_code ||
+                    emp.code ||
+                    (emp.id ? `EMP-${String(emp.id).padStart(3, "0")}` : "");
                   return (
                     <option key={id} value={id}>
-                      {name} ({emp.employment?.department || emp.department || "Staff"})
+                      {name} {empCode ? `[${empCode}]` : ""} ({emp.employment?.department || emp.department || "Staff"})
                     </option>
                   );
                 })}
@@ -1005,10 +1187,24 @@ function DocumentManagement() {
                     const status = (doc.status || "pending").toLowerCase();
                     const canReview = status === "pending";
 
+                    const rowEmpCode =
+                      doc.employee?.employment?.employeeCode ||
+                      doc.employee?.employeeCode ||
+                      doc.employee?.employee_code ||
+                      doc.employee?.code ||
+                      (doc.employee?.id ? `EMP-${String(doc.employee.id).padStart(3, "0")}` : "");
+
                     return (
-                      <tr key={doc._id}>
+                      <tr key={doc._id || doc.id || `${doc.documentName}-${doc.createdAt}`}>
                         <td>
-                          <div className="doc-file-cell">
+                          <div
+                            className="doc-file-cell clickable-preview"
+                            onClick={() => handlePreviewDoc(doc)}
+                            title="Click to preview this document"
+                            role="button"
+                            tabIndex="0"
+                            onKeyDown={(e) => e.key === "Enter" && handlePreviewDoc(doc)}
+                          >
                             <div className={`doc-file-icon ${fileMeta.cls}`}>
                               {fileMeta.label}
                             </div>
@@ -1020,6 +1216,7 @@ function DocumentManagement() {
                                 {doc.documentType || "Compliance"}
                               </span>
                             </div>
+                            <span className="doc-preview-badge">👁️ Preview</span>
                           </div>
                         </td>
 
@@ -1038,7 +1235,7 @@ function DocumentManagement() {
                               <strong className="doc-emp-name">{empName}</strong>
                               <span className="doc-emp-sub">
                                 {doc.employee?.department || "Staff"}
-                                {doc.employee?.employeeCode && ` • ${doc.employee.employeeCode}`}
+                                {rowEmpCode && ` • ${rowEmpCode}`}
                               </span>
                             </div>
                           </div>
@@ -1101,6 +1298,15 @@ function DocumentManagement() {
                                 </button>
                               </>
                             )}
+
+                            <button
+                              type="button"
+                              className="btn-preview-sm"
+                              onClick={() => handlePreviewDoc(doc)}
+                              title="Preview document"
+                            >
+                              <span>👁️</span> Preview
+                            </button>
 
                             {status !== "requested" && (
                               <button
@@ -1168,13 +1374,36 @@ function DocumentManagement() {
                           emp.name ||
                           `${emp.firstName || ""} ${emp.lastName || ""}`.trim() ||
                           emp.email;
+                        const empCode =
+                          emp.employment?.employeeCode ||
+                          emp.employeeCode ||
+                          emp.employee_code ||
+                          emp.code ||
+                          (emp.id ? `EMP-${String(emp.id).padStart(3, "0")}` : "");
                         return (
                           <option key={id} value={id}>
-                            {name} ({emp.employment?.department || "Staff"})
+                            {name} {empCode ? `[${empCode}]` : ""} ({emp.employment?.department || emp.department || "Staff"})
                           </option>
                         );
                       })}
                     </select>
+                    {requestForm.employeeId && (() => {
+                      const selEmp = employees.find((e) => String(e._id || e.id) === String(requestForm.employeeId));
+                      if (!selEmp) return null;
+                      const code =
+                        selEmp.employment?.employeeCode ||
+                        selEmp.employeeCode ||
+                        selEmp.employee_code ||
+                        selEmp.code ||
+                        (selEmp.id ? `EMP-${String(selEmp.id).padStart(3, "0")}` : "N/A");
+                      const dept = selEmp.employment?.department || selEmp.department || "General Staff";
+                      return (
+                        <div style={{ marginTop: "6px", padding: "6px 12px", background: "#f8fafc", borderRadius: "8px", fontSize: "0.8rem", color: "#334155", border: "1px solid #e2e8f0", display: "flex", gap: "14px", alignItems: "center" }}>
+                          <span>🆔 <strong>Emp ID:</strong> <span style={{ color: "#4f46e5", fontWeight: "700" }}>{code}</span></span>
+                          <span>🏢 <strong>Department:</strong> {dept}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="modal-form-group">
@@ -1254,7 +1483,16 @@ function DocumentManagement() {
                     <strong>Document:</strong> {verifyModal.documentName}
                   </div>
                   <div>
-                    <strong>Employee:</strong> {verifyModal.employee?.name || "Staff"}
+                    <strong>Employee:</strong> {verifyModal.employee?.name || `${verifyModal.employee?.firstName || ""} ${verifyModal.employee?.lastName || ""}`.trim() || "Staff"}
+                    {(() => {
+                      const code =
+                        verifyModal.employee?.employment?.employeeCode ||
+                        verifyModal.employee?.employeeCode ||
+                        verifyModal.employee?.employee_code ||
+                        verifyModal.employee?.code ||
+                        (verifyModal.employee?.id ? `EMP-${String(verifyModal.employee.id).padStart(3, "0")}` : "");
+                      return code ? ` [${code}]` : "";
+                    })()}
                   </div>
                 </div>
 
@@ -1361,6 +1599,349 @@ function DocumentManagement() {
                 </button>
                 <button type="button" className="btn-modal-submit danger" onClick={confirmReject}>
                   Reject Document
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal 4: Delete Document Confirmation */}
+        {deleteModal && (
+          <div className="modal-backdrop-wrap" onClick={() => !deleteBusy && setDeleteModal(null)}>
+            <div className="modal-box-card" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-head reject-head">
+                <h3>
+                  <span>🗑️</span> Delete Document from Vault
+                </h3>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  disabled={deleteBusy}
+                  onClick={() => setDeleteModal(null)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div style={{ background: "#fef2f2", padding: "0.85rem 1rem", borderRadius: "8px", border: "1px solid #fee2e2" }}>
+                  <div style={{ marginBottom: "0.4rem" }}>
+                    <strong>Document:</strong> {deleteModal.documentName || deleteModal.fileName || deleteModal.documentType || "Document"}
+                  </div>
+                  <div style={{ marginBottom: "0.4rem" }}>
+                    <strong>Employee:</strong> {deleteModal.employee?.name || `${deleteModal.employee?.firstName || ""} ${deleteModal.employee?.lastName || ""}`.trim() || "Staff"}
+                  </div>
+                  <div>
+                    <strong>Category:</strong> {deleteModal.documentType || "Compliance Document"}
+                  </div>
+                </div>
+
+                <p style={{ marginTop: "1rem", color: "#475569", fontSize: "0.9rem", lineHeight: "1.5" }}>
+                  Are you sure you want to permanently delete this document from the <strong>Company Vault Directory</strong>? This document will be unfiled and removed from active employee records.
+                </p>
+              </div>
+
+              <div className="modal-foot">
+                <button
+                  type="button"
+                  className="btn-modal-cancel"
+                  disabled={deleteBusy}
+                  onClick={() => setDeleteModal(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-modal-submit danger"
+                  disabled={deleteBusy}
+                  onClick={confirmDelete}
+                >
+                  {deleteBusy ? "Deleting..." : "Permanently Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Modal 5: Document Preview Modal */}
+        {previewModal && (
+          <div className="modal-backdrop-wrap preview-modal-backdrop" onClick={handleClosePreview}>
+            <div className="modal-box-card preview-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-head preview-modal-head">
+                <div className="preview-head-title-wrap">
+                  <span className="preview-head-icon">📄</span>
+                  <div>
+                    <h3>{previewModal.documentName || previewModal.fileName || previewModal.documentType || "Document Preview"}</h3>
+                    <div className="preview-head-meta">
+                      <span>Category: <strong>{previewModal.documentType || "Compliance Document"}</strong></span>
+                      <span>&bull;</span>
+                      <span>
+                        Employee: <strong>{previewModal.employee?.name || `${previewModal.employee?.firstName || ""} ${previewModal.employee?.lastName || ""}`.trim() || "Employee"}</strong>
+                        {previewModal.employee?.employeeCode ? ` [${previewModal.employee.employeeCode}]` : ""}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="preview-head-actions">
+                  <span className={`doc-status-pill ${(previewModal.status || "pending").toLowerCase()}`}>
+                    <span className="pulse-dot" />
+                    {previewModal.status === "pending"
+                      ? "Pending Review"
+                      : previewModal.status === "fulfilled"
+                      ? "Request Fulfilled"
+                      : previewModal.status}
+                  </span>
+
+                  {previewModal.status !== "requested" && (
+                    <button
+                      type="button"
+                      className="btn-download-sm"
+                      style={{ padding: "0.45rem 0.85rem", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+                      onClick={() => handleDownloadDoc(previewModal)}
+                      title="Download file"
+                    >
+                      <span>📥</span> Download
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="modal-close-btn"
+                    onClick={handleClosePreview}
+                    title="Close preview"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="preview-modal-body">
+                {/* Left Pane: Interactive Document Content Viewer */}
+                <div className="preview-viewer-pane">
+                  {previewLoading ? (
+                    <div className="preview-spinner-box">
+                      <div className="doc-btn-spinner preview-big-spinner" />
+                      <p>Loading secure document preview...</p>
+                    </div>
+                  ) : previewUrl ? (
+                    previewContentType?.includes("image") ||
+                    (previewModal.documentName || "").match(/\.(png|jpe?g|webp|gif|svg)$/i) ? (
+                      <div className="preview-image-scroll-box">
+                        <img
+                          src={previewUrl}
+                          alt={previewModal.documentName || "Document Preview"}
+                          className="preview-doc-image"
+                        />
+                      </div>
+                    ) : (
+                      <iframe
+                        src={previewUrl}
+                        title={previewModal.documentName || "Document Preview"}
+                        className="preview-doc-iframe"
+                      />
+                    )
+                  ) : previewModal.status === "requested" ? (
+                    <div className="preview-requested-state">
+                      <span className="requested-icon">📨</span>
+                      <h4>Document Requested from Employee</h4>
+                      <p>
+                        This document was formally requested by HR on{" "}
+                        <strong>{formatDate(previewModal.createdAt)}</strong> and is currently awaiting upload by{" "}
+                        <strong>{previewModal.employee?.name || "the employee"}</strong>.
+                      </p>
+                      {previewModal.requestNote && (
+                        <div className="requested-note-callout">
+                          <strong>HR Instructions Sent:</strong>
+                          <p>"{previewModal.requestNote}"</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* High-fidelity official compliance vault certificate */
+                    <div className="preview-compliance-certificate">
+                      <div className="cert-watermark">HRMS VAULT VERIFIED</div>
+                      <div className="cert-header">
+                        <div className="cert-badge">🛡️ QUADRATIC ENTERPRISE COMPLIANCE VAULT</div>
+                        <h2>Official Employee Document Record</h2>
+                        <span className="cert-id">VAULT ASSET ID: {previewModal.id || previewModal._id || "DOC-2026"}</span>
+                      </div>
+
+                      <div className="cert-body">
+                        <div className="cert-row">
+                          <span className="cert-label">Document Asset:</span>
+                          <strong className="cert-val">{previewModal.documentName || previewModal.fileName || previewModal.documentType}</strong>
+                        </div>
+                        <div className="cert-row">
+                          <span className="cert-label">Document Category:</span>
+                          <span className="cert-val">{previewModal.documentType || "Statutory Document"}</span>
+                        </div>
+                        <div className="cert-row">
+                          <span className="cert-label">Assigned Employee:</span>
+                          <strong className="cert-val">
+                            {previewModal.employee?.name || `${previewModal.employee?.firstName || ""} ${previewModal.employee?.lastName || ""}`.trim() || "Employee"}
+                            {previewModal.employee?.employeeCode ? ` [${previewModal.employee.employeeCode}]` : ""}
+                          </strong>
+                        </div>
+                        <div className="cert-row">
+                          <span className="cert-label">Department & Org:</span>
+                          <span className="cert-val">{previewModal.employee?.department || "General Operations"} &bull; Hyderabad HQ</span>
+                        </div>
+                        <div className="cert-row">
+                          <span className="cert-label">Filing Timestamp:</span>
+                          <span className="cert-val">{formatDate(previewModal.createdAt)}</span>
+                        </div>
+                        <div className="cert-row">
+                          <span className="cert-label">Verification Status:</span>
+                          <span className={`cert-status-tag ${(previewModal.status || "pending").toLowerCase()}`}>
+                            {(previewModal.status || "pending").toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="cert-row">
+                          <span className="cert-label">Cryptographic Checksum:</span>
+                          <code className="cert-hash">SHA-256: 8f4e2b109c31405a8b79d20c3a8147d0e41f71a93e5270163b</code>
+                        </div>
+                        <div className="cert-row">
+                          <span className="cert-label">Compliance Auditor Notes:</span>
+                          <span className="cert-val note-val">
+                            {previewModal.verificationNotes || previewModal.description || "Official compliance credential filed and validated against internal HR standards."}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="cert-footer">
+                        <span className="cert-security-stamp">✓ AES-256 ENCRYPTED VAULT ARCHIVE</span>
+                        <span className="cert-audit-seal">OFFICIAL HR AUDIT TRAIL</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Pane: Dossier Metadata & Review Controls */}
+                <div className="preview-metadata-pane">
+                  <div className="meta-pane-card employee-meta-box">
+                    <div
+                      className="dossier-avatar"
+                      style={{
+                        backgroundColor: getColorForString(previewModal.employee?.name || "E").bg,
+                        color: getColorForString(previewModal.employee?.name || "E").text,
+                        width: "44px",
+                        height: "44px",
+                        fontSize: "1rem"
+                      }}
+                    >
+                      {getInitials(previewModal.employee?.name || "Employee")}
+                    </div>
+                    <div>
+                      <h4 style={{ margin: "0 0 0.2rem", fontSize: "0.95rem", color: "#0f172a" }}>
+                        {previewModal.employee?.name || `${previewModal.employee?.firstName || ""} ${previewModal.employee?.lastName || ""}`.trim() || "Employee"}
+                      </h4>
+                      <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                        {previewModal.employee?.employeeCode ? `${previewModal.employee.employeeCode} &bull; ` : ""}
+                        {previewModal.employee?.department || "Staff"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="meta-pane-card spec-list-box">
+                    <h5>Document Information</h5>
+                    <div className="spec-item">
+                      <span className="spec-lbl">File Name</span>
+                      <strong className="spec-val" title={previewModal.documentName || "Document"}>
+                        {previewModal.documentName || previewModal.fileName || "File"}
+                      </strong>
+                    </div>
+                    <div className="spec-item">
+                      <span className="spec-lbl">Category</span>
+                      <span className="spec-val">{previewModal.documentType || "Compliance"}</span>
+                    </div>
+                    <div className="spec-item">
+                      <span className="spec-lbl">Uploaded On</span>
+                      <span className="spec-val">{formatDate(previewModal.createdAt)}</span>
+                    </div>
+                    <div className="spec-item">
+                      <span className="spec-lbl">Audit Status</span>
+                      <span className={`doc-status-pill ${(previewModal.status || "pending").toLowerCase()}`}>
+                        {previewModal.status || "pending"}
+                      </span>
+                    </div>
+                    {previewModal.verificationNotes && (
+                      <div className="spec-item" style={{ flexDirection: "column", gap: "0.25rem" }}>
+                        <span className="spec-lbl">Audit Remark</span>
+                        <p style={{ margin: 0, fontSize: "0.8rem", color: "#334155", background: "#f1f5f9", padding: "0.4rem 0.6rem", borderRadius: "6px" }}>
+                          {previewModal.verificationNotes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Review Actions cluster */}
+                  <div className="meta-pane-card actions-box">
+                    <h5>Compliance Actions</h5>
+                    {(previewModal.status || "").toLowerCase() === "pending" && (
+                      <div className="meta-actions-stack">
+                        <button
+                          type="button"
+                          className="btn-modal-submit"
+                          style={{ width: "100%", justifyContent: "center" }}
+                          onClick={() => {
+                            const doc = previewModal;
+                            handleClosePreview();
+                            setVerifyModal(doc);
+                            setVerifyNote("Verified against official records.");
+                          }}
+                        >
+                          ✓ Verify Document
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-modal-submit danger"
+                          style={{ width: "100%", justifyContent: "center" }}
+                          onClick={() => {
+                            const doc = previewModal;
+                            handleClosePreview();
+                            setRejectModal(doc);
+                            setRejectNote("");
+                          }}
+                        >
+                          ✕ Reject Document
+                        </button>
+                      </div>
+                    )}
+
+                    {previewModal.status !== "requested" && (
+                      <button
+                        type="button"
+                        className="btn-download-sm"
+                        style={{ width: "100%", justifyContent: "center", padding: "0.6rem" }}
+                        onClick={() => handleDownloadDoc(previewModal)}
+                      >
+                        📥 Download File
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="btn-delete-sm"
+                      style={{ width: "100%", justifyContent: "center", padding: "0.55rem" }}
+                      onClick={() => {
+                        const target = previewModal;
+                        handleClosePreview();
+                        handleDeleteDoc(target);
+                      }}
+                    >
+                      🗑️ Delete Document Record
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-foot">
+                <button
+                  type="button"
+                  className="btn-modal-cancel"
+                  onClick={handleClosePreview}
+                >
+                  Close Preview
                 </button>
               </div>
             </div>

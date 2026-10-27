@@ -187,9 +187,14 @@ function AppSidebar() {
                   <span className="nav-item-icon">📊</span>
                   {!isCollapsed && <span className="nav-item-label">Overview</span>}
                 </NavLink>
-                <NavLink to="/ai-assistant" end className="sidebar-nav-link" title="Ask HR policy questions and search">
-                  <span className="nav-item-icon">💬</span>
-                  {!isCollapsed && <span className="nav-item-label">Policy Assistant</span>}
+                <NavLink to="/ai-assistant" end className="sidebar-nav-link" title="AI HR Assistant & Policy Q&A">
+                  <span className="nav-item-icon">🤖</span>
+                  {!isCollapsed && (
+                    <>
+                      <span className="nav-item-label">AI HR Assistant</span>
+                      <span className="sidebar-sub-badge" style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff" }}>AI</span>
+                    </>
+                  )}
                 </NavLink>
               </div>
 
@@ -247,15 +252,6 @@ function AppSidebar() {
                 <NavLink to="/employee/profile" end className="sidebar-nav-link" title="Personal & Employment Profile">
                   <span className="nav-item-icon">👤</span>
                   {!isCollapsed && <span className="nav-item-label">My Profile</span>}
-                </NavLink>
-                <NavLink to="/ai" end className="sidebar-nav-link" title="AI HR Assistant & Cognitive Intelligence Hub">
-                  <span className="nav-item-icon">🧠</span>
-                  {!isCollapsed && (
-                    <>
-                      <span className="nav-item-label">AI HR Assistant</span>
-                      <span className="sidebar-sub-badge" style={{ background: "#6366f1", color: "#fff" }}>AI</span>
-                    </>
-                  )}
                 </NavLink>
               </div>
             </>

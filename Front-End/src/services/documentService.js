@@ -53,6 +53,10 @@ export function getMyDocuments() {
   return apiRequest("/documents/my");
 }
 
+export function getAllDocuments() {
+  return apiRequest("/documents");
+}
+
 export function uploadDocument(file, data = {}) {
   const body = new FormData();
 

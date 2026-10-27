@@ -121,7 +121,7 @@ export const findDocumentById = async (id) => {
     return rows[0];
 };
 
-export const findDocumentsByEmployeeId = async (employeeId) => {
+export const findDocumentsByEmployeeId = async (employeeId, extraId = null) => {
     const queryText = `
         SELECT 
             d.*,
@@ -133,9 +133,12 @@ export const findDocumentsByEmployeeId = async (employeeId) => {
         LEFT JOIN users u1 ON d.uploaded_by = u1.id
         LEFT JOIN users u2 ON d.verified_by = u2.id
         WHERE d.employee_id = $1
+           OR ($2::integer IS NOT NULL AND d.employee_id = $2::integer)
+           OR d.employee_id IN (SELECT id FROM employees WHERE user_id = $1 OR ($2::integer IS NOT NULL AND user_id = $2::integer))
+           OR d.employee_id IN (SELECT user_id FROM employees WHERE id = $1 OR ($2::integer IS NOT NULL AND id = $2::integer))
         ORDER BY d.created_at DESC;
     `;
-    const { rows } = await pool.query(queryText, [employeeId]);
+    const { rows } = await pool.query(queryText, [employeeId, extraId]);
     return rows;
 };
 

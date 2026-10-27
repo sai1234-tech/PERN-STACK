@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import { useManager } from "../../hooks/useManager";
 import { useAttendance } from "../../hooks/useAttendance";
+import { usePerformance } from "../../hooks/usePerformance";
 import { formatDate, formatTime } from "../../utils/date";
 import Loader from "../../components/common/Loader";
 import { formatPhotoUrl } from "../../utils/photo";
@@ -35,6 +36,64 @@ function ManagerDashboard() {
   const [viewSection, setViewSection] = useState("approvals"); // "approvals" | "roster" | "projects"
   const [projectSearch, setProjectSearch] = useState("");
   const [clockActionSubmitting, setClockActionSubmitting] = useState(false);
+  const [regularizations, setRegularizations] = useState(() => {
+    try {
+      const saved = localStorage.getItem("hrms_attendance_regularizations");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const { okrs, rateOkr } = usePerformance(true);
+  const [dashboardFeedbacks, setDashboardFeedbacks] = useState({});
+  const [savingOkrId, setSavingOkrId] = useState("");
+  const [feedbackNotice, setFeedbackNotice] = useState("");
+  const [submittedOkrIds, setSubmittedOkrIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("hrms_submitted_feedback_ids");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const saved = localStorage.getItem("hrms_submitted_feedback_ids");
+        if (saved) setSubmittedOkrIds(JSON.parse(saved));
+      } catch {}
+    };
+    window.addEventListener("hrms_data_updated", handleUpdate);
+    return () => window.removeEventListener("hrms_data_updated", handleUpdate);
+  }, []);
+
+  const handleSubmitDashboardFeedback = async (okrId, score) => {
+    const feedback = dashboardFeedbacks[okrId] !== undefined
+      ? dashboardFeedbacks[okrId]
+      : (okrs?.find((o) => o._id === okrId)?.feedback || "");
+    setSavingOkrId(okrId);
+    setFeedbackNotice("");
+    try {
+      await rateOkr(okrId, score || 5, feedback);
+      setSubmittedOkrIds((prev) => {
+        const next = prev.includes(okrId) ? prev : [...prev, okrId];
+        try {
+          localStorage.setItem("hrms_submitted_feedback_ids", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "performance_feedback" } }));
+      setFeedbackNotice("✓ Feedback submitted successfully.");
+      setTimeout(() => setFeedbackNotice(""), 3500);
+    } catch (err) {
+      console.error("Submit feedback error:", err);
+    } finally {
+      setSavingOkrId("");
+    }
+  };
+
   const checkedIn = Boolean(todayAttendance?.checkIn) && !todayAttendance?.checkOut;
 
   const handleClockAction = async () => {
@@ -45,43 +104,6 @@ function ManagerDashboard() {
       setClockActionSubmitting(false);
     }
   };
-
-  if (loading) return <Loader label="Loading Manager Command Center..." />;
-  if (error) {
-    return (
-      <div style={{ padding: "2rem", color: "#e11d48", fontWeight: 600 }}>
-        ⚠️ {error}
-      </div>
-    );
-  }
-
-  const pendingLeavesList = leaves.filter((l) =>
-    ["pending", "pending manager", "pending_manager"].includes(
-      String(l.status || "").toLowerCase()
-    )
-  );
-
-  const pendingLeavesCount = Math.max(
-    overview?.pendingLeaves || 0,
-    pendingLeavesList.length
-  );
-  
-  const pendingResignationsList = (resignations || []).filter(r => r.status === "pending");
-  const pendingResignationsCount = pendingResignationsList.length;
-
-  const [regularizations, setRegularizations] = useState(() => {
-    try {
-      const saved = localStorage.getItem("hrms_attendance_regularizations");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const pendingRegularizationsList = regularizations.filter(
-    (r) => r.status === "pending_manager" || r.status === "pending"
-  );
-  const pendingRegularizationsCount = pendingRegularizationsList.length;
 
   const handleApproveRegularization = (regId) => {
     const updated = regularizations.map((r) =>
@@ -109,11 +131,48 @@ function ManagerDashboard() {
     window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "attendance_regularization" } }));
   };
 
+  if (loading) return <Loader label="Loading Manager Command Center..." />;
+  if (error) {
+    return (
+      <>
+        <EmployeeHeader />
+        <div style={{ padding: "2rem", color: "#e11d48", fontWeight: 600 }}>
+          ⚠️ {error}
+        </div>
+      </>
+    );
+  }
+
+  const pendingLeavesList = (leaves || []).filter((l) =>
+    ["pending", "pending manager", "pending_manager"].includes(
+      String(l.status || "").toLowerCase()
+    )
+  );
+
+  const pendingLeavesCount = Math.max(
+    overview?.pendingLeaves || 0,
+    pendingLeavesList.length
+  );
+  
+  const pendingResignationsList = (resignations || []).filter(r => r.status === "pending");
+  const pendingResignationsCount = pendingResignationsList.length;
+
+  const pendingRegularizationsList = (regularizations || []).filter(
+    (r) => r.status === "pending_manager" || r.status === "pending"
+  );
+  const pendingRegularizationsCount = pendingRegularizationsList.length;
+
+  const pendingOkrsList = (okrs || []).filter(
+    (o) => !submittedOkrIds.includes(o._id) && !o.feedback && o.result !== "Reviewed"
+  );
+  const pendingOkrsCount = pendingOkrsList.length;
+
   const totalPending =
     pendingLeavesCount +
     (overview?.pendingTimesheets || 0) +
     pendingResignationsCount +
-    pendingRegularizationsCount;
+    pendingRegularizationsCount +
+    pendingOkrsCount;
   const teamMembers = overview?.teamMembers || [];
 
   const leavesToDisplay = activeTab === "all" ? pendingLeavesList : leaves;
@@ -297,8 +356,21 @@ function ManagerDashboard() {
                 >
                   Regularizations <span>{pendingRegularizationsCount}</span>
                 </button>
+                <button
+                  type="button"
+                  className={`filter-tab-btn ${activeTab === "feedback" ? "active" : ""}`}
+                  onClick={() => setActiveTab("feedback")}
+                >
+                  Appraisals & Feedback <span>{pendingOkrsCount}</span>
+                </button>
               </div>
             </div>
+
+            {feedbackNotice && (
+              <div style={{ background: "#d1fae5", border: "1px solid #6ee7b7", color: "#065f46", padding: "10px 16px", borderRadius: "10px", margin: "0 0 1rem", fontWeight: "600", fontSize: "0.88rem" }}>
+                {feedbackNotice}
+              </div>
+            )}
 
             {totalPending === 0 ? (
               <div className="manager-empty-state-box">
@@ -575,6 +647,79 @@ function ManagerDashboard() {
                     </div>
                   </div>
                 ))}
+
+                {/* APPRAISALS & PERFORMANCE FEEDBACK */}
+                {filterItems("feedback") && (okrs || []).map((req) => {
+                  const isSubmitted = submittedOkrIds.includes(req._id) || Boolean(req.feedback) || req.result === "Reviewed";
+                  const currentFeedback = dashboardFeedbacks[req._id] !== undefined ? dashboardFeedbacks[req._id] : (req.feedback || "");
+                  const hasDraftChanges = dashboardFeedbacks[req._id] !== undefined && dashboardFeedbacks[req._id] !== (req.feedback || "");
+
+                  return (
+                    <div key={req._id} className="approval-card-box feedback-type" style={{ borderLeftColor: "#10b981" }}>
+                      <div className="card-profile-header">
+                        <div className="user-avatar-meta">
+                          <div className="user-avatar-circle" style={{ background: "#d1fae5", color: "#065f46", fontWeight: 700 }}>
+                            {(req.employee?.firstName?.[0] || req.employee?.lastName?.[0] || "E").toUpperCase()}
+                          </div>
+                          <div className="user-info-text">
+                            <span className="user-full-name">{req.employee?.firstName} {req.employee?.lastName}</span>
+                            <span className="user-emp-code">{req.employee?.designation || req.employee?.department || "Team Member"}</span>
+                          </div>
+                        </div>
+                        <span
+                          className="type-pill-tag"
+                          style={isSubmitted && !hasDraftChanges ? { background: "#d1fae5", color: "#065f46" } : { background: "#e0e7ff", color: "#4338ca" }}
+                        >
+                          {isSubmitted && !hasDraftChanges ? "✓ Submitted" : "Performance Review"}
+                        </span>
+                      </div>
+
+                      <div className="request-details-inner">
+                        <div className="req-meta-row">
+                          <span className="req-meta-label">Objective:</span>
+                          <span className="req-meta-val" style={{ fontWeight: 600 }}>{req.objective}</span>
+                        </div>
+                        <div className="req-meta-row">
+                          <span className="req-meta-label">Rating:</span>
+                          <span className="req-meta-val" style={{ color: "#f59e0b", fontSize: "1rem" }}>
+                            {"★".repeat(req.score || 5)}{"☆".repeat(Math.max(0, 5 - (req.score || 5)))}
+                          </span>
+                        </div>
+                        <div className="req-meta-row" style={{ flexDirection: "column", gap: "0.35rem", marginTop: "0.5rem" }}>
+                          <span className="req-meta-label">Manager Feedback:</span>
+                          <textarea
+                            value={currentFeedback}
+                            onChange={(e) => setDashboardFeedbacks((prev) => ({ ...prev, [req._id]: e.target.value }))}
+                            placeholder="Enter feedback for employee objective..."
+                            rows={2}
+                            style={{
+                              width: "100%",
+                              padding: "8px 10px",
+                              borderRadius: "8px",
+                              border: "1.5px solid #cbd5e1",
+                              fontSize: "0.85rem",
+                              fontFamily: "inherit",
+                              boxSizing: "border-box",
+                              resize: "vertical"
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="card-actions-group">
+                        <button
+                          type="button"
+                          disabled={savingOkrId === req._id}
+                          className={`card-action-btn approve ${isSubmitted && !hasDraftChanges ? "submitted" : ""}`}
+                          style={isSubmitted && !hasDraftChanges ? { background: "#059669", borderColor: "#059669", color: "#ffffff" } : {}}
+                          onClick={() => handleSubmitDashboardFeedback(req._id, req.score || 5)}
+                        >
+                          {savingOkrId === req._id ? "Saving..." : isSubmitted && !hasDraftChanges ? "✓ Submitted" : "Submit Feedback"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>
@@ -670,7 +815,7 @@ function ManagerDashboard() {
               </div>
               <div className="proj-metric-box">
                 <span className="proj-metric-title">TOTAL LOGGED EFFORT</span>
-                <span className="proj-metric-val">{projects.reduce((sum, p) => sum + Number(p.totalHours || 0), 0)} Hours</span>
+                <span className="proj-metric-val">{(projects || []).reduce((sum, p) => sum + Number(p.totalHours || 0), 0)} Hours</span>
                 <span className="proj-metric-sub text-emerald">📈 Realtime Timesheet Sync</span>
               </div>
               <div className="proj-metric-box">

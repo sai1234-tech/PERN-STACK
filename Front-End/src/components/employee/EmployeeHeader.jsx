@@ -103,15 +103,8 @@ function EmployeeHeader() {
           if (Array.isArray(docs)) {
             let dismissed = [];
             try {
-              const userOrEmpId = user?.id || employee?.id;
-              const u = userOrEmpId ? JSON.parse(localStorage.getItem(`hrms_dismissed_doc_requests_${userOrEmpId}`) || "[]") : [];
               const s = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-              const l = JSON.parse(localStorage.getItem("hrms_dismissed_doc_requests") || "[]");
-              dismissed = Array.from(new Set([
-                ...(Array.isArray(s) ? s : []),
-                ...(Array.isArray(l) ? l : []),
-                ...(Array.isArray(u) ? u : []),
-              ]));
+              dismissed = Array.isArray(s) ? s : [];
             } catch {}
             const reqs = docs.filter((d) => {
               const id = String(d._id || d.id);

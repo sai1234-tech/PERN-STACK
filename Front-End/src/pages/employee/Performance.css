@@ -130,6 +130,12 @@
   opacity: 0.58;
 }
 
+.manager-feedback-submit.submitted {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28) !important;
+  color: #ffffff !important;
+}
+
 .okr-list {
   display: grid;
   gap: 1rem;

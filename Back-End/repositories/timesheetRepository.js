@@ -292,6 +292,9 @@ export const findExactDuplicateTimesheet = async ({ employeeId, date, project, c
 };
 
 export const findTimesheetById = async (id, employeeId = null) => {
+    if (!id || isNaN(Number(id))) {
+        return null;
+    }
     let queryText = `
         SELECT t.*,
                u.name AS reviewer_user_name,
@@ -377,6 +380,7 @@ export const updateTimesheetRecord = async (id, fields) => {
 };
 
 export const deleteTimesheetRecord = async (id, employeeId) => {
+    if (!id || isNaN(Number(id))) return null;
     const queryText = `DELETE FROM timesheets WHERE id = $1 AND employee_id = $2 RETURNING *;`;
     const { rows } = await pool.query(queryText, [id, employeeId]);
     return rows[0] ? formatTimesheet(rows[0]) : null;

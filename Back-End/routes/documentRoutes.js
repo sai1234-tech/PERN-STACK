@@ -9,7 +9,8 @@ import {
     downloadDocument,
     RequestDocument,
     updateDocumentStatus,
-    deleteDocument
+    deleteDocument,
+    getAllDocuments
 } from "../controllers/documentController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
@@ -44,6 +45,18 @@ router.post(
 // ==========================================
 // HR / ADMIN MANAGEMENT ROUTES
 // ==========================================
+// Get all documents across workforce (Company Vault for HR/Admin)
+router.get(
+    "/all",
+    authorizeRoles("hr", "admin"),
+    getAllDocuments
+);
+router.get(
+    "/",
+    authorizeRoles("hr", "admin"),
+    getAllDocuments
+);
+
 // Get documents of a specific employee
 router.get(
     "/employee/:employeeId",

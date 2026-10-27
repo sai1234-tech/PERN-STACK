@@ -34,6 +34,88 @@ function toLocalDateTime(value) {
 }
 
 const DEFAULT_REALISTIC_ENTRIES = [
+  // Current Work Week: 26 Oct 2026 – 30 Oct 2026 (Mon–Fri)
+  {
+    _id: "seed-ts-curr-1",
+    id: "seed-ts-curr-1",
+    date: "2026-10-26",
+    project: "Enterprise HRMS Engine",
+    client: "Quadratic Systems Inc",
+    task: "Sprint Planning & Weekly Execution Alignment",
+    description: "Reviewed weekly deliverables, sprint backlog grooming, and technical requirements with product leads.",
+    startTime: "2026-10-26T09:30:00",
+    endTime: "2026-10-26T18:15:00",
+    hours: 8.0,
+    status: "submitted",
+    reviewer: "Awaiting Manager Review",
+    billable: true,
+    updatedAt: "2026-10-26T18:30:00",
+  },
+  {
+    _id: "seed-ts-curr-2",
+    id: "seed-ts-curr-2",
+    date: "2026-10-27",
+    project: "Enterprise HRMS Engine",
+    client: "Quadratic Systems Inc",
+    task: "Attendance System Calibration & Biometric Validation",
+    description: "Implemented attendance regularization enhancements, biometric shift hours validation, and calendar sync.",
+    startTime: "2026-10-27T09:30:00",
+    endTime: "2026-10-27T18:15:00",
+    hours: 8.0,
+    status: "draft",
+    reviewer: "Draft Entry",
+    billable: true,
+    updatedAt: "2026-10-27T18:30:00",
+  },
+  {
+    _id: "seed-ts-curr-3",
+    id: "seed-ts-curr-3",
+    date: "2026-10-28",
+    project: "Enterprise HRMS Engine",
+    client: "Quadratic Systems Inc",
+    task: "API Endpoint Optimization & Timesheet Auditing",
+    description: "Refactored timesheet week calculation algorithms, aligned reporting manager queues, and hardened database queries.",
+    startTime: "2026-10-28T09:30:00",
+    endTime: "2026-10-28T18:15:00",
+    hours: 8.0,
+    status: "draft",
+    reviewer: "Draft Entry",
+    billable: true,
+    updatedAt: "2026-10-28T18:30:00",
+  },
+  {
+    _id: "seed-ts-curr-4",
+    id: "seed-ts-curr-4",
+    date: "2026-10-29",
+    project: "Enterprise HRMS Engine",
+    client: "Quadratic Systems Inc",
+    task: "Security Protocol & Multi-tier Role Matrix Verification",
+    description: "Verified role-based authorization gates across HR and Manager hubs, validated JWT token rotation.",
+    startTime: "2026-10-29T09:30:00",
+    endTime: "2026-10-29T18:15:00",
+    hours: 8.0,
+    status: "draft",
+    reviewer: "Draft Entry",
+    billable: true,
+    updatedAt: "2026-10-29T18:30:00",
+  },
+  {
+    _id: "seed-ts-curr-5",
+    id: "seed-ts-curr-5",
+    date: "2026-10-30",
+    project: "Enterprise HRMS Engine",
+    client: "Quadratic Systems Inc",
+    task: "Weekly Sprint Review & Cross-Browser Regression Testing",
+    description: "Executed weekly regression test suites, confirmed responsive styles on all breakpoints, and signed off release package.",
+    startTime: "2026-10-30T09:30:00",
+    endTime: "2026-10-30T18:15:00",
+    hours: 8.0,
+    status: "draft",
+    reviewer: "Draft Entry",
+    billable: true,
+    updatedAt: "2026-10-30T18:30:00",
+  },
+  // Previous Work Week: 19 Oct 2026 – 23 Oct 2026
   {
     _id: "seed-ts-1",
     id: "seed-ts-1",
@@ -117,6 +199,98 @@ const DEFAULT_REALISTIC_ENTRIES = [
 ];
 
 const DEFAULT_DAILY_TOTALS = [
+  // Current Work Week: 26 Oct 2026 – 30 Oct 2026
+  {
+    date: "2026-10-26",
+    hours: 8.0,
+    entries: 1,
+    reconciliation: {
+      requiredHours: "8:00",
+      clockedHours: "8:45",
+      timesheetHours: "8:00",
+      difference: "0:45",
+      differenceDecimal: 0.75,
+      status: "MATCHED",
+      action: "Submitted for Review",
+      hasAttendance: true,
+      checkIn: "09:30 AM",
+      checkOut: "06:15 PM",
+      clockedHoursDecimal: 8.75,
+    },
+  },
+  {
+    date: "2026-10-27",
+    hours: 8.0,
+    entries: 1,
+    reconciliation: {
+      requiredHours: "8:00",
+      clockedHours: "8:30",
+      timesheetHours: "8:00",
+      difference: "0:30",
+      differenceDecimal: 0.5,
+      status: "MATCHED",
+      action: "Draft Saved",
+      hasAttendance: true,
+      checkIn: "09:30 AM",
+      checkOut: "06:00 PM",
+      clockedHoursDecimal: 8.5,
+    },
+  },
+  {
+    date: "2026-10-28",
+    hours: 0,
+    entries: 0,
+    reconciliation: {
+      requiredHours: "8:00",
+      clockedHours: "0:00",
+      timesheetHours: "0:00",
+      difference: "0:00",
+      differenceDecimal: 0.0,
+      status: "PENDING",
+      action: "Pending Timesheet Entry",
+      hasAttendance: false,
+      checkIn: null,
+      checkOut: null,
+      clockedHoursDecimal: 0,
+    },
+  },
+  {
+    date: "2026-10-29",
+    hours: 0,
+    entries: 0,
+    reconciliation: {
+      requiredHours: "8:00",
+      clockedHours: "0:00",
+      timesheetHours: "0:00",
+      difference: "0:00",
+      differenceDecimal: 0.0,
+      status: "PENDING",
+      action: "Pending Timesheet Entry",
+      hasAttendance: false,
+      checkIn: null,
+      checkOut: null,
+      clockedHoursDecimal: 0,
+    },
+  },
+  {
+    date: "2026-10-30",
+    hours: 0,
+    entries: 0,
+    reconciliation: {
+      requiredHours: "8:00",
+      clockedHours: "0:00",
+      timesheetHours: "0:00",
+      difference: "0:00",
+      differenceDecimal: 0.0,
+      status: "PENDING",
+      action: "Pending Timesheet Entry",
+      hasAttendance: false,
+      checkIn: null,
+      checkOut: null,
+      clockedHoursDecimal: 0,
+    },
+  },
+  // Previous Work Week: 19 Oct 2026 – 23 Oct 2026
   {
     date: "2026-10-19",
     hours: 8.0,
@@ -137,74 +311,74 @@ const DEFAULT_DAILY_TOTALS = [
   },
   {
     date: "2026-10-20",
-    hours: 0,
-    entries: 0,
+    hours: 8.0,
+    entries: 1,
     reconciliation: {
       requiredHours: "8:00",
-      clockedHours: "0:00",
-      timesheetHours: "0:00",
-      difference: "0:00",
-      differenceDecimal: 0.0,
-      status: "PENDING",
-      action: "Pending Timesheet Entry",
-      hasAttendance: false,
-      checkIn: null,
-      checkOut: null,
-      clockedHoursDecimal: 0,
+      clockedHours: "8:45",
+      timesheetHours: "8:00",
+      difference: "0:45",
+      differenceDecimal: 0.75,
+      status: "MATCHED",
+      action: "Draft Saved",
+      hasAttendance: true,
+      checkIn: "09:30 AM",
+      checkOut: "06:15 PM",
+      clockedHoursDecimal: 8.75,
     },
   },
   {
     date: "2026-10-21",
-    hours: 0,
-    entries: 0,
+    hours: 8.0,
+    entries: 1,
     reconciliation: {
       requiredHours: "8:00",
-      clockedHours: "0:00",
-      timesheetHours: "0:00",
-      difference: "0:00",
-      differenceDecimal: 0.0,
-      status: "PENDING",
-      action: "Pending Timesheet Entry",
-      hasAttendance: false,
-      checkIn: null,
-      checkOut: null,
-      clockedHoursDecimal: 0,
+      clockedHours: "8:45",
+      timesheetHours: "8:00",
+      difference: "0:45",
+      differenceDecimal: 0.75,
+      status: "MATCHED",
+      action: "Draft Saved",
+      hasAttendance: true,
+      checkIn: "09:30 AM",
+      checkOut: "06:15 PM",
+      clockedHoursDecimal: 8.75,
     },
   },
   {
     date: "2026-10-22",
-    hours: 0,
-    entries: 0,
+    hours: 8.0,
+    entries: 1,
     reconciliation: {
       requiredHours: "8:00",
-      clockedHours: "0:00",
-      timesheetHours: "0:00",
-      difference: "0:00",
-      differenceDecimal: 0.0,
-      status: "PENDING",
-      action: "Pending Timesheet Entry",
-      hasAttendance: false,
-      checkIn: null,
-      checkOut: null,
-      clockedHoursDecimal: 0,
+      clockedHours: "8:45",
+      timesheetHours: "8:00",
+      difference: "0:45",
+      differenceDecimal: 0.75,
+      status: "MATCHED",
+      action: "Draft Saved",
+      hasAttendance: true,
+      checkIn: "09:30 AM",
+      checkOut: "06:15 PM",
+      clockedHoursDecimal: 8.75,
     },
   },
   {
     date: "2026-10-23",
-    hours: 0,
-    entries: 0,
+    hours: 8.0,
+    entries: 1,
     reconciliation: {
       requiredHours: "8:00",
-      clockedHours: "0:00",
-      timesheetHours: "0:00",
-      difference: "0:00",
-      differenceDecimal: 0.0,
-      status: "PENDING",
-      action: "Pending Timesheet Entry",
-      hasAttendance: false,
-      checkIn: null,
-      checkOut: null,
-      clockedHoursDecimal: 0,
+      clockedHours: "8:45",
+      timesheetHours: "8:00",
+      difference: "0:45",
+      differenceDecimal: 0.75,
+      status: "MATCHED",
+      action: "Draft Saved",
+      hasAttendance: true,
+      checkIn: "09:30 AM",
+      checkOut: "06:15 PM",
+      clockedHoursDecimal: 8.75,
     },
   },
 ];
@@ -289,6 +463,14 @@ function EmployeeTimesheets() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [clockOutBusy, setClockOutBusy] = useState(false);
+  const [deletedIds, setDeletedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("hrms_deleted_timesheet_ids");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     if (joiningDateStr && selectedDate < joiningDateStr) {
@@ -304,8 +486,11 @@ function EmployeeTimesheets() {
     const base = rawEntries && rawEntries.length > 0 ? rawEntries : DEFAULT_REALISTIC_ENTRIES;
     const attList = attendanceState?.attendance || [];
 
+    // Filter out deleted entries
+    const nonDeleted = base.filter((entry) => !deletedIds.includes(String(entry._id || entry.id)));
+
     // Filter out entries on dates where user was absent / did NOT clock in
-    return base.filter((entry) => {
+    return nonDeleted.filter((entry) => {
       const dStr = String(entry.date || "").slice(0, 10);
       if (!dStr) return true;
 
@@ -333,7 +518,7 @@ function EmployeeTimesheets() {
 
       return true;
     });
-  }, [rawEntries, dailyTotals, attendanceState?.attendance]);
+  }, [rawEntries, deletedIds, dailyTotals, attendanceState?.attendance]);
 
   const effectiveDailyTotals = useMemo(() => {
     const base = dailyTotals && dailyTotals.length > 0 ? dailyTotals : DEFAULT_DAILY_TOTALS;
@@ -454,18 +639,63 @@ function EmployeeTimesheets() {
     return false;
   }, [activeDayReconciliation]);
 
-  const weekStartStr = week?.start ? String(week.start).slice(0, 10) : "2026-10-19";
-  const weekEndStr = useMemo(() => {
-    if (!week?.start) return "2026-10-23";
-    try {
-      const parts = String(week.start).slice(0, 10).split("-");
-      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-      d.setDate(d.getDate() + 4); // Always Friday of the work week
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    } catch {
-      return "2026-10-23";
+  const { weekStartStr, weekEndStr } = useMemo(() => {
+    // 1. If backend week?.start is a clean string YYYY-MM-DD
+    if (
+      week?.start &&
+      typeof week.start === "string" &&
+      !week.start.includes("T") &&
+      !week.start.includes("Z") &&
+      week?.end &&
+      typeof week.end === "string" &&
+      !week.end.includes("T") &&
+      !week.end.includes("Z")
+    ) {
+      return {
+        weekStartStr: week.start.slice(0, 10),
+        weekEndStr: week.end.slice(0, 10),
+      };
     }
-  }, [week?.start]);
+
+    // 2. Derive work week Monday (day 1) to Friday (day 5) based on selected date or current date
+    const ref = selectedDate || week?.start || today;
+    let y, m, d;
+    if (typeof ref === "string") {
+      if (ref.includes("T") || ref.includes("Z")) {
+        const parsed = new Date(ref);
+        y = parsed.getFullYear();
+        m = parsed.getMonth();
+        d = parsed.getDate();
+      } else {
+        const parts = ref.slice(0, 10).split("-");
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10) - 1;
+        d = parseInt(parts[2], 10);
+      }
+    } else if (ref instanceof Date) {
+      y = ref.getFullYear();
+      m = ref.getMonth();
+      d = ref.getDate();
+    } else {
+      const now = new Date();
+      y = now.getFullYear();
+      m = now.getMonth();
+      d = now.getDate();
+    }
+
+    const current = new Date(y, m, d);
+    const day = current.getDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+
+    const monday = new Date(y, m, d + diffToMonday);
+    const friday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 4);
+
+    const pad = (n) => String(n).padStart(2, "0");
+    const mondayStr = `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;
+    const fridayStr = `${friday.getFullYear()}-${pad(friday.getMonth() + 1)}-${pad(friday.getDate())}`;
+
+    return { weekStartStr: mondayStr, weekEndStr: fridayStr };
+  }, [selectedDate, week?.start, week?.end]);
 
   const workWeekEntries = useMemo(() => {
     return displayEntries.filter((entry) => {
@@ -599,7 +829,16 @@ function EmployeeTimesheets() {
       };
 
       if (editingId) {
-        await update(editingId, payload);
+        if (String(editingId).startsWith("seed-") || isNaN(Number(editingId))) {
+          setDeletedIds((prev) => {
+            const next = [...prev, String(editingId)];
+            try { localStorage.setItem("hrms_deleted_timesheet_ids", JSON.stringify(next)); } catch {}
+            return next;
+          });
+          await create(payload);
+        } else {
+          await update(editingId, payload);
+        }
       } else {
         await create(payload);
       }
@@ -615,7 +854,7 @@ function EmployeeTimesheets() {
   };
 
   const beginEdit = (entry) => {
-    setEditingId(entry._id);
+    setEditingId(entry._id || entry.id);
     setForm({
       date: String(entry.date).slice(0, 10),
       project: entry.project || "",
@@ -635,6 +874,73 @@ function EmployeeTimesheets() {
     setForm(emptyForm);
     setFormError("");
     setNotice("");
+  };
+
+  const handleDeleteTimesheet = async (entry) => {
+    const entryId = entry._id || entry.id;
+    const idStr = String(entryId);
+    setFormError("");
+    setNotice("");
+
+    // Optimistically remove from UI immediately
+    setDeletedIds((prev) => {
+      const next = prev.includes(idStr) ? prev : [...prev, idStr];
+      try {
+        localStorage.setItem("hrms_deleted_timesheet_ids", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    try {
+      if (!idStr.startsWith("seed-") && !isNaN(Number(idStr))) {
+        await remove(entryId);
+      }
+      setNotice("Timesheet entry deleted successfully.");
+    } catch (requestError) {
+      if (idStr.startsWith("seed-") || isNaN(Number(idStr))) {
+        setNotice("Timesheet entry deleted successfully.");
+      } else {
+        setFormError(requestError.message || "Failed to delete timesheet entry.");
+      }
+    }
+  };
+
+  const handleSubmitEntry = async (entry) => {
+    const entryId = entry._id || entry.id;
+    const idStr = String(entryId);
+    setFormError("");
+    setNotice("");
+
+    try {
+      if (idStr.startsWith("seed-") || isNaN(Number(idStr))) {
+        // If it's a seed entry, create it in DB first then submit
+        const res = await create({
+          date: String(entry.date).slice(0, 10),
+          project: entry.project || "General Engineering",
+          task: entry.task || "Weekly Deliverables",
+          description: entry.description || "",
+          startTime: toIsoDate(entry.startTime),
+          endTime: toIsoDate(entry.endTime),
+          breakMinutes: Number(entry.breakMinutes) || 45,
+          hours: Number(entry.hours) || 8.0,
+          billable: entry.billable !== false,
+        });
+        setDeletedIds((prev) => {
+          const next = [...prev, idStr];
+          try { localStorage.setItem("hrms_deleted_timesheet_ids", JSON.stringify(next)); } catch {}
+          return next;
+        });
+        const createdId = res?.data?.id || res?.id;
+        if (createdId) {
+          await submit(createdId);
+        }
+      } else {
+        await submit(entryId);
+      }
+      setNotice("Task submitted to Manager for review. Entry is now locked (one-time submission).");
+    } catch (requestError) {
+      setFormError(requestError.message || "Failed to submit timesheet entry.");
+    }
   };
 
   const handleAction = async (action, successMessage) => {
@@ -1397,26 +1703,16 @@ function EmployeeTimesheets() {
                             <button
                               type="button"
                               className="time-inline-btn submit"
-                              onClick={() =>
-                                handleAction(
-                                  () => submit(entry._id),
-                                  "Task submitted to Manager for review. Entry is now locked (one-time submission)."
-                                )
-                              }
+                              onClick={() => handleSubmitEntry(entry)}
                             >
                               Submit
                             </button>
                           )}
-                          {entry.status === "draft" && (
+                          {["draft", "rejected"].includes(entry.status) && (
                             <button
                               type="button"
                               className="time-inline-btn delete"
-                              onClick={() =>
-                                handleAction(
-                                  () => remove(entry._id),
-                                  "Draft entry removed."
-                                )
-                              }
+                              onClick={() => handleDeleteTimesheet(entry)}
                             >
                               Delete
                             </button>

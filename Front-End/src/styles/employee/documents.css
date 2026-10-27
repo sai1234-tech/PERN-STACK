@@ -969,6 +969,35 @@
   transform: translateY(0);
 }
 
+.doc-btn.delete {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fecaca !important;
+}
+
+.doc-btn.delete:hover {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #fca5a5 !important;
+  transform: translateY(-1px);
+}
+
+.doc-btn.delete:active {
+  transform: translateY(0);
+}
+
+[data-theme="dark"] .doc-btn.delete {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+[data-theme="dark"] .doc-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #fecaca !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
 .doc-request-fulfilled-note {
   color: #047857;
   font-size: 0.72rem;

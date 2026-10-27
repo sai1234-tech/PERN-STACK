@@ -9,11 +9,11 @@ import {
 } from "../../services/aiIntelligenceService";
 import { getCandidates } from "../../services/candidateService";
 import { toast } from "react-toastify";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import "./AiIntelligenceHub.css";
 
 const AI_TABS = [
-  { id: "assistant", label: "1. AI HR Assistant", icon: "💬", desc: "Conversational Employee Q&A & Self-Service" },
+  { id: "assistant", label: "1. AI HR & Policy Assistant", icon: "💬", desc: "Conversational Employee Q&A, Policies & Self-Service" },
   { id: "analytics", label: "2. AI HR Analytics", icon: "📊", desc: "Natural Language Workforce Insights & Charts" },
   { id: "attendance", label: "3. Smart Attendance Monitoring", icon: "⏱️", desc: "Pattern Anomaly Engine & Explanations" },
   { id: "recruitment", label: "4. AI Recruitment Assistant", icon: "🎯", desc: "Resume Skill Match & Interview Generator" },
@@ -21,7 +21,21 @@ const AI_TABS = [
 ];
 
 export default function AiIntelligenceHub() {
-  const [activeTab, setActiveTab] = useState("assistant");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (requestedTab && AI_TABS.some((t) => t.id === requestedTab)) {
+      return requestedTab;
+    }
+    return "assistant";
+  });
+
+  useEffect(() => {
+    if (requestedTab && AI_TABS.some((t) => t.id === requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab]);
+
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
 
@@ -31,7 +45,7 @@ export default function AiIntelligenceHub() {
   const [chatMessages, setChatMessages] = useState([
     {
       sender: "ai",
-      text: "Hello! I am your AI HR Assistant. I can help answer questions about your leave balances, approval status, employment letters, project deployment, reporting manager, attendance, and company policies. What would you like to know today?",
+      text: "Hello! I am your AI HR & Policy Assistant. I can help answer questions about company policies, leave balances, approval status, employment letters, project deployment, reporting manager, and attendance. What would you like to know today?",
       intent: "GREETING",
       confidence: 1.0,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -366,7 +380,10 @@ export default function AiIntelligenceHub() {
             key={tab.id}
             type="button"
             className={`ai-tab-btn ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setSearchParams({ tab: tab.id });
+            }}
           >
             <span className="ai-tab-icon">{tab.icon}</span>
             <div className="ai-tab-text-group">

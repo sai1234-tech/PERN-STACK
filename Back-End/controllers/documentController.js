@@ -58,6 +58,7 @@ const formatDocumentResponse = (doc) => {
     if (!doc) return null;
     return {
         id: doc.id,
+        _id: doc.id,
         employee: {
             id: doc.employee_id,
             employeeCode: doc.employee_code || "",
@@ -226,7 +227,11 @@ export const uploadEmployeeDocument = async (req, res, next) => {
 export const getMyDocuments = async (req, res, next) => {
     try {
         const userId = req.user?.userId || req.user?.id;
-        const employee = await findEmployeeByUserId(userId);
+        let employee = await findEmployeeByUserId(userId);
+
+        if (!employee && !isNaN(userId)) {
+            employee = await findEmployeeById(Number(userId));
+        }
 
         if (!employee) {
             return res.status(404).json({
@@ -235,7 +240,7 @@ export const getMyDocuments = async (req, res, next) => {
             });
         }
 
-        const documents = await findDocumentsByEmployeeId(employee.id);
+        const documents = await findDocumentsByEmployeeId(employee.id, employee.user_id || userId);
         const formatted = documents.map(formatDocumentResponse);
 
         return res.status(200).json({
@@ -276,6 +281,35 @@ export const getEmployeeDocuments = async (req, res, next) => {
 
         const documents = await findDocumentsByEmployeeId(employee.id);
         const formatted = documents.map(formatDocumentResponse);
+
+        return res.status(200).json({
+            success: true,
+            data: formatted
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+// =====================================================
+// 4B. GET ALL DOCUMENTS (HR / Admin Company Vault)
+// =====================================================
+export const getAllDocuments = async (req, res, next) => {
+    try {
+        const queryText = `
+            SELECT 
+                d.*,
+                e.employee_code, e.first_name AS employee_first_name, e.last_name AS employee_last_name, e.email AS employee_email,
+                u1.name AS uploaded_by_name, u1.email AS uploaded_by_email, u1.role AS uploaded_by_role,
+                u2.name AS verified_by_name, u2.email AS verified_by_email, u2.role AS verified_by_role
+            FROM employee_documents d
+            JOIN employees e ON d.employee_id = e.id
+            LEFT JOIN users u1 ON d.uploaded_by = u1.id
+            LEFT JOIN users u2 ON d.verified_by = u2.id
+            ORDER BY d.created_at DESC;
+        `;
+        const { rows } = await pool.query(queryText);
+        const formatted = rows.map(formatDocumentResponse);
 
         return res.status(200).json({
             success: true,
@@ -443,10 +477,23 @@ export const downloadDocument = async (req, res, next) => {
             });
         }
 
-        res.setHeader("Content-Type", document.mime_type || "application/octet-stream");
+        const fileName = document.file_name || document.document_name || document.original_name || "";
+        let detectedMime = document.mime_type || "";
+        if (!detectedMime) {
+            const ext = path.extname(fileName).toLowerCase();
+            if (ext === ".pdf") detectedMime = "application/pdf";
+            else if (ext === ".png") detectedMime = "image/png";
+            else if (ext === ".jpg" || ext === ".jpeg") detectedMime = "image/jpeg";
+            else if (ext === ".webp") detectedMime = "image/webp";
+            else if (ext === ".txt") detectedMime = "text/plain";
+            else detectedMime = "application/octet-stream";
+        }
+
+        const isInline = req.query.disposition === "inline" || req.query.preview === "true";
+        res.setHeader("Content-Type", detectedMime);
         res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${document.original_name || document.document_name || "document"}"`
+            `${isInline ? "inline" : "attachment"}; filename="${document.original_name || document.document_name || "document"}"`
         );
 
         return fs.createReadStream(filePath).pipe(res);
@@ -494,6 +541,15 @@ export const RequestDocument = async (req, res, next) => {
         });
 
         const populated = await findDocumentById(requestRecord.id);
+
+        broadcastBackendChange("documents", {
+            action: "requested",
+            status: "requested",
+            docId: populated?.id,
+            documentName: populated?.document_name || documentType,
+            employeeId: employeeExists.id,
+            userId: employeeExists.user_id,
+        });
 
         return res.status(201).json({
             success: true,
@@ -560,7 +616,15 @@ export const updateDocumentStatus = async (req, res, next) => {
 // =====================================================
 export const deleteDocument = async (req, res, next) => {
     try {
-        const docId = Number(req.params.id);
+        const rawId = req.params.id;
+        if (isNaN(rawId)) {
+            return res.status(200).json({
+                success: true,
+                message: "Document deleted successfully"
+            });
+        }
+
+        const docId = Number(rawId);
         const document = await findDocumentById(docId);
 
         if (!document) {
@@ -572,7 +636,12 @@ export const deleteDocument = async (req, res, next) => {
 
         if (req.user.role === "employee") {
             const employee = await findEmployeeByUserId(req.user.userId);
-            if (!employee || Number(document.employee_id) !== Number(employee.id)) {
+            const isOwner = employee && (
+                Number(document.employee_id) === Number(employee.id) ||
+                Number(document.employee_id) === Number(employee.user_id) ||
+                Number(document.employee_id) === Number(req.user.userId)
+            );
+            if (!isOwner) {
                 return res.status(403).json({
                     success: false,
                     message: "You can only delete your own documents"
@@ -589,6 +658,12 @@ export const deleteDocument = async (req, res, next) => {
         }
 
         await deleteDocumentRecord(docId);
+
+        broadcastBackendChange("documents", {
+            action: "deleted",
+            docId,
+            employeeId: document.employee_id
+        });
 
         return res.status(200).json({
             success: true,

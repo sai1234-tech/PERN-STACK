@@ -74,16 +74,16 @@ export const useManager = () => {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      await Promise.all([
+      await Promise.allSettled([
         fetchWorkforceAndProjects(),
         fetchLeaves(),
         fetchTimesheets(),
         fetchResignations(),
       ]);
     } catch (err) {
-      if (!silent) setError("Failed to load manager data");
+      console.warn("Notice loading manager data:", err);
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
     }
   }, [fetchWorkforceAndProjects, fetchLeaves, fetchTimesheets, fetchResignations]);
 

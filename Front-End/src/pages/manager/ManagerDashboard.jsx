@@ -260,18 +260,6 @@ function ManagerDashboard({ defaultSection }) {
     broadcastDataChange("attendance_regularization");
   };
 
-  if (loading) return <Loader label="Loading Manager Command Center..." />;
-  if (error) {
-    return (
-      <>
-        <EmployeeHeader />
-        <div style={{ padding: "2rem", color: "#e11d48", fontWeight: 600 }}>
-          ⚠️ {error}
-        </div>
-      </>
-    );
-  }
-
   const safeLeaves = Array.isArray(leaves) ? leaves : [];
   const safeTimesheets = Array.isArray(timesheets) ? timesheets : [];
   const safeProjects = Array.isArray(projects) ? projects : [];
@@ -661,6 +649,11 @@ function ManagerDashboard({ defaultSection }) {
     <>
       <EmployeeHeader />
       <div className="manager-dashboard-container">
+        {error && (
+          <div style={{ margin: "1rem 1.5rem 0", padding: "0.75rem 1.25rem", background: "#fff1f2", color: "#e11d48", borderRadius: "10px", fontWeight: 600, border: "1px solid #fecdd3" }}>
+            ⚠️ {error}
+          </div>
+        )}
         {/* =====================================================
             MANAGER COMMAND CENTER HERO & SUMMARY KPIs
         ===================================================== */}

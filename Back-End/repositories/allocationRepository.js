@@ -71,11 +71,11 @@ export const findAllAllocations = async () => {
             UPDATE project_allocations
             SET status = 'Allocated',
                 project_name = 'HMRS',
-                sow_number = 'SOW',
+                sow_number = 'SOW-2026-AI-003',
                 billability = 'Billable',
                 allocation_percentage = 100
             WHERE (UPPER(employee_code) = 'EMP175' OR LOWER(employee_name) LIKE '%kushangala%')
-              AND COALESCE(project_name, '') = ''
+              AND (COALESCE(project_name, '') = '' OR COALESCE(sow_number, '') = '' OR sow_number = 'SOW' OR sow_number = 'SOW to project')
               AND COALESCE(notes, '') <> 'RELEASED_TO_BENCH';
         `);
     } catch (_) {}

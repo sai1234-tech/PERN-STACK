@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import { useManager } from "../../hooks/useManager";
@@ -44,6 +44,9 @@ function ManagerDashboard() {
   const [allocProjectInput, setAllocProjectInput] = useState("");
   const [allocSowInput, setAllocSowInput] = useState("");
   const [allocNotice, setAllocNotice] = useState("");
+  const [resourceSearch, setResourceSearch] = useState("");
+  const [resourceDeptFilter, setResourceDeptFilter] = useState("ALL");
+  const [resourceStatusFilter, setResourceStatusFilter] = useState("ALL");
   const [clockActionSubmitting, setClockActionSubmitting] = useState(false);
   const [regularizations, setRegularizations] = useState(() => {
     const defaultList = [
@@ -316,6 +319,58 @@ function ManagerDashboard() {
     return activeTab === type;
   };
 
+  const allMatrixResources = useMemo(
+    () => [...benchResources, ...allocatedResources],
+    [benchResources, allocatedResources]
+  );
+
+  const matrixDepartments = useMemo(() => {
+    const set = new Set(["ALL"]);
+    allMatrixResources.forEach((e) => {
+      if (e.department) set.add(e.department);
+    });
+    return Array.from(set);
+  }, [allMatrixResources]);
+
+  const filteredMatrixItems = useMemo(() => {
+    return allMatrixResources.filter((item) => {
+      const name = item.name || "";
+      const code = item.code || item.employeeCode || "";
+      const role = item.role || item.employment?.designation || "";
+      const project = item.project || "";
+      const sow = item.sowNumber || "";
+      const dept = item.department || "";
+
+      const query = resourceSearch.toLowerCase().trim();
+      const matchesSearch =
+        !query ||
+        name.toLowerCase().includes(query) ||
+        code.toLowerCase().includes(query) ||
+        role.toLowerCase().includes(query) ||
+        project.toLowerCase().includes(query) ||
+        sow.toLowerCase().includes(query);
+
+      const matchesDept = resourceDeptFilter === "ALL" || dept.toLowerCase() === resourceDeptFilter.toLowerCase();
+      const matchesStatus = resourceStatusFilter === "ALL" || item.status === resourceStatusFilter;
+
+      return matchesSearch && matchesDept && matchesStatus;
+    });
+  }, [allMatrixResources, resourceSearch, resourceDeptFilter, resourceStatusFilter]);
+
+  const displayBench = useMemo(
+    () => filteredMatrixItems.filter((e) => e.status === "Bench"),
+    [filteredMatrixItems]
+  );
+  const displayAllocated = useMemo(
+    () => filteredMatrixItems.filter((e) => e.status === "Allocated"),
+    [filteredMatrixItems]
+  );
+
+  const totalPoolCount = allMatrixResources.length;
+  const totalAllocated = allocatedResources.length;
+  const totalBench = benchResources.length;
+  const utilizationPercentage = totalPoolCount > 0 ? Math.round((totalAllocated / totalPoolCount) * 100) : 0;
+
   const handleConfirmDashboardAllocation = async (e) => {
     e.preventDefault();
     if (!selectedResourceEmp || !allocProjectInput.trim()) return;
@@ -323,10 +378,10 @@ function ManagerDashboard() {
       selectedResourceEmp,
       "Allocated",
       allocProjectInput.trim(),
-      allocSowInput.trim()
+      allocSowInput.trim() || "SOW-2026-AI-003"
     );
     setAllocNotice(
-      `✓ Allocated ${selectedResourceEmp.name} to ${allocProjectInput.trim()} (${allocSowInput.trim() || "SOW"}).`
+      `✓ Allocated ${selectedResourceEmp.name} to ${allocProjectInput.trim()} (${allocSowInput.trim() || "SOW-2026-AI-003"}).`
     );
     setSelectedResourceEmp(null);
     setAllocProjectInput("");
@@ -352,6 +407,67 @@ function ManagerDashboard() {
         </Link>
       </div>
 
+      {/* KPI Overview Cards matching HR Resource Allocation */}
+      <section className="resource-kpis-grid" style={{ marginBottom: "1.25rem" }}>
+        <div className="res-kpi-card pool">
+          <span className="res-kpi-label">Resource Pool Utilization</span>
+          <div className="res-kpi-row">
+            <strong className="res-kpi-val">{utilizationPercentage}%</strong>
+            <span className="res-chip positive">Target ≥ 80%</span>
+          </div>
+          <div className="res-progress-rail">
+            <div className="res-progress-bar" style={{ width: `${utilizationPercentage}%` }} />
+          </div>
+          <small className="res-kpi-sub">{totalAllocated} Billable of {totalPoolCount} Total Personnel</small>
+        </div>
+
+        <div className="res-kpi-card cost-center">
+          <span className="res-kpi-label">On Bench (Cost Center)</span>
+          <strong className="res-kpi-val">{totalBench}</strong>
+          <small className="res-kpi-sub">Available for Immediate SOW Deployment</small>
+        </div>
+
+        <div className="res-kpi-card revenue-center">
+          <span className="res-kpi-label">Allocated (Revenue Center)</span>
+          <strong className="res-kpi-val">{totalAllocated}</strong>
+          <small className="res-kpi-sub">Active Client Project Billing</small>
+        </div>
+      </section>
+
+      {/* Filter Toolbar */}
+      <section className="resource-toolbar" style={{ marginBottom: "1.25rem" }}>
+        <div className="toolbar-search-group">
+          <input
+            type="text"
+            placeholder="Search resource by name, code, role, project, or SOW..."
+            value={resourceSearch}
+            onChange={(e) => setResourceSearch(e.target.value)}
+            className="res-search-input"
+          />
+
+          <select
+            value={resourceDeptFilter}
+            onChange={(e) => setResourceDeptFilter(e.target.value)}
+            className="res-filter-select"
+          >
+            <option value="ALL">All Departments</option>
+            {matrixDepartments.filter((d) => d !== "ALL").map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+
+          <select
+            value={resourceStatusFilter}
+            onChange={(e) => setResourceStatusFilter(e.target.value)}
+            className="res-filter-select"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="Bench">On Bench Only</option>
+            <option value="Allocated">Allocated Only</option>
+          </select>
+        </div>
+      </section>
+
       {allocNotice && (
         <div className="resource-notice" style={{ marginBottom: "1rem" }}>
           {allocNotice}
@@ -366,17 +482,17 @@ function ManagerDashboard() {
               <span className="col-badge bench">COST CENTER</span>
               <h3>On Bench <span>Available Resources</span></h3>
             </div>
-            <span className="col-count-pill">{benchResources.length}</span>
+            <span className="col-count-pill">{displayBench.length}</span>
           </div>
 
           <div className="resource-card-stack">
-            {benchResources.length === 0 ? (
+            {displayBench.length === 0 ? (
               <div className="empty-col-box">
                 <span>✨</span>
                 <p>No resources currently on bench.</p>
               </div>
             ) : (
-              benchResources.map((emp) => (
+              displayBench.map((emp) => (
                 <div key={emp.id} className="resource-card bench-card">
                   <div className="res-card-top">
                     <div className="res-avatar-pod">
@@ -402,8 +518,8 @@ function ManagerDashboard() {
                       className="action-link-btn allocate"
                       onClick={() => {
                         setSelectedResourceEmp(emp);
-                        setAllocProjectInput("");
-                        setAllocSowInput("");
+                        setAllocProjectInput("HMRS");
+                        setAllocSowInput("SOW-2026-AI-003");
                       }}
                     >
                       ⚡ Allocate to Client Project
@@ -422,17 +538,17 @@ function ManagerDashboard() {
               <span className="col-badge allocated">REVENUE CENTER</span>
               <h3>Allocated <span>Billable Client SOWs</span></h3>
             </div>
-            <span className="col-count-pill">{allocatedResources.length}</span>
+            <span className="col-count-pill">{displayAllocated.length}</span>
           </div>
 
           <div className="resource-card-stack">
-            {allocatedResources.length === 0 ? (
+            {displayAllocated.length === 0 ? (
               <div className="empty-col-box">
                 <span>📋</span>
                 <p>No active project allocations found.</p>
               </div>
             ) : (
-              allocatedResources.map((emp) => (
+              displayAllocated.map((emp) => (
                 <div key={emp.id} className="resource-card allocated-card">
                   <div className="res-card-top">
                     <div className="res-avatar-pod active">
@@ -468,8 +584,8 @@ function ManagerDashboard() {
                       className="action-link-btn reassign"
                       onClick={() => {
                         setSelectedResourceEmp(emp);
-                        setAllocProjectInput(emp.project || "");
-                        setAllocSowInput(emp.sowNumber || "");
+                        setAllocProjectInput(emp.project || "HMRS");
+                        setAllocSowInput(emp.sowNumber || "SOW-2026-AI-003");
                       }}
                     >
                       ✏️ Reassign
@@ -571,6 +687,16 @@ function ManagerDashboard() {
               <div className="kpi-label">PENDING APPROVALS</div>
               <div className={`kpi-value ${totalPending > 0 ? "urgent" : "success"}`}>{totalPending}</div>
               <div className="kpi-subtext muted">{pendingLeavesCount} Leaves • {overview?.pendingTimesheets || 0} Timesheets • {pendingRegularizationsCount} Regularizations • {pendingResignationsCount} Exits</div>
+            </div>
+
+            <div
+              className="manager-kpi-card"
+              style={{ cursor: "pointer" }}
+              onClick={() => setViewSection("resources")}
+            >
+              <div className="kpi-label">RESOURCE ALLOCATION</div>
+              <div className="kpi-value">{allocatedResources.length} / {allocatedResources.length + benchResources.length}</div>
+              <div className="kpi-subtext">{allocatedResources.length} Allocated • {benchResources.length} On Bench</div>
             </div>
 
             <div
@@ -1455,7 +1581,7 @@ function ManagerDashboard() {
                       type="text"
                       value={allocSowInput}
                       onChange={(e) => setAllocSowInput(e.target.value)}
-                      placeholder="Enter SOW Number (e.g. SOW)"
+                      placeholder="Enter SOW Number (e.g. SOW-2026-AI-003)"
                     />
                   </label>
                 </div>

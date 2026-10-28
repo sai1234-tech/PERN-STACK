@@ -229,11 +229,18 @@ export async function loadUnifiedResourceMatrix() {
           }
 
           const resolvedKey = matchedLocalEmp ? String(matchedLocalEmp.id) : String(k);
+          let sowNum = val.sowNumber || "";
+          if (
+            (!sowNum || sowNum === "SOW" || sowNum === "SOW to project") &&
+            (rawProj === "HMRS" || String(val.code || "").toUpperCase() === "EMP175" || String(val.name || "").includes("Kushangala"))
+          ) {
+            sowNum = "SOW-2026-AI-003";
+          }
           if (val.status === "Allocated" && !isLegacyDefaultProj) {
             allocMap[resolvedKey] = {
               status: "Allocated",
               project: rawProj,
-              sowNumber: val.sowNumber || "",
+              sowNumber: sowNum,
               name: val.name || matchedLocalEmp?.name || "",
               code: val.code || matchedLocalEmp?.code || "",
               department: val.department || matchedLocalEmp?.department || "Engineering",
@@ -304,12 +311,20 @@ export async function loadUnifiedResourceMatrix() {
 
     const targetKey = matchedEmp ? String(matchedEmp.id) : aEmpId;
 
+    let resSowNumber = a.sowNumber || a.sow_number || allocMap[targetKey]?.sowNumber || "";
+    if (
+      (!resSowNumber || resSowNumber === "SOW" || resSowNumber === "SOW to project") &&
+      (rawProj === "HMRS" || String(a.employeeCode || "").toUpperCase() === "EMP175" || (a.employeeName || "").includes("Kushangala"))
+    ) {
+      resSowNumber = "SOW-2026-AI-003";
+    }
+
     if (processedBackendKeys.has(targetKey)) {
       if (allocMap[targetKey]?.status !== "Allocated" && resolvedStatus === "Allocated") {
         allocMap[targetKey] = {
           status: "Allocated",
           project: rawProj,
-          sowNumber: a.sowNumber || a.sow_number || allocMap[targetKey]?.sowNumber || "",
+          sowNumber: resSowNumber,
           id: a.id,
           name: matchedEmp?.name || a.employeeName || "",
           code: matchedEmp?.code || a.employeeCode || "",
@@ -336,10 +351,7 @@ export async function loadUnifiedResourceMatrix() {
     allocMap[targetKey] = {
       status: resolvedStatus,
       project: resolvedStatus === "Allocated" ? rawProj : null,
-      sowNumber:
-        resolvedStatus === "Allocated"
-          ? a.sowNumber || a.sow_number || allocMap[targetKey]?.sowNumber || ""
-          : "",
+      sowNumber: resolvedStatus === "Allocated" ? resSowNumber : "",
       id: a.id,
       name: matchedEmp?.name || a.employeeName || "",
       code: matchedEmp?.code || a.employeeCode || "",
@@ -349,7 +361,7 @@ export async function loadUnifiedResourceMatrix() {
     };
   });
 
-  // 3. Ensure HR allocation for EMP175 (Kushangala SaiKiran -> HMRS / SOW: SOW) is preserved if not explicitly released
+  // 3. Ensure HR allocation for EMP175 (Kushangala SaiKiran -> HMRS / SOW: SOW-2026-AI-003) is preserved if not explicitly released
   mergedList.forEach((e) => {
     const key = String(e.id);
     const isKushangala =
@@ -360,7 +372,7 @@ export async function loadUnifiedResourceMatrix() {
       allocMap[key] = {
         status: "Allocated",
         project: "HMRS",
-        sowNumber: "SOW",
+        sowNumber: "SOW-2026-AI-003",
         name: e.name,
         code: e.code,
         department: e.department || "Engineering",
@@ -371,6 +383,12 @@ export async function loadUnifiedResourceMatrix() {
         emp: e,
         alloc: allocMap[key],
       });
+    } else if (
+      isKushangala &&
+      allocMap[key]?.status === "Allocated" &&
+      (!allocMap[key].sowNumber || allocMap[key].sowNumber === "SOW" || allocMap[key].sowNumber === "SOW to project")
+    ) {
+      allocMap[key].sowNumber = "SOW-2026-AI-003";
     } else if (!allocMap[key]) {
       allocMap[key] = {
         status: "Bench",

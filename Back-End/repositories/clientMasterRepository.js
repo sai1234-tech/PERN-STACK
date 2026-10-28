@@ -326,17 +326,22 @@ export const createRateCardRecord = async ({
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *;
     `;
+    const parsedClientId = clientId && !isNaN(Number(clientId)) ? Number(clientId) : null;
+    const parsedProjectId = projectId && !isNaN(Number(projectId)) ? Number(projectId) : null;
+    const rateVal = Number(hourlyBillingRate) || 0;
+    const monthlyVal = Number(monthlyBillingRate) || rateVal * 160;
+
     const { rows } = await pool.query(query, [
-        clientId,
-        projectId,
-        clientName,
-        projectName,
-        sowNumber,
+        parsedClientId,
+        parsedProjectId,
+        clientName || "Enterprise Client",
+        projectName || "Client Engagement",
+        sowNumber || "",
         roleTitle,
-        hourlyBillingRate,
-        monthlyBillingRate,
-        currency,
-        effectiveDate
+        rateVal,
+        monthlyVal,
+        currency || "USD",
+        effectiveDate || new Date()
     ]);
     return rows[0];
 };

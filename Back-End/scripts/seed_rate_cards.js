@@ -75,3 +75,4 @@ seed().catch(err => {
   console.error('Error seeding rate cards:', err);
   process.exit(1);
 });
+

@@ -394,7 +394,7 @@ export default function ResourceAllocation() {
         loadData();
       }
     } catch (err) {
-      alert(err.message || "Failed to create rate card.");
+      alert(err.response?.data?.message || err.message || "Failed to create rate card.");
     }
   };
 
@@ -1702,9 +1702,39 @@ export default function ResourceAllocation() {
                   />
                 </label>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                {/* Quick Pick From Registered Project SOWs */}
+                {clientProjects.length > 0 && (
+                  <div style={{ marginBottom: "0.25rem" }}>
+                    <span className="field-hint" style={{ marginBottom: "0.35rem", display: "block" }}>
+                      Quick Pick From Registered Project SOWs:
+                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
+                      {clientProjects.map(proj => (
+                        <button
+                          key={proj.id}
+                          type="button"
+                          className="chip-btn"
+                          onClick={() => {
+                            setRateForm({
+                              ...rateForm,
+                              clientId: proj.client_id || "",
+                              clientName: proj.client_name || "",
+                              projectId: proj.id,
+                              projectName: proj.project_name,
+                              sowNumber: proj.sow_number || ""
+                            });
+                          }}
+                        >
+                          🏢 {proj.project_name} ({proj.sow_number})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
                   <label className="form-field">
-                    <span>Client Account</span>
+                    <span>Client Account (Optional)</span>
                     <select
                       value={rateForm.clientId}
                       onChange={(e) => {
@@ -1724,15 +1754,25 @@ export default function ResourceAllocation() {
                   </label>
 
                   <label className="form-field">
-                    <span>SOW Number</span>
+                    <span>Project Deliverable / Name</span>
                     <input
                       type="text"
-                      placeholder="e.g. SOW-2026-ENG-001"
-                      value={rateForm.sowNumber}
-                      onChange={(e) => setRateForm({ ...rateForm, sowNumber: e.target.value })}
+                      placeholder="e.g. HMRS Application Development"
+                      value={rateForm.projectName}
+                      onChange={(e) => setRateForm({ ...rateForm, projectName: e.target.value })}
                     />
                   </label>
                 </div>
+
+                <label className="form-field">
+                  <span>SOW Number</span>
+                  <input
+                    type="text"
+                    placeholder="e.g. SOW-2026-ENG-001"
+                    value={rateForm.sowNumber}
+                    onChange={(e) => setRateForm({ ...rateForm, sowNumber: e.target.value })}
+                  />
+                </label>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "1rem" }}>
                   <label className="form-field">

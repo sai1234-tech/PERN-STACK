@@ -224,7 +224,7 @@ export const createRateCard = async (req, res) => {
     try {
         const userRole = String(req.user?.role || "").toLowerCase().trim();
         if (!COMMERCIAL_PRIVILEGED_ROLES.includes(userRole)) {
-            return res.status(403).json({ success: false, message: "Access denied. Rate-card management is restricted to Finance/Leadership." });
+            return res.status(403).json({ success: false, message: "Access denied. Rate-card management is restricted to Finance/Leadership/HR." });
         }
 
         const {
@@ -244,15 +244,24 @@ export const createRateCard = async (req, res) => {
             return res.status(400).json({ success: false, message: "Role Title and Hourly Billing Rate are required." });
         }
 
+        const parsedClientId = clientId && !isNaN(Number(clientId)) ? Number(clientId) : null;
+        const parsedProjectId = projectId && !isNaN(Number(projectId)) ? Number(projectId) : null;
+        const rateVal = Number(hourlyBillingRate);
+        if (isNaN(rateVal) || rateVal <= 0) {
+            return res.status(400).json({ success: false, message: "Hourly Billing Rate must be a valid positive number." });
+        }
+
+        const resolvedProjectName = projectName?.trim() || (sowNumber ? `SOW Deliverable (${sowNumber})` : "Client Engagement");
+
         const rateCard = await createRateCardRecord({
-            clientId,
-            projectId,
-            clientName: clientName || "Enterprise Client",
-            projectName: projectName || "Client Engagement",
-            sowNumber,
+            clientId: parsedClientId,
+            projectId: parsedProjectId,
+            clientName: clientName?.trim() || "Enterprise Client",
+            projectName: resolvedProjectName,
+            sowNumber: sowNumber ? String(sowNumber).trim() : "",
             roleTitle: String(roleTitle).trim(),
-            hourlyBillingRate: Number(hourlyBillingRate),
-            monthlyBillingRate: Number(monthlyBillingRate) || Number(hourlyBillingRate) * 160,
+            hourlyBillingRate: rateVal,
+            monthlyBillingRate: Number(monthlyBillingRate) || rateVal * 160,
             currency: currency || "USD",
             effectiveDate: effectiveDate || new Date()
         });
@@ -264,7 +273,7 @@ export const createRateCard = async (req, res) => {
         });
     } catch (err) {
         console.error("Error creating rate card:", err);
-        return res.status(500).json({ success: false, message: "Failed to create rate card." });
+        return res.status(500).json({ success: false, message: err.message || "Failed to create rate card." });
     }
 };
 

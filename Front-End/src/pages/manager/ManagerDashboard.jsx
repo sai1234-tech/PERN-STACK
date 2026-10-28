@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import { useManager } from "../../hooks/useManager";
 import { useAttendance } from "../../hooks/useAttendance";
@@ -11,34 +11,18 @@ import { broadcastDataChange } from "../../utils/syncManager";
 import "./ManagerDashboard.css";
 import "../hr/ResourceAllocation.css";
 
-function ManagerDashboard() {
-  const {
-    overview,
-    leaves,
-    timesheets,
-    projects,
-    allocatedResources = [],
-    benchResources = [],
-    loading,
-    error,
-    updateResourceAllocation,
-    approveLeave,
-    rejectLeave,
-    approveTimesheet,
-    rejectTimesheet,
-    resignations,
-    approveResignation,
-    rejectResignation,
-  } = useManager();
-  const {
-    todayAttendance,
-    clockIn,
-    clockOut,
-    error: attendanceError,
-  } = useAttendance();
+function ManagerDashboard({ defaultSection }) {
+  const [searchParams] = useSearchParams();
+  const querySection = searchParams.get("section");
+  const [viewSection, setViewSection] = useState(querySection || defaultSection || "approvals");
 
-  const [activeTab, setActiveTab] = useState("all");
-  const [viewSection, setViewSection] = useState("approvals"); // "approvals" | "roster" | "projects" | "resources"
+  useEffect(() => {
+    if (querySection) {
+      setViewSection(querySection);
+    } else if (defaultSection) {
+      setViewSection(defaultSection);
+    }
+  }, [querySection, defaultSection]);
   const [projectSearch, setProjectSearch] = useState("");
   const [selectedResourceEmp, setSelectedResourceEmp] = useState(null);
   const [allocProjectInput, setAllocProjectInput] = useState("");

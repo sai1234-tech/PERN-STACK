@@ -408,7 +408,11 @@ function AppSidebar() {
               </div>
 
               <div className="sidebar-nav-group">
-                {!isCollapsed && <span className="sidebar-group-label">OPERATIONS</span>}
+                {!isCollapsed && <span className="sidebar-group-label">OPERATIONS & TEAMS</span>}
+                <NavLink to="/manager/dashboard" end className="sidebar-nav-link" title="Manager Command Center & Team Approvals">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Manager Dashboard</span>}
+                </NavLink>
                 <NavLink to="/hr/helpdesk" end className="sidebar-nav-link" title="HR Support Tickets">
                   <span className="nav-item-icon">🎟️</span>
                   {!isCollapsed && <span className="nav-item-label">HR Helpdesk</span>}
@@ -482,6 +486,10 @@ function AppSidebar() {
 
               <div className="sidebar-nav-group">
                 {!isCollapsed && <span className="sidebar-group-label">WORKFORCE GOVERNANCE</span>}
+                <NavLink to="/manager/dashboard" end className="sidebar-nav-link" title="Manager Command Center & Team Approvals">
+                  <span className="nav-item-icon">👥</span>
+                  {!isCollapsed && <span className="nav-item-label">Manager Dashboard</span>}
+                </NavLink>
                 <NavLink to="/hr/employees" end className="sidebar-nav-link" title="Workforce Directory">
                   <span className="nav-item-icon">👥</span>
                   {!isCollapsed && <span className="nav-item-label">Employees</span>}

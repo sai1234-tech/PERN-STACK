@@ -167,7 +167,10 @@ function AppRoutes() {
           <Route path="/resignation"          element={<ProtectedRoute roles={ALL_ROLES}><EmployeeResignation /></ProtectedRoute>} />
 
           {/* ── Manager Routes ── */}
+          <Route path="/manager"             element={<Navigate to="/manager/dashboard" replace />} />
           <Route path="/manager/dashboard"   element={<ProtectedRoute roles={ALL_ROLES}><ManagerDashboard /></ProtectedRoute>} />
+          <Route path="/manager/approvals"   element={<ProtectedRoute roles={ALL_ROLES}><ManagerDashboard defaultSection="approvals" /></ProtectedRoute>} />
+          <Route path="/manager/roster"      element={<ProtectedRoute roles={ALL_ROLES}><ManagerDashboard defaultSection="roster" /></ProtectedRoute>} />
           <Route path="/manager/projects"    element={<ProtectedRoute roles={ALL_ROLES}><ManagerProjects /></ProtectedRoute>} />
           <Route path="/manager/timesheets"  element={<ProtectedRoute roles={ALL_ROLES}><TimesheetManagement /></ProtectedRoute>} />
           <Route path="/manager/resources"   element={<ProtectedRoute roles={ALL_ROLES}><ResourceAllocation /></ProtectedRoute>} />

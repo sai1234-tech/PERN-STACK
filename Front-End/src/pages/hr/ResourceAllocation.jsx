@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import Loader from "../../components/common/Loader";
 import { getAllEmployees } from "../../services/employeeService";
@@ -568,6 +569,14 @@ export default function ResourceAllocation() {
             <p>Manage employee project deployments, client accounts, SOW contracts, rate-cards, and handover transitions.</p>
           </div>
           <div className="banner-action-cluster">
+            <Link
+              to="/manager/dashboard?section=resources"
+              className="resource-btn secondary"
+              style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+              title="Open Manager Dashboard Workspace"
+            >
+              👥 Manager Dashboard
+            </Link>
             {activeTab === "deployments" && (
               <button
                 type="button"

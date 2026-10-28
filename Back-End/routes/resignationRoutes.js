@@ -27,7 +27,7 @@ router.get("/all", authorizeRoles("hr", "admin"), getAllResignations);
 router.patch("/:resignationId/review", authorizeRoles("hr", "admin"), reviewResignation);
 
 // Manager routes
-router.get("/team", authorizeRoles("manager"), getTeamResignations);
-router.patch("/:resignationId/manager-review", authorizeRoles("manager"), managerReviewResignation);
+router.get("/team", authorizeRoles("manager", "admin", "hr", "super_admin", "leadership"), getTeamResignations);
+router.patch("/:resignationId/manager-review", authorizeRoles("manager", "admin", "hr"), managerReviewResignation);
 
 export default router;

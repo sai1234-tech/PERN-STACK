@@ -12,6 +12,32 @@ import "./ManagerDashboard.css";
 import "../hr/ResourceAllocation.css";
 
 function ManagerDashboard({ defaultSection }) {
+  const {
+    overview,
+    leaves,
+    timesheets,
+    projects,
+    allocatedResources = [],
+    benchResources = [],
+    loading,
+    error,
+    updateResourceAllocation,
+    approveLeave,
+    rejectLeave,
+    approveTimesheet,
+    rejectTimesheet,
+    resignations,
+    approveResignation,
+    rejectResignation,
+  } = useManager();
+  const {
+    todayAttendance,
+    clockIn,
+    clockOut,
+    error: attendanceError,
+  } = useAttendance();
+
+  const [activeTab, setActiveTab] = useState("all");
   const [searchParams] = useSearchParams();
   const querySection = searchParams.get("section");
   const [viewSection, setViewSection] = useState(querySection || defaultSection || "approvals");

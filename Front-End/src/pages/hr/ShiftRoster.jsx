@@ -403,18 +403,29 @@ export default function ShiftRoster() {
                               </div>
 
                               <div className="card-bottom-row">
-                                <span className="shift-label-tag">Assigned Shift:</span>
-                                <select
-                                  value={assignments[empId] || shiftType.id}
-                                  onChange={(e) => saveShift(empId, e.target.value)}
-                                  className="shift-dropdown-select"
-                                >
-                                  {SHIFT_TYPES.map(s => (
-                                    <option key={s.id} value={s.id}>
-                                      {s.icon} {s.id} ({s.time})
-                                    </option>
-                                  ))}
-                                </select>
+                                <div className="shift-assign-field-group">
+                                  <div className="shift-label-row">
+                                    <span className="shift-label-tag">Assigned Shift:</span>
+                                    <span className={`shift-pill-mini ${(SHIFT_TYPES.find(s => s.id === (assignments[empId] || shiftType.id)) || shiftType).theme}`}>
+                                      {(SHIFT_TYPES.find(s => s.id === (assignments[empId] || shiftType.id)) || shiftType).icon} {(SHIFT_TYPES.find(s => s.id === (assignments[empId] || shiftType.id)) || shiftType).label}
+                                    </span>
+                                  </div>
+                                  <div className="shift-select-wrapper">
+                                    <select
+                                      value={assignments[empId] || shiftType.id}
+                                      onChange={(e) => saveShift(empId, e.target.value)}
+                                      className="shift-dropdown-select"
+                                      aria-label={`Assigned Shift for ${empName}`}
+                                    >
+                                      {SHIFT_TYPES.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                          {s.icon} {s.label} ({s.time})
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <span className="shift-select-arrow" aria-hidden="true">▾</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           );

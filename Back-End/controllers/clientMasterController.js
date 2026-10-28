@@ -186,7 +186,7 @@ export const deleteClientProject = async (req, res) => {
 /* -------------------------------------------------------------
    RESTRICTED RATE-CARDS (RBAC PROTECTED)
 ------------------------------------------------------------- */
-const COMMERCIAL_PRIVILEGED_ROLES = ["admin", "super_admin", "finance", "payroll", "leadership"];
+const COMMERCIAL_PRIVILEGED_ROLES = ["admin", "super_admin", "finance", "payroll", "leadership", "hr"];
 
 export const getRateCards = async (req, res) => {
     try {

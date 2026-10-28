@@ -44,15 +44,16 @@ const EXCLUDED_SYSTEM_CODES = new Set([
 
 export const isSystemOrDummyEmployee = (emp) => {
   if (!emp) return true;
+  const code = String(emp.employeeCode || emp.employee_code || emp.code || emp.id || "").trim().toUpperCase();
+  if (code.startsWith("QSI-") || EXCLUDED_SYSTEM_CODES.has(code)) return true;
   const fullName =
     `${emp.firstName || emp.first_name || ""} ${emp.lastName || emp.last_name || ""}`.trim().toLowerCase() ||
     String(emp.name || "").trim().toLowerCase();
   const cleanName = fullName.replace(/[^a-z0-9]/g, "");
+  if (fullName.includes("arvind swaminathan") || cleanName.includes("arvindswaminathan")) return true;
   if (EXCLUDED_SYSTEM_NAMES.has(fullName) || EXCLUDED_SYSTEM_NAMES.has(cleanName)) return true;
   const email = String(emp.email || "").trim().toLowerCase();
   if (EXCLUDED_SYSTEM_EMAILS.has(email) || (email.startsWith("emp_") && email.endsWith("@hrms.com"))) return true;
-  const code = String(emp.employeeCode || emp.employee_code || emp.code || "").trim().toUpperCase();
-  if (EXCLUDED_SYSTEM_CODES.has(code)) return true;
   return false;
 };
 
@@ -141,7 +142,10 @@ export async function loadUnifiedResourceMatrix() {
   const apiEmployees = [...rawEmpData, ...localCustomEmps];
   const mappedTeamMembers = Array.isArray(rawOverview?.teamMembers) ? rawOverview.teamMembers : [];
 
-  const combinedSource = [...mappedTeamMembers, ...apiEmployees.filter((e) => !isSystemOrDummyEmployee(e))];
+  const combinedSource = [
+    ...apiEmployees.filter((e) => !isSystemOrDummyEmployee(e)),
+    ...mappedTeamMembers.filter((e) => !isSystemOrDummyEmployee(e)),
+  ];
   const mergedList = [];
   const existingIds = new Set();
   const existingCodes = new Set();
@@ -462,7 +466,19 @@ export async function loadUnifiedResourceMatrix() {
   });
 
   const allocatedResources = matrixItems.filter((e) => e.status === "Allocated");
-  const benchResources = matrixItems.filter((e) => e.status === "Bench");
+  const PRIORITY_BENCH_CODES = ["EMP160", "EMP008", "EMP012", "EMP-HR001", "EMP01", "EMP0100", "CEO-001"];
+  const benchResources = matrixItems
+    .filter((e) => e.status === "Bench")
+    .sort((a, b) => {
+      const codeA = String(a.code || a.employeeCode || "").toUpperCase();
+      const codeB = String(b.code || b.employeeCode || "").toUpperCase();
+      const idxA = PRIORITY_BENCH_CODES.indexOf(codeA);
+      const idxB = PRIORITY_BENCH_CODES.indexOf(codeB);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return 0;
+    });
 
   // Build unified Active Projects from allocatedResources + /manager/projects
   const projectsMap = new Map();

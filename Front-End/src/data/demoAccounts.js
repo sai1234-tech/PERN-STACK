@@ -413,7 +413,7 @@ export function handleDemoApi(endpoint, options = {}) {
         { _id: "d2", name: "Product & Design", code: "PRD", headCount: 3, manager: "Meera Krishnan" },
         { _id: "d3", name: "Human Resources", code: "HR", headCount: 2, manager: "Priya Nair" },
         { _id: "d4", name: "Finance & Accounts", code: "FIN", headCount: 2, manager: "Rajesh Iyer" },
-        { _id: "d5", name: "Executive Leadership", code: "EXE", headCount: 3, manager: "Dr. Arvind Swaminathan" },
+        { _id: "d5", name: "Executive Leadership", code: "EXE", headCount: 3, manager: "Anilk" },
       ],
     };
   }
@@ -1289,7 +1289,7 @@ export function handleDemoApi(endpoint, options = {}) {
 
   // --- Manager Dashboard & Team Endpoints ---
   if (norm.startsWith("/manager") || norm.startsWith("/resignations/team")) {
-    const allEmployees = getMergedEmployees();
+    const allEmployees = Array.isArray(WORKFORCE_DIRECTORY) ? WORKFORCE_DIRECTORY : [];
     const directReports = allEmployees.filter((e) => {
       const repMgr = String(
         e.reportsTo?.name || e.reportsTo || e.employment?.reportsTo || e.employment?.reportingManager || ""

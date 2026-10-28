@@ -78,6 +78,16 @@ export const findAllAllocations = async () => {
               AND (COALESCE(project_name, '') = '' OR COALESCE(sow_number, '') = '' OR sow_number = 'SOW' OR sow_number = 'SOW to project')
               AND COALESCE(notes, '') <> 'RELEASED_TO_BENCH';
         `);
+        await pool.query(`
+            UPDATE project_allocations pa
+            SET employee_name = TRIM(CONCAT(e.first_name, ' ', e.last_name)),
+                employee_code = COALESCE(NULLIF(pa.employee_code, ''), e.employee_code),
+                department = COALESCE(NULLIF(pa.department, ''), e.employment->>'department', 'Engineering'),
+                role = COALESCE(NULLIF(pa.role, ''), e.employment->>'designation', 'Engineer')
+            FROM employees e
+            WHERE (pa.emp_id = e.id::text OR UPPER(pa.employee_code) = UPPER(e.employee_code))
+              AND (pa.employee_name = 'Employee' OR pa.employee_name = '' OR pa.employee_name IS NULL);
+        `);
     } catch (_) {}
     const queryText = `
         SELECT * FROM project_allocations

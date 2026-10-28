@@ -492,41 +492,61 @@ function ManagerDashboard() {
                 <p>No resources currently on bench.</p>
               </div>
             ) : (
-              displayBench.map((emp) => (
-                <div key={emp.id} className="resource-card bench-card">
-                  <div className="res-card-top">
-                    <div className="res-avatar-pod">
-                      {(emp.name || "EM").slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="res-info">
-                      <h4>{emp.name}</h4>
-                      <div className="res-meta-line">
-                        <span className="res-code">{emp.code || emp.employeeCode || "EMP"}</span>
-                        <span className="meta-bullet">•</span>
-                        <span className="res-dept">{emp.department}</span>
+              displayBench.map((emp) => {
+                const fullName =
+                  emp.name && emp.name !== "Employee"
+                    ? emp.name
+                    : emp.firstName
+                    ? `${emp.firstName} ${emp.lastName || ""}`.trim()
+                    : emp.email || "Employee";
+
+                const initials = (
+                  emp.firstName?.charAt(0) ||
+                  fullName.charAt(0) ||
+                  "E"
+                ).toUpperCase() + (
+                  emp.lastName?.charAt(0) ||
+                  fullName.split(" ")[1]?.charAt(0) ||
+                  fullName.charAt(1) ||
+                  ""
+                ).toUpperCase();
+
+                return (
+                  <div key={emp.id} className="resource-card bench-card">
+                    <div className="res-card-top">
+                      <div className="res-avatar-pod">
+                        {initials}
+                      </div>
+                      <div className="res-info">
+                        <h4>{fullName}</h4>
+                        <div className="res-meta-line">
+                          <span className="res-code">{emp.code || emp.employeeCode || "EMP"}</span>
+                          <span className="meta-bullet">•</span>
+                          <span className="res-dept">{emp.department}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="res-role-strip">
-                    <strong>Role:</strong> {emp.role || emp.employment?.designation || "Engineer"}
-                  </div>
+                    <div className="res-role-strip">
+                      <strong>Role:</strong> {emp.role || emp.employment?.designation || "Engineer"}
+                    </div>
 
-                  <div className="res-card-actions">
-                    <button
-                      type="button"
-                      className="action-link-btn allocate"
-                      onClick={() => {
-                        setSelectedResourceEmp(emp);
-                        setAllocProjectInput("HMRS");
-                        setAllocSowInput("SOW-2026-AI-003");
-                      }}
-                    >
-                      ⚡ Allocate to Client Project
-                    </button>
+                    <div className="res-card-actions">
+                      <button
+                        type="button"
+                        className="action-link-btn allocate"
+                        onClick={() => {
+                          setSelectedResourceEmp({ ...emp, name: fullName });
+                          setAllocProjectInput("HMRS");
+                          setAllocSowInput("SOW-2026-AI-003");
+                        }}
+                      >
+                        ⚡ Allocate to Client Project
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -548,58 +568,78 @@ function ManagerDashboard() {
                 <p>No active project allocations found.</p>
               </div>
             ) : (
-              displayAllocated.map((emp) => (
-                <div key={emp.id} className="resource-card allocated-card">
-                  <div className="res-card-top">
-                    <div className="res-avatar-pod active">
-                      {(emp.name || "EM").slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="res-info">
-                      <h4>{emp.name}</h4>
-                      <div className="res-meta-line">
-                        <span className="res-code">{emp.code || emp.employeeCode || "EMP"}</span>
-                        <span className="meta-bullet">•</span>
-                        <span className="res-dept">{emp.department}</span>
+              displayAllocated.map((emp) => {
+                const fullName =
+                  emp.name && emp.name !== "Employee"
+                    ? emp.name
+                    : emp.firstName
+                    ? `${emp.firstName} ${emp.lastName || ""}`.trim()
+                    : emp.email || "Employee";
+
+                const initials = (
+                  emp.firstName?.charAt(0) ||
+                  fullName.charAt(0) ||
+                  "E"
+                ).toUpperCase() + (
+                  emp.lastName?.charAt(0) ||
+                  fullName.split(" ")[1]?.charAt(0) ||
+                  fullName.charAt(1) ||
+                  ""
+                ).toUpperCase();
+
+                return (
+                  <div key={emp.id} className="resource-card allocated-card">
+                    <div className="res-card-top">
+                      <div className="res-avatar-pod active">
+                        {initials}
+                      </div>
+                      <div className="res-info">
+                        <h4>{fullName}</h4>
+                        <div className="res-meta-line">
+                          <span className="res-code">{emp.code || emp.employeeCode || "EMP"}</span>
+                          <span className="meta-bullet">•</span>
+                          <span className="res-dept">{emp.department}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="res-project-pill">
-                    <span className="pill-dot active" />
-                    <div className="pill-details">
-                      <span className="pill-title">🚀 {emp.project}</span>
-                      {emp.sowNumber && (
-                        <span className="pill-sow">📄 SOW: {emp.sowNumber}</span>
-                      )}
+                    <div className="res-project-pill">
+                      <span className="pill-dot active" />
+                      <div className="pill-details">
+                        <span className="pill-title">🚀 {emp.project}</span>
+                        {emp.sowNumber && (
+                          <span className="pill-sow">📄 SOW: {emp.sowNumber}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="res-role-strip">
+                      <strong>Role:</strong> {emp.role || emp.employment?.designation || "Engineer"}
+                    </div>
+
+                    <div className="res-card-actions">
+                      <button
+                        type="button"
+                        className="action-link-btn reassign"
+                        onClick={() => {
+                          setSelectedResourceEmp({ ...emp, name: fullName });
+                          setAllocProjectInput(emp.project || "HMRS");
+                          setAllocSowInput(emp.sowNumber || "SOW-2026-AI-003");
+                        }}
+                      >
+                        ✏️ Reassign
+                      </button>
+                      <button
+                        type="button"
+                        className="action-link-btn release"
+                        onClick={() => handleReleaseDashboardBench({ ...emp, name: fullName })}
+                      >
+                        🔄 Release to Bench
+                      </button>
                     </div>
                   </div>
-
-                  <div className="res-role-strip">
-                    <strong>Role:</strong> {emp.role || emp.employment?.designation || "Engineer"}
-                  </div>
-
-                  <div className="res-card-actions">
-                    <button
-                      type="button"
-                      className="action-link-btn reassign"
-                      onClick={() => {
-                        setSelectedResourceEmp(emp);
-                        setAllocProjectInput(emp.project || "HMRS");
-                        setAllocSowInput(emp.sowNumber || "SOW-2026-AI-003");
-                      }}
-                    >
-                      ✏️ Reassign
-                    </button>
-                    <button
-                      type="button"
-                      className="action-link-btn release"
-                      onClick={() => handleReleaseDashboardBench(emp)}
-                    >
-                      🔄 Release to Bench
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

@@ -47,6 +47,7 @@ export const formatEmployeeResponse = (emp) => {
 
     return {
         id: emp.id,
+        name: `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || emp.name || emp.user_name || "Employee",
         user: (emp.user_id || isVikas) ? {
             id: emp.user_id || 17,
             name: emp.user_name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Vikas Guru",

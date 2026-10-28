@@ -204,7 +204,7 @@ export async function loadUnifiedResourceMatrix() {
               String(e.code).toUpperCase() === String(k).toUpperCase()
           );
 
-          if (!matchedLocalEmp && val.name) {
+          if (!matchedLocalEmp && val.name && val.name !== "Employee") {
             const parts = String(val.name).trim().split(" ");
             matchedLocalEmp = {
               _id: String(k),
@@ -229,10 +229,16 @@ export async function loadUnifiedResourceMatrix() {
           }
 
           const resolvedKey = matchedLocalEmp ? String(matchedLocalEmp.id) : String(k);
+          const safeName = (matchedLocalEmp?.name && matchedLocalEmp.name !== "Employee")
+            ? matchedLocalEmp.name
+            : (val.name && val.name !== "Employee")
+            ? val.name
+            : "Employee";
+
           let sowNum = val.sowNumber || "";
           if (
             (!sowNum || sowNum === "SOW" || sowNum === "SOW to project") &&
-            (rawProj === "HMRS" || String(val.code || "").toUpperCase() === "EMP175" || String(val.name || "").includes("Kushangala"))
+            (rawProj === "HMRS" || String(val.code || "").toUpperCase() === "EMP175" || safeName.includes("Kushangala"))
           ) {
             sowNum = "SOW-2026-AI-003";
           }
@@ -241,7 +247,7 @@ export async function loadUnifiedResourceMatrix() {
               status: "Allocated",
               project: rawProj,
               sowNumber: sowNum,
-              name: val.name || matchedLocalEmp?.name || "",
+              name: safeName,
               code: val.code || matchedLocalEmp?.code || "",
               department: val.department || matchedLocalEmp?.department || "Engineering",
               role: val.role || matchedLocalEmp?.role || "Engineer",
@@ -252,7 +258,7 @@ export async function loadUnifiedResourceMatrix() {
               status: "Bench",
               project: null,
               sowNumber: "",
-              name: val.name || matchedLocalEmp?.name || "",
+              name: safeName,
               code: val.code || matchedLocalEmp?.code || "",
               department: val.department || matchedLocalEmp?.department || "Engineering",
               role: val.role || matchedLocalEmp?.role || "Engineer",
@@ -319,6 +325,13 @@ export async function loadUnifiedResourceMatrix() {
       resSowNumber = "SOW-2026-AI-003";
     }
 
+    const safeEmpName =
+      matchedEmp?.name && matchedEmp.name !== "Employee"
+        ? matchedEmp.name
+        : a.employeeName && a.employeeName !== "Employee"
+        ? a.employeeName
+        : "Employee";
+
     if (processedBackendKeys.has(targetKey)) {
       if (allocMap[targetKey]?.status !== "Allocated" && resolvedStatus === "Allocated") {
         allocMap[targetKey] = {
@@ -326,7 +339,7 @@ export async function loadUnifiedResourceMatrix() {
           project: rawProj,
           sowNumber: resSowNumber,
           id: a.id,
-          name: matchedEmp?.name || a.employeeName || "",
+          name: safeEmpName,
           code: matchedEmp?.code || a.employeeCode || "",
           department: matchedEmp?.department || a.department || "Engineering",
           role: matchedEmp?.role || a.role || "Engineer",
@@ -353,7 +366,7 @@ export async function loadUnifiedResourceMatrix() {
       project: resolvedStatus === "Allocated" ? rawProj : null,
       sowNumber: resolvedStatus === "Allocated" ? resSowNumber : "",
       id: a.id,
-      name: matchedEmp?.name || a.employeeName || "",
+      name: safeEmpName,
       code: matchedEmp?.code || a.employeeCode || "",
       department: matchedEmp?.department || a.department || "Engineering",
       role: matchedEmp?.role || a.role || "Engineer",
@@ -432,8 +445,16 @@ export async function loadUnifiedResourceMatrix() {
 
   const matrixItems = mergedList.map((e) => {
     const alloc = allocMap[String(e.id)] || { status: "Bench", project: null, sowNumber: "" };
+    const empName =
+      e.name && e.name !== "Employee"
+        ? e.name
+        : alloc.name && alloc.name !== "Employee"
+        ? alloc.name
+        : `${e.firstName || ""} ${e.lastName || ""}`.trim() || e.email || "Employee";
+
     return {
       ...e,
+      name: empName,
       status: alloc.status,
       project: alloc.project,
       sowNumber: alloc.sowNumber || "",

@@ -1397,7 +1397,7 @@ export default function ResourceAllocation() {
                   <span className="resource-kicker">Corporate Roster Matrix</span>
                   <h2>Add Employee to Resource Matrix</h2>
                 </div>
-                <button type="button" className="close-btn" onClick={() => setShowAddModal(false)}>×</button>
+                <button type="button" className="close-btn" aria-label="Close modal" onClick={() => setShowAddModal(false)}>✕</button>
               </div>
 
               <div className="modal-body">
@@ -1472,7 +1472,7 @@ export default function ResourceAllocation() {
                   <span className="resource-kicker">Client Master Registration</span>
                   <h2>Register New Client Account</h2>
                 </div>
-                <button type="button" className="close-btn" onClick={() => setShowClientModal(false)}>×</button>
+                <button type="button" className="close-btn" aria-label="Close modal" onClick={() => setShowClientModal(false)}>✕</button>
               </div>
 
               <div className="modal-body">
@@ -1508,7 +1508,7 @@ export default function ResourceAllocation() {
                   />
                 </label>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
                   <label className="form-field">
                     <span>Client Manager POC</span>
                     <input
@@ -1558,7 +1558,7 @@ export default function ResourceAllocation() {
                   <span className="resource-kicker">SOW Contract Creation</span>
                   <h2>Create Project / SOW Master</h2>
                 </div>
-                <button type="button" className="close-btn" onClick={() => setShowProjectModal(false)}>×</button>
+                <button type="button" className="close-btn" aria-label="Close modal" onClick={() => setShowProjectModal(false)}>✕</button>
               </div>
 
               <div className="modal-body">
@@ -1687,7 +1687,7 @@ export default function ResourceAllocation() {
                   <span className="resource-kicker">Restricted Commercial Setup</span>
                   <h2>Add Client Rate-Card Entry</h2>
                 </div>
-                <button type="button" className="close-btn" onClick={() => setShowRateModal(false)}>×</button>
+                <button type="button" className="close-btn" aria-label="Close modal" onClick={() => setShowRateModal(false)}>✕</button>
               </div>
 
               <div className="modal-body">
@@ -1779,7 +1779,7 @@ export default function ResourceAllocation() {
                   <span className="resource-kicker">Knowledge Transfer & Rotation</span>
                   <h2>Initiate Resource Transition</h2>
                 </div>
-                <button type="button" className="close-btn" onClick={() => setShowTransitionModal(false)}>×</button>
+                <button type="button" className="close-btn" aria-label="Close modal" onClick={() => setShowTransitionModal(false)}>✕</button>
               </div>
 
               <div className="modal-body">

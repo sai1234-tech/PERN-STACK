@@ -344,7 +344,7 @@ export default function ShiftRoster() {
                   <span className="roster-kicker">Assign Shift</span>
                   <h2>Select Employee & Shift</h2>
                 </div>
-                <button type="button" className="close-btn" onClick={() => setShowAssignModal(false)}>×</button>
+                <button type="button" className="close-btn" aria-label="Close modal" onClick={() => setShowAssignModal(false)}>✕</button>
               </div>
 
               <div className="modal-body">

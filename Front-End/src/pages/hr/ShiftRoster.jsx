@@ -121,6 +121,12 @@ export default function ShiftRoster() {
     });
   }, [employees, search, deptFilter, selectedShiftFilter, assignments]);
 
+  // Which shift columns to render (all 4 side-by-side or focused shift)
+  const displayedShiftTypes = useMemo(() => {
+    if (selectedShiftFilter === "ALL") return SHIFT_TYPES;
+    return SHIFT_TYPES.filter(s => s.id === selectedShiftFilter);
+  }, [selectedShiftFilter]);
+
   // Counts per shift
   const shiftCounts = useMemo(() => {
     const counts = { Morning: 0, Evening: 0, Night: 0, General: 0 };
@@ -162,27 +168,98 @@ export default function ShiftRoster() {
 
         {/* Metrics Bar */}
         <section className="roster-kpi-bar">
-          <div className="roster-kpi-card">
+          <div 
+            className={`roster-kpi-card ${selectedShiftFilter === "ALL" ? "is-selected-kpi" : ""}`}
+            onClick={() => setSelectedShiftFilter("ALL")}
+            role="button"
+            tabIndex={0}
+            title="Click to view all shifts side-by-side"
+          >
             <span>Total Staff</span>
             <strong>{employees.length}</strong>
-            <small>Active Roster</small>
+            <small>Active Roster • All Shifts</small>
           </div>
-          <div className="roster-kpi-card morning">
+          <div 
+            className={`roster-kpi-card morning ${selectedShiftFilter === "Morning" ? "is-selected-kpi" : ""}`}
+            onClick={() => setSelectedShiftFilter("Morning")}
+            role="button"
+            tabIndex={0}
+            title="Click to view Morning Shift"
+          >
             <span>🌅 Morning Shift</span>
             <strong>{shiftCounts.Morning}</strong>
             <small>06:00 - 14:00</small>
           </div>
-          <div className="roster-kpi-card evening">
+          <div 
+            className={`roster-kpi-card evening ${selectedShiftFilter === "Evening" ? "is-selected-kpi" : ""}`}
+            onClick={() => setSelectedShiftFilter("Evening")}
+            role="button"
+            tabIndex={0}
+            title="Click to view Evening Shift"
+          >
             <span>🌇 Evening Shift</span>
             <strong>{shiftCounts.Evening}</strong>
             <small>14:00 - 22:00</small>
           </div>
-          <div className="roster-kpi-card night">
+          <div 
+            className={`roster-kpi-card night ${selectedShiftFilter === "Night" ? "is-selected-kpi" : ""}`}
+            onClick={() => setSelectedShiftFilter("Night")}
+            role="button"
+            tabIndex={0}
+            title="Click to view Night Shift"
+          >
             <span>🌙 Night Shift</span>
             <strong>{shiftCounts.Night}</strong>
             <small>22:00 - 06:00</small>
           </div>
+          <div 
+            className={`roster-kpi-card general ${selectedShiftFilter === "General" ? "is-selected-kpi" : ""}`}
+            onClick={() => setSelectedShiftFilter("General")}
+            role="button"
+            tabIndex={0}
+            title="Click to view General / Off Shift"
+          >
+            <span>☕ General / Off</span>
+            <strong>{shiftCounts.General}</strong>
+            <small>09:00 - 18:00</small>
+          </div>
         </section>
+
+        {/* Side-by-Side Shift Navigation Tabs */}
+        <nav className="shift-tabs-nav" aria-label="Shift Filter Tabs">
+          <button
+            type="button"
+            className={`shift-tab-pill all-pill ${selectedShiftFilter === "ALL" ? "active" : ""}`}
+            onClick={() => setSelectedShiftFilter("ALL")}
+          >
+            <span className="shift-tab-icon">🌐</span>
+            <div className="shift-tab-text">
+              <strong className="shift-tab-title">All Shifts</strong>
+              <span className="shift-tab-desc">Side-by-Side View</span>
+            </div>
+            <span className="shift-tab-badge">{employees.length}</span>
+          </button>
+
+          {SHIFT_TYPES.map(s => {
+            const isActive = selectedShiftFilter === s.id;
+            const count = shiftCounts[s.id] || 0;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={`shift-tab-pill ${s.theme} ${isActive ? "active" : ""}`}
+                onClick={() => setSelectedShiftFilter(s.id)}
+              >
+                <span className="shift-tab-icon">{s.icon}</span>
+                <div className="shift-tab-text">
+                  <strong className="shift-tab-title">{s.label}</strong>
+                  <span className="shift-tab-desc">{s.time}</span>
+                </div>
+                <span className="shift-tab-badge">{count}</span>
+              </button>
+            );
+          })}
+        </nav>
 
         {/* Notice alert */}
         {notice && <div className="roster-notice">✓ {notice}</div>}
@@ -214,7 +291,7 @@ export default function ShiftRoster() {
               onChange={(e) => setSelectedShiftFilter(e.target.value)}
               className="roster-filter-select"
             >
-              <option value="ALL">All Shifts</option>
+              <option value="ALL">All Shifts (Side-by-Side)</option>
               {SHIFT_TYPES.map(s => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
@@ -252,86 +329,106 @@ export default function ShiftRoster() {
           )}
         </section>
 
-        {/* Main Shift Columns */}
+        {/* Main Shift Columns Board */}
         {loading ? (
           <Loader />
         ) : (
-          <div className="roster-columns-grid">
-            {SHIFT_TYPES.map(shiftType => {
-              const shiftEmps = filteredEmployees.filter(e => {
-                const empId = e._id || e.id;
-                return (assignments[empId] || "Morning") === shiftType.id;
-              });
-
-              return (
-                <div key={shiftType.id} className={`roster-shift-column ${shiftType.theme}`}>
-                  <div className="shift-column-header">
-                    <div className="shift-header-title">
-                      <span className="shift-icon">{shiftType.icon}</span>
-                      <div>
-                        <h3>{shiftType.label}</h3>
-                        <span className="shift-time-pill">{shiftType.time}</span>
-                      </div>
-                    </div>
-                    <span className="shift-count-badge">{shiftEmps.length} staff</span>
-                  </div>
-
-                  <div className="shift-cards-container">
-                    {shiftEmps.length > 0 ? (
-                      shiftEmps.map(emp => {
-                        const empId = emp._id || emp.id;
-                        const empName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || emp.name || emp.email || "Employee";
-                        const empCode = emp.employeeCode || emp.employeeId || "-";
-                        const dept = emp.employment?.department || emp.department || "Operations";
-                        const designation = emp.employment?.designation || emp.designation || emp.role || "Team Member";
-                        const isChecked = selectedEmpIds.includes(empId);
-
-                        return (
-                          <div key={empId} className={`roster-employee-card ${isChecked ? "is-selected" : ""}`}>
-                            <div className="card-top-row">
-                              <label className="checkbox-wrap">
-                                <input 
-                                  type="checkbox" 
-                                  checked={isChecked}
-                                  onChange={() => toggleSelect(empId)}
-                                />
-                              </label>
-                              <div className="emp-avatar-badge">
-                                {empName.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="emp-meta-block">
-                                <strong className="emp-name">{empName}</strong>
-                                <small className="emp-code-dept">{empCode} • {dept}</small>
-                                <span className="emp-designation">{designation}</span>
-                              </div>
-                            </div>
-
-                            <div className="card-bottom-row">
-                              <span className="shift-label-tag">Assigned Shift:</span>
-                              <select
-                                value={assignments[empId] || shiftType.id}
-                                onChange={(e) => saveShift(empId, e.target.value)}
-                                className="shift-dropdown-select"
-                              >
-                                {SHIFT_TYPES.map(s => (
-                                  <option key={s.id} value={s.id}>
-                                    {s.icon} {s.id} ({s.time})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="shift-empty-state">
-                        <span>📭 No employees assigned to {shiftType.label}</span>
-                      </div>
-                    )}
-                  </div>
+          <div className="roster-columns-wrapper">
+            {selectedShiftFilter !== "ALL" && (
+              <div className="roster-view-info-banner">
+                <div className="banner-text">
+                  <span className="banner-icon">ℹ️</span>
+                  <span>
+                    Showing <strong>{SHIFT_TYPES.find(s => s.id === selectedShiftFilter)?.label}</strong> ({filteredEmployees.length} staff)
+                  </span>
                 </div>
-              );
-            })}
+                <button 
+                  type="button" 
+                  className="roster-btn secondary btn-sm"
+                  onClick={() => setSelectedShiftFilter("ALL")}
+                >
+                  🌐 View All Shifts Side-by-Side
+                </button>
+              </div>
+            )}
+
+            <div className={`roster-columns-grid ${selectedShiftFilter !== "ALL" ? "single-column-view" : "side-by-side-view"}`}>
+              {displayedShiftTypes.map(shiftType => {
+                const shiftEmps = filteredEmployees.filter(e => {
+                  const empId = e._id || e.id;
+                  return (assignments[empId] || "Morning") === shiftType.id;
+                });
+
+                return (
+                  <div key={shiftType.id} className={`roster-shift-column ${shiftType.theme}`}>
+                    <div className="shift-column-header">
+                      <div className="shift-header-title">
+                        <span className="shift-icon">{shiftType.icon}</span>
+                        <div>
+                          <h3>{shiftType.label}</h3>
+                          <span className="shift-time-pill">{shiftType.time}</span>
+                        </div>
+                      </div>
+                      <span className="shift-count-badge">{shiftEmps.length} staff</span>
+                    </div>
+
+                    <div className="shift-cards-container">
+                      {shiftEmps.length > 0 ? (
+                        shiftEmps.map(emp => {
+                          const empId = emp._id || emp.id;
+                          const empName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || emp.name || emp.email || "Employee";
+                          const empCode = emp.employeeCode || emp.employeeId || "-";
+                          const dept = emp.employment?.department || emp.department || "Operations";
+                          const designation = emp.employment?.designation || emp.designation || emp.role || "Team Member";
+                          const isChecked = selectedEmpIds.includes(empId);
+
+                          return (
+                            <div key={empId} className={`roster-employee-card ${isChecked ? "is-selected" : ""}`}>
+                              <div className="card-top-row">
+                                <label className="checkbox-wrap">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={isChecked}
+                                    onChange={() => toggleSelect(empId)}
+                                  />
+                                </label>
+                                <div className="emp-avatar-badge">
+                                  {empName.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="emp-meta-block">
+                                  <strong className="emp-name">{empName}</strong>
+                                  <small className="emp-code-dept">{empCode} • {dept}</small>
+                                  <span className="emp-designation">{designation}</span>
+                                </div>
+                              </div>
+
+                              <div className="card-bottom-row">
+                                <span className="shift-label-tag">Assigned Shift:</span>
+                                <select
+                                  value={assignments[empId] || shiftType.id}
+                                  onChange={(e) => saveShift(empId, e.target.value)}
+                                  className="shift-dropdown-select"
+                                >
+                                  {SHIFT_TYPES.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                      {s.icon} {s.id} ({s.time})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="shift-empty-state">
+                          <span>📭 No employees assigned to {shiftType.label}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

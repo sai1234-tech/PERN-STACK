@@ -167,6 +167,159 @@
 .roster-kpi-card.morning { border-top: 4px solid #2563eb; }
 .roster-kpi-card.evening { border-top: 4px solid #d97706; }
 .roster-kpi-card.night   { border-top: 4px solid #7c3aed; }
+.roster-kpi-card.general { border-top: 4px solid #059669; }
+
+.roster-kpi-card[role="button"] {
+  cursor: pointer;
+  user-select: none;
+}
+
+.roster-kpi-card[role="button"]:hover {
+  border-color: #cbd5e1;
+}
+
+.roster-kpi-card.is-selected-kpi {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px #0284c7, 0 8px 24px -4px rgba(2, 132, 199, 0.18);
+  background: #f8fafc;
+}
+
+/* ==========================================================================
+   Side-by-Side Shift Navigation Tabs
+   ========================================================================== */
+
+.shift-tabs-nav {
+  display: flex;
+  align-items: stretch;
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 0.5rem;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shift-tab-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.15rem;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px -2px rgba(15, 23, 42, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex: 1 1 0;
+  min-width: 195px;
+  text-align: left;
+  user-select: none;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.shift-tab-pill:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px -3px rgba(15, 23, 42, 0.09);
+}
+
+.shift-tab-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.shift-tab-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.shift-tab-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.shift-tab-desc {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.shift-tab-badge {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* Active Tab Styles */
+.shift-tab-pill.active {
+  box-shadow: 0 6px 20px -2px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.shift-tab-pill.all-pill.active {
+  border-color: #0284c7;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+.shift-tab-pill.all-pill.active .shift-tab-badge {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.shift-tab-pill.morning.active {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+.shift-tab-pill.morning.active .shift-tab-badge {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.shift-tab-pill.evening.active {
+  border-color: #d97706;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+.shift-tab-pill.evening.active .shift-tab-badge {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #d97706;
+}
+
+.shift-tab-pill.night.active {
+  border-color: #7c3aed;
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+}
+.shift-tab-pill.night.active .shift-tab-badge {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #7c3aed;
+}
+
+.shift-tab-pill.general.active {
+  border-color: #059669;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+}
+.shift-tab-pill.general.active .shift-tab-badge {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
 
 /* Notice */
 .roster-notice {
@@ -266,25 +419,86 @@
   font-weight: 600;
 }
 
-/* 4 Shift Columns Grid - Responsive */
-.roster-columns-grid {
+/* Roster View Info Banner */
+.roster-view-info-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: #f0f9ff;
+  border: 1.5px solid #bae6fd;
+  border-radius: 14px;
+  padding: 0.85rem 1.35rem;
+  margin-bottom: 1.35rem;
+  color: #0369a1;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 2px 8px -1px rgba(2, 132, 199, 0.08);
+}
+
+.roster-view-info-banner .banner-text {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.roster-view-info-banner .banner-icon {
+  font-size: 1.25rem;
+}
+
+.roster-btn.btn-sm {
+  height: 36px;
+  padding: 0 1rem;
+  font-size: 0.82rem;
+}
+
+/* ==========================================================================
+   Roster Columns Board - Side by Side & Single View
+   ========================================================================== */
+
+.roster-columns-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 1.5rem;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Sleek Scrollbar for Side-by-Side Board */
+.roster-columns-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.roster-columns-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+.roster-columns-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.roster-columns-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 4 Shift Columns Strictly Side-by-Side */
+.roster-columns-grid.side-by-side-view {
   display: grid;
-  grid-template-columns: repeat(4, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, minmax(290px, 1fr));
   gap: 1.35rem;
   width: 100%;
+  min-width: 1200px; /* guarantees Morning, Evening, Night & General stay side by side in one row */
   align-items: start;
 }
 
-@media (max-width: 1400px) {
-  .roster-columns-grid {
-    grid-template-columns: repeat(2, minmax(280px, 1fr));
-  }
-}
-
-@media (max-width: 680px) {
-  .roster-columns-grid {
-    grid-template-columns: 1fr;
-  }
+/* Single column focused view */
+.roster-columns-grid.single-column-view {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 820px;
+  margin: 0 auto;
+  gap: 1.35rem;
+  align-items: start;
 }
 
 .roster-shift-column {
@@ -857,4 +1071,102 @@
   background: #0f172a;
   border-color: #334155;
   color: #f8fafc;
+}
+
+/* Dark Mode for Side-by-Side Shift Tabs & Board */
+[data-theme="dark"] .shift-tab-pill {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .shift-tab-pill:hover {
+  border-color: #475569;
+  background: #243248;
+}
+
+[data-theme="dark"] .shift-tab-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .shift-tab-desc {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .shift-tab-badge {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .shift-tab-pill.all-pill.active {
+  background: rgba(2, 132, 199, 0.22);
+  border-color: #38bdf8;
+}
+[data-theme="dark"] .shift-tab-pill.all-pill.active .shift-tab-badge {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
+[data-theme="dark"] .shift-tab-pill.morning.active {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: #60a5fa;
+}
+[data-theme="dark"] .shift-tab-pill.morning.active .shift-tab-badge {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #60a5fa;
+}
+
+[data-theme="dark"] .shift-tab-pill.evening.active {
+  background: rgba(217, 119, 6, 0.22);
+  border-color: #fbbf24;
+}
+[data-theme="dark"] .shift-tab-pill.evening.active .shift-tab-badge {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #fbbf24;
+}
+
+[data-theme="dark"] .shift-tab-pill.night.active {
+  background: rgba(124, 58, 237, 0.22);
+  border-color: #c084fc;
+}
+[data-theme="dark"] .shift-tab-pill.night.active .shift-tab-badge {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #c084fc;
+}
+
+[data-theme="dark"] .shift-tab-pill.general.active {
+  background: rgba(5, 150, 105, 0.22);
+  border-color: #34d399;
+}
+[data-theme="dark"] .shift-tab-pill.general.active .shift-tab-badge {
+  background: #059669;
+  color: #ffffff;
+  border-color: #34d399;
+}
+
+[data-theme="dark"] .roster-view-info-banner {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: #0369a1;
+  color: #38bdf8;
+}
+
+[data-theme="dark"] .roster-columns-wrapper::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+[data-theme="dark"] .roster-columns-wrapper::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+[data-theme="dark"] .roster-columns-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+[data-theme="dark"] .roster-kpi-card.is-selected-kpi {
+  background: #1e293b;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px #38bdf8, 0 8px 24px -4px rgba(0, 0, 0, 0.5);
 }

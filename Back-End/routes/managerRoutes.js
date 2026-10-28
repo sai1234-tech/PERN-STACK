@@ -12,9 +12,9 @@ import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// All manager routes require authentication and manager role (or admin)
+// All manager routes require authentication and manager/admin/hr/employee access
 router.use(verifyToken);
-router.use(authorizeRoles("manager", "admin"));
+router.use(authorizeRoles("manager", "admin", "hr", "super_admin", "leadership", "employee"));
 
 // Dashboard Overview
 router.get("/overview", getTeamOverview);

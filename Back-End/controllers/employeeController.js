@@ -19,6 +19,7 @@ import {
     logEmployeeHistory,
     getEmployeeHistory
 } from "../repositories/employeeRepository.js";
+import { upsertAllocationRecord } from "../repositories/allocationRepository.js";
 
 // Helper to format employee database row into JSON
 export const formatEmployeeResponse = (emp) => {
@@ -182,7 +183,10 @@ export const createMultipleEmployees = async (req, res) => {
 
             // Resolve matrix manager if provided
             let matrixReportsToId = null;
-            const rawMatrix = employee.matrixReportsTo || employee.matrix_reports_to || employee.employment?.matrixReportsTo;
+            const rawMatrix =
+                employee.matrixManagerId !== undefined
+                    ? employee.matrixManagerId
+                    : employee.matrixReportsTo || employee.matrix_reports_to || employee.employment?.matrixReportsTo;
             if (rawMatrix && rawMatrix !== "" && rawMatrix !== "null" && rawMatrix !== "None") {
                 const matEmp = await resolveManagerEmployee(rawMatrix);
                 if (matEmp) {
@@ -274,7 +278,27 @@ export const createMultipleEmployees = async (req, res) => {
                 profilePhoto: employee.profilePhoto || ""
             });
 
-            createdEmployees.push(formatEmployeeResponse(await findEmployeeById(newEmp.id)));
+            const createdFormatted = formatEmployeeResponse(await findEmployeeById(newEmp.id));
+            createdEmployees.push(createdFormatted);
+
+            // Automatically place newly created employee into Resource Allocation COST CENTER (On Bench)
+            try {
+                await upsertAllocationRecord({
+                    empId: String(newEmp.id),
+                    employeeName: `${newEmp.first_name || ""} ${newEmp.last_name || ""}`.trim() || email,
+                    employeeCode: newEmp.employee_code || employeeCode,
+                    department: newEmp.employment?.department || employee.department || "Engineering",
+                    role: newEmp.employment?.designation || employee.designation || "Developer",
+                    projectName: "",
+                    clientName: "Internal Cost Center",
+                    status: "Bench",
+                    billability: "Internal",
+                    allocationPercentage: 0,
+                    sowNumber: ""
+                });
+            } catch (allocErr) {
+                console.warn("Auto-bench registration notice:", allocErr.message);
+            }
         }
 
         return res.status(201).json({
@@ -401,7 +425,12 @@ export const updateEmployee = async (req, res) => {
         if (req.body.awards) updates.awards = req.body.awards;
 
         // Matrix Manager
-        const reqMatrix = req.body.matrixReportsTo !== undefined ? req.body.matrixReportsTo : req.body.matrix_reports_to;
+        const reqMatrix =
+            req.body.matrixManagerId !== undefined
+                ? req.body.matrixManagerId
+                : req.body.matrixReportsTo !== undefined
+                ? req.body.matrixReportsTo
+                : req.body.matrix_reports_to;
         if (reqMatrix !== undefined) {
             if (reqMatrix === null || reqMatrix === "" || reqMatrix === "null" || reqMatrix === "None") {
                 updates.matrix_manager_id = null;

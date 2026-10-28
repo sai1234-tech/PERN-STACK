@@ -173,3 +173,11 @@ export const deleteDocumentRecord = async (id) => {
     const { rows } = await pool.query(queryText, [id]);
     return rows[0];
 };
+
+export const bulkDeleteDocumentRecords = async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    const queryText = `DELETE FROM employee_documents WHERE id = ANY($1::int[]) RETURNING *;`;
+    const { rows } = await pool.query(queryText, [ids]);
+    return rows;
+};
+

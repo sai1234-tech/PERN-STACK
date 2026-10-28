@@ -274,9 +274,9 @@ function AppSidebar() {
                   <span className="nav-item-icon">📋</span>
                   {!isCollapsed && <span className="nav-item-label">Team Timesheets</span>}
                 </NavLink>
-                <NavLink to="/manager/resources" end className="sidebar-nav-link" title="Bench & Resource Allocation Matrix">
-                  <span className="nav-item-icon">🏢</span>
-                  {!isCollapsed && <span className="nav-item-label">Resource Matrix</span>}
+                <NavLink to="/manager/resources" end className="sidebar-nav-link" title="Resource Allocation & SOWs">
+                  <span className="nav-item-icon">💼</span>
+                  {!isCollapsed && <span className="nav-item-label">Resource Allocation</span>}
                 </NavLink>
                 <NavLink to="/manager/performance" end className="sidebar-nav-link" title="Team Performance Reviews & OKRs">
                   <span className="nav-item-icon">🎯</span>
@@ -352,9 +352,9 @@ function AppSidebar() {
                   <span className="nav-item-icon">🔄</span>
                   {!isCollapsed && <span className="nav-item-label">Lifecycle Journey</span>}
                 </NavLink>
-                <NavLink to="/hr/resources" end className="sidebar-nav-link" title="Staff-Augmentation SOWs, Clients & Rate Cards">
+                <NavLink to="/hr/resources" end className="sidebar-nav-link" title="Resource Allocation & SOWs">
                   <span className="nav-item-icon">💼</span>
-                  {!isCollapsed && <span className="nav-item-label">Staff-Aug & SOWs</span>}
+                  {!isCollapsed && <span className="nav-item-label">Resource Allocation</span>}
                 </NavLink>
                 <NavLink to="/hr/departments" end className="sidebar-nav-link" title="Department Structure">
                   <span className="nav-item-icon">🏛️</span>
@@ -490,9 +490,9 @@ function AppSidebar() {
                   <span className="nav-item-icon">🔄</span>
                   {!isCollapsed && <span className="nav-item-label">Lifecycle Journey</span>}
                 </NavLink>
-                <NavLink to="/admin/staff-aug" end className="sidebar-nav-link" title="Staff-Augmentation SOWs, Clients & Rate Cards">
+                <NavLink to="/admin/staff-aug" end className="sidebar-nav-link" title="Resource Allocation & SOWs">
                   <span className="nav-item-icon">💼</span>
-                  {!isCollapsed && <span className="nav-item-label">Staff-Aug & SOWs</span>}
+                  {!isCollapsed && <span className="nav-item-label">Resource Allocation</span>}
                 </NavLink>
                 <NavLink to="/hr/departments" end className="sidebar-nav-link" title="Departments & Pods">
                   <span className="nav-item-icon">🏢</span>

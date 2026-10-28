@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../services/apiClient";
+import {
+  ALLOCATION_STORAGE_KEY,
+  loadUnifiedResourceMatrix,
+  upsertAllocation,
+} from "../services/allocationService";
 import { useSyncRefresh, broadcastDataChange } from "../utils/syncManager";
 
 export const useManager = () => {
@@ -8,22 +13,15 @@ export const useManager = () => {
   const [timesheets, setTimesheets] = useState([]);
   const [projects, setProjects] = useState([]);
   const [resignations, setResignations] = useState([]);
+  const [allocatedResources, setAllocatedResources] = useState([]);
+  const [benchResources, setBenchResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const fetchOverview = useCallback(async () => {
-    try {
-      const res = await apiRequest("/manager/overview");
-      if (res.success) setOverview(res.data);
-    } catch (err) {
-      console.error("Failed to fetch overview:", err);
-    }
-  }, []);
 
   const fetchLeaves = useCallback(async () => {
     try {
       const res = await apiRequest("/manager/team-leaves");
-      if (res.success) setLeaves(res.data);
+      if (res?.success) setLeaves(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch leaves:", err);
     }
@@ -32,27 +30,43 @@ export const useManager = () => {
   const fetchTimesheets = useCallback(async () => {
     try {
       const res = await apiRequest("/manager/team-timesheets");
-      if (res.success) setTimesheets(res.data);
+      if (res?.success) setTimesheets(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch timesheets:", err);
-    }
-  }, []);
-
-  const fetchProjects = useCallback(async () => {
-    try {
-      const res = await apiRequest("/manager/projects");
-      if (res.success) setProjects(res.data);
-    } catch (err) {
-      console.error("Failed to fetch projects:", err);
     }
   }, []);
 
   const fetchResignations = useCallback(async () => {
     try {
       const res = await apiRequest("/resignations/team");
-      if (res.success) setResignations(res.data);
+      if (res?.success) setResignations(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch resignations:", err);
+    }
+  }, []);
+
+  const fetchWorkforceAndProjects = useCallback(async () => {
+    try {
+      const unified = await loadUnifiedResourceMatrix();
+      const enrichedMembers = unified.matrixItems || [];
+      const allocatedList = unified.allocatedResources || [];
+      const benchList = unified.benchResources || [];
+      const rawOverview = unified.rawOverview || {};
+
+      setAllocatedResources(allocatedList);
+      setBenchResources(benchList);
+
+      setOverview({
+        ...rawOverview,
+        teamSize: enrichedMembers.length,
+        teamMembers: enrichedMembers,
+        pendingLeaves: rawOverview?.pendingLeaves || 0,
+        pendingTimesheets: rawOverview?.pendingTimesheets || 0,
+      });
+
+      setProjects(unified.activeProjects || []);
+    } catch (err) {
+      console.error("Failed to fetch workforce and projects:", err);
     }
   }, []);
 
@@ -61,10 +75,9 @@ export const useManager = () => {
     setError(null);
     try {
       await Promise.all([
-        fetchOverview(),
+        fetchWorkforceAndProjects(),
         fetchLeaves(),
         fetchTimesheets(),
-        fetchProjects(),
         fetchResignations(),
       ]);
     } catch (err) {
@@ -72,14 +85,61 @@ export const useManager = () => {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [fetchOverview, fetchLeaves, fetchTimesheets, fetchProjects, fetchResignations]);
+  }, [fetchWorkforceAndProjects, fetchLeaves, fetchTimesheets, fetchResignations]);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
 
-  // Real-time live sync: refresh on mutations, cross-tab events, window focus & 5s background interval
-  useSyncRefresh(loadAll, { interval: 5000, silent: true });
+  // Real-time live sync: refresh on mutations, cross-tab events, window focus & 4s background interval
+  useSyncRefresh(loadAll, { interval: 4000, silent: true });
+
+  const updateResourceAllocation = async (emp, status, project = null, sowNumber = null) => {
+    if (!emp) return false;
+    const key = String(emp.id ?? emp._id);
+    try {
+      let currentMap = {};
+      try {
+        const saved = localStorage.getItem(ALLOCATION_STORAGE_KEY);
+        if (saved) currentMap = JSON.parse(saved) || {};
+      } catch (_) {}
+
+      currentMap[key] = {
+        status,
+        project: status === "Allocated" ? project : null,
+        sowNumber: status === "Allocated" ? (sowNumber || "") : "",
+        name: emp.name || `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
+        code: emp.code || emp.employeeCode || "EMP",
+        department: emp.department || emp.employment?.department || "Engineering",
+        role: emp.role || emp.employment?.designation || "Engineer",
+        releasedToBench: status === "Bench",
+      };
+
+      localStorage.setItem(ALLOCATION_STORAGE_KEY, JSON.stringify(currentMap));
+      window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "allocations" } }));
+      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+
+      await upsertAllocation({
+        empId: key,
+        employeeName: currentMap[key].name,
+        employeeCode: currentMap[key].code,
+        department: currentMap[key].department,
+        role: currentMap[key].role,
+        projectName: status === "Allocated" ? (project || "") : "",
+        sowNumber: status === "Allocated" ? (sowNumber || "") : "",
+        status,
+        billability: status === "Allocated" ? "Billable" : "Internal",
+        allocationPercentage: status === "Allocated" ? 100 : 0,
+        notes: status === "Bench" ? "RELEASED_TO_BENCH" : "",
+      }).catch(() => {});
+
+      await fetchWorkforceAndProjects();
+      return true;
+    } catch (err) {
+      console.error("Failed to update resource allocation:", err);
+      return false;
+    }
+  };
 
   const approveLeave = async (id, remarks) => {
     try {
@@ -187,9 +247,12 @@ export const useManager = () => {
     timesheets,
     projects,
     resignations,
+    allocatedResources,
+    benchResources,
     loading,
     error,
     refresh: loadAll,
+    updateResourceAllocation,
     approveLeave,
     rejectLeave,
     approveTimesheet,

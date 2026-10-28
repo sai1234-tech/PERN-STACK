@@ -12,10 +12,10 @@ export const usePerformance = (isManagerOrHr = false) => {
     try {
       if (isManagerOrHr) {
         const response = await performanceService.getAllOkrs();
-        setOkrs(response.data || []);
+        setOkrs(Array.isArray(response?.data) ? response.data : []);
       } else {
         const response = await performanceService.getMyOkrs();
-        setOkrs(response.data || []);
+        setOkrs(Array.isArray(response?.data) ? response.data : []);
       }
     } catch (err) {
       console.error("Fetch OKRs Error:", err);

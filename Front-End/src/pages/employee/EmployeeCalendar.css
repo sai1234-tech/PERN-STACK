@@ -141,30 +141,38 @@
   font-size: 1.1rem;
 }
 
-.calendar-nav-btns {
-  display: flex;
-  gap: 6px;
+.calendar-nav-btns,
+.timeline-day-nav {
+  display: inline-flex;
+  gap: 3px;
   align-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
 }
 
 .nav-btn {
-  padding: 7px 14px;
-  border: 1px solid #e2e8f0;
+  padding: 5px 12px;
+  border: 1px solid #cbd5e1;
   background: white;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: #64748b;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #334155;
   transition: all 0.15s ease;
   user-select: none;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .nav-btn:hover {
   background: #f8fafc;
-  color: #1e293b;
-  border-color: #cbd5e1;
+  color: #0f172a;
+  border-color: #94a3b8;
 }
 
 .nav-btn:active {
@@ -176,6 +184,7 @@
   background: #eff6ff;
   border-color: #bfdbfe;
   color: #2563eb;
+  font-weight: 700;
 }
 
 .today-btn:hover {
@@ -4081,6 +4090,1020 @@ html[data-theme="dark"] .employee-calendar-hub {
   color: #ffffff !important;
   border-color: #ef4444 !important;
 }
+
+/* ==========================================================================
+   REALISTIC HOLIDAY CALENDAR ENHANCEMENTS (Export, Policy, Long Weekends)
+   ========================================================================== */
+
+/* Sync and Export Button Group */
+.holiday-export-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.holiday-sync-btn,
+.holiday-csv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.holiday-sync-btn:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15);
+}
+
+.holiday-csv-btn:hover {
+  background: #f0fdf4;
+  border-color: #22c55e;
+  color: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.15);
+}
+
+/* Floating / Optional Holiday Policy Banner */
+.floating-holiday-policy-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fefce8 0%, #fffbeb 50%, #fef3c7 100%);
+  border: 1px solid #fde68a;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.08);
+}
+
+.policy-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.policy-banner-icon {
+  font-size: 1.5rem;
+  background: #fef08a;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #facc15;
+}
+
+.policy-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.policy-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.policy-title-row h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.policy-allowance-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #f59e0b;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.policy-banner-text p {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.45;
+  color: #78350f;
+}
+
+.policy-action-link {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #b45309;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);
+}
+
+.policy-action-link:hover {
+  background: #92400e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(180, 83, 9, 0.35);
+  color: #ffffff;
+}
+
+/* Long Weekend & Bridge Day Chips */
+.holiday-lw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.holiday-lw-pill.long_weekend {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+
+.holiday-lw-pill.bridge_day {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.holiday-lw-pill.midweek {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.holiday-lw-pill.weekend {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+/* Office Closure / Open Status Pill */
+.holiday-office-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.holiday-office-pill.closed {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.holiday-office-pill.open {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+/* Dark Theme Overrides for Realistic Holiday Calendar */
+[data-theme="dark"] .holiday-sync-btn,
+[data-theme="dark"] .holiday-csv-btn {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-sync-btn:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .holiday-csv-btn:hover {
+  background: rgba(34, 197, 94, 0.2) !important;
+  border-color: #22c55e !important;
+  color: #86efac !important;
+}
+
+[data-theme="dark"] .floating-holiday-policy-banner {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.3) 0%, #1e293b 100%) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .policy-banner-icon {
+  background: rgba(245, 158, 11, 0.2) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme="dark"] .policy-title-row h4 {
+  color: #fde68a !important;
+}
+
+[data-theme="dark"] .policy-banner-text p {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .policy-action-link {
+  background: #d97706 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .policy-action-link:hover {
+  background: #b45309 !important;
+}
+
+[data-theme="dark"] .holiday-lw-pill.long_weekend {
+  background: rgba(14, 165, 233, 0.2) !important;
+  color: #7dd3fc !important;
+  border-color: rgba(14, 165, 233, 0.4) !important;
+}
+
+[data-theme="dark"] .holiday-lw-pill.bridge_day {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fde68a !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme="dark"] .holiday-lw-pill.midweek {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .holiday-office-pill.closed {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+[data-theme="dark"] .holiday-office-pill.open {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #a7f3d0 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+/* ==========================================================================
+   DYNAMIC GOOGLE CALENDAR LIVE FEED STYLES
+   ========================================================================== */
+
+.google-calendar-dynamic-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #eff6ff 100%);
+  border: 1px solid #bbf7d0;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.08);
+}
+
+.gcal-live-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gcal-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gcal-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: gcal-pulse 2s infinite;
+}
+
+.gcal-pulse-dot.syncing {
+  background: #3b82f6;
+  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  animation: gcal-pulse 0.8s infinite;
+}
+
+@keyframes gcal-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.gcal-status-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.gcal-status-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #14532d;
+  letter-spacing: -0.01em;
+}
+
+.gcal-status-sub {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.gcal-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gcal-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gcal-control-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.gcal-dropdown {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.gcal-dropdown:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.gcal-dropdown.year-select {
+  font-weight: 700;
+  color: #047857;
+}
+
+.gcal-refresh-btn,
+.gcal-save-db-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gcal-refresh-btn {
+  background: #ffffff;
+  color: #047857;
+  border: 1px solid #86efac;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.gcal-refresh-btn:hover:not(:disabled) {
+  background: #ecfdf5;
+  border-color: #10b981;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.18);
+}
+
+.refresh-icon.spin {
+  display: inline-block;
+  animation: gcal-spin 1s linear infinite;
+}
+
+@keyframes gcal-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gcal-save-db-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.gcal-save-db-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Card Google Calendar Tags & 1-Click Add Button */
+.gcal-source-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  margin-left: 6px;
+}
+
+.holiday-card-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-to-gcal-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.add-to-gcal-link-btn:hover {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.25);
+}
+
+/* Dark Mode Overrides for Google Calendar Dynamic Bar */
+[data-theme="dark"] .google-calendar-dynamic-bar {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.35) 0%, #1e293b 100%) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .gcal-status-title {
+  color: #a7f3d0 !important;
+}
+
+[data-theme="dark"] .gcal-status-sub {
+  color: #86efac !important;
+}
+
+[data-theme="dark"] .gcal-control-label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .gcal-dropdown {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .gcal-dropdown:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+}
+
+[data-theme="dark"] .gcal-dropdown.year-select {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .gcal-refresh-btn {
+  background: #0f172a !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+[data-theme="dark"] .gcal-refresh-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #a7f3d0 !important;
+}
+
+[data-theme="dark"] .gcal-source-tag {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #a7f3d0 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+[data-theme="dark"] .add-to-gcal-link-btn {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+[data-theme="dark"] .add-to-gcal-link-btn:hover {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   HR HOLIDAY EDIT & ADMIN MANAGEMENT STYLES
+   ========================================================================== */
+
+.holiday-admin-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.holiday-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0369a1;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.holiday-edit-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.25);
+}
+
+.edit-icon-pill {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+}
+
+.update-holiday-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3) !important;
+}
+
+.update-holiday-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4) !important;
+}
+
+/* Dark Mode Overrides for HR Holiday Edit */
+[data-theme="dark"] .holiday-edit-btn {
+  background: rgba(14, 165, 233, 0.15) !important;
+  color: #7dd3fc !important;
+  border-color: rgba(14, 165, 233, 0.4) !important;
+}
+
+[data-theme="dark"] .holiday-edit-btn:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .edit-icon-pill {
+  background: rgba(14, 165, 233, 0.2) !important;
+  border-color: rgba(14, 165, 233, 0.4) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   REALISTIC ENTERPRISE CALENDAR ENHANCEMENTS
+   (MonthGrid Weekend, ShiftTimeline Roster & Day Planner)
+   ══════════════════════════════════════════════════════════════ */
+
+/* MonthGrid: Subtle Weekend Styling */
+.calendar-day.is-weekend:not(.other-month) {
+  background: #fbfcfe;
+}
+
+.calendar-day.is-weekend:not(.other-month):hover {
+  background: #f1f5f9;
+}
+
+.calendar-day.is-weekend .day-number {
+  color: #64748b;
+}
+
+.holiday-badge.weekend-cell-badge {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.holiday-badge.weekend-cell-badge .weekend-emoji {
+  font-size: 0.8rem;
+}
+
+/* Clickable Timeline Axis Slot */
+.timeline-hour-slot.clickable-slot {
+  cursor: pointer;
+}
+
+.timeline-hour-slot.clickable-slot:hover {
+  background: #e0f2fe;
+}
+
+.timeline-hour-slot.clickable-slot:hover .hour-label {
+  color: #0284c7;
+  font-weight: 800;
+}
+
+/* ShiftTimeline: Real-Time Roster Status Bar */
+.timeline-roster-status-bar {
+  margin-bottom: 12px;
+}
+
+.roster-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.roster-status-banner .status-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.roster-status-banner .status-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.roster-status-banner .status-info strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.roster-status-banner .status-info span {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.roster-status-banner.work {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1.5px solid #a7f3d0;
+  color: #065f46;
+}
+
+.roster-status-banner.holiday {
+  background: linear-gradient(135deg, #eef2ff 0%, #ede9fe 100%);
+  border: 1.5px solid #c7d2fe;
+  color: #3730a3;
+}
+
+.roster-status-banner.leave {
+  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+  border: 1.5px solid #fbcfe8;
+  color: #9d174d;
+}
+
+.roster-status-banner.weekend {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
+}
+
+.status-pill {
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.status-pill.active,
+.status-pill.in-progress {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.status-pill.upcoming {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.status-pill.break {
+  background: #f59e0b;
+  color: white;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.status-pill.completed {
+  background: #64748b;
+  color: white;
+}
+
+.status-pill.holiday {
+  background: #6366f1;
+  color: white;
+}
+
+.status-pill.leave {
+  background: #ec4899;
+  color: white;
+}
+
+.status-pill.weekend {
+  background: #94a3b8;
+  color: white;
+}
+
+/* Day Planner: Realistic Shift & Break Blocks */
+.planner-event-block.shift.is-shift-roster-block {
+  border-left: 6px solid #10b981;
+  background: rgba(240, 253, 244, 0.9);
+  border: 1.5px dashed #86efac;
+  border-left: 6px solid #10b981;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+}
+
+.planner-event-block.break {
+  border-left: 6px solid #f59e0b;
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  border-left: 6px solid #f59e0b;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+}
+
+.planner-event-block.weekend {
+  border-left: 6px solid #94a3b8;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-left: 6px solid #94a3b8;
+  z-index: 2;
+}
+
+/* Dark Mode Overrides for Roster & Timeline */
+[data-theme="dark"] .calendar-day.is-weekend:not(.other-month) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="dark"] .holiday-badge.weekend-cell-badge {
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .roster-status-banner.work {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #a7f3d0;
+}
+
+[data-theme="dark"] .roster-status-banner.holiday {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(129, 140, 248, 0.3);
+  color: #c7d2fe;
+}
+
+[data-theme="dark"] .roster-status-banner.leave {
+  background: rgba(236, 72, 153, 0.12);
+  border-color: rgba(244, 114, 182, 0.3);
+  color: #fbcfe8;
+}
+
+[data-theme="dark"] .roster-status-banner.weekend {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .planner-event-block.shift.is-shift-roster-block {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+[data-theme="dark"] .planner-event-block.break {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NON-OVERLAPPING & COLLAPSE PREVENTION ENHANCEMENTS
+   ══════════════════════════════════════════════════════════════ */
+
+/* Full-width layout when viewing corporate holiday cards */
+.calendar-workspace.holidays-mode {
+  grid-template-columns: 1fr;
+}
+
+/* Month Grid: +X More Overflow Badge */
+.holiday-badge.more-events-badge {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border: 1px dashed #cbd5e1;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.holiday-badge.more-events-badge:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+/* Day Planner: Non-Blocking Background Shift Corridor */
+.planner-shift-corridor {
+  position: absolute;
+  left: 95px;
+  right: 15px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1.5px dashed rgba(16, 185, 129, 0.35);
+  border-radius: 12px;
+  z-index: 1;
+  pointer-events: none;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.shift-corridor-label-track {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shift-corridor-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+.shift-corridor-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #10b981;
+  text-transform: uppercase;
+}
+
+/* Shift Timeline View: Sidebar Roster Metrics Card */
+.shift-roster-summary-card {
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.roster-metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.roster-metric-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.roster-metric-item .metric-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.roster-metric-item .metric-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.roster-metric-item .metric-detail strong {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.roster-metric-item .metric-detail span {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* Dark Mode Overrides for Corridor & Overflows */
+[data-theme="dark"] .holiday-badge.more-events-badge {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .holiday-badge.more-events-badge:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+[data-theme="dark"] .planner-shift-corridor {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+[data-theme="dark"] .shift-corridor-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+[data-theme="dark"] .shift-roster-summary-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .roster-metric-item {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .roster-metric-item .metric-detail strong {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .roster-metric-item .metric-detail span {
+  color: #94a3b8;
+}
+
+
+
+
+
 
 
 

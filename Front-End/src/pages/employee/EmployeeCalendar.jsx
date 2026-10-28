@@ -30,9 +30,16 @@ export default function EmployeeCalendar() {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Dynamic Google Calendar Integration State
+  const [calendarSource, setCalendarSource] = useState("google"); // "google" | "company"
+  const [holidayRegion, setHolidayRegion] = useState("india");
+  const [holidayYear, setHolidayYear] = useState(() => new Date().getFullYear());
+  const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
+  const [googleLiveCount, setGoogleLiveCount] = useState(0);
+
   // Holiday Tab Filters & Search
   const [holidaySearch, setHolidaySearch] = useState("");
-  const [holidayCategoryFilter, setHolidayCategoryFilter] = useState("all"); // "all" | "gazetted" | "optional" | "upcoming" | "past"
+  const [holidayCategoryFilter, setHolidayCategoryFilter] = useState("all"); // "all" | "gazetted" | "optional" | "long_weekends" | "upcoming" | "past"
   const [holidaySortOrder, setHolidaySortOrder] = useState("asc"); // "asc" | "desc"
 
   // HR / Admin Declare Corporate Holiday Form State
@@ -46,6 +53,80 @@ export default function EmployeeCalendar() {
   const [holidayFormMandatory, setHolidayFormMandatory] = useState(true);
   const [holidayFormDescription, setHolidayFormDescription] = useState("");
   const [declaringHoliday, setDeclaringHoliday] = useState(false);
+
+  // HR / Admin Edit Corporate Holiday State
+  const [showEditHolidayModal, setShowEditHolidayModal] = useState(false);
+  const [editingHolidayId, setEditingHolidayId] = useState(null);
+  const [editHolidayTitle, setEditHolidayTitle] = useState("");
+  const [editHolidayDate, setEditHolidayDate] = useState("");
+  const [editHolidayType, setEditHolidayType] = useState("Public Holiday");
+  const [editHolidayMandatory, setEditHolidayMandatory] = useState(true);
+  const [editHolidayDescription, setEditHolidayDescription] = useState("");
+  const [updatingHoliday, setUpdatingHoliday] = useState(false);
+
+  // Open Edit Holiday Modal with prefilled values
+  const openEditHolidayModal = (h) => {
+    if (!h) return;
+    setEditingHolidayId(h.id || h._id);
+    setEditHolidayTitle(h.title || h.name || "");
+    const dateFormatted = h.date ? parseLocalDate(h.date).toISOString().split("T")[0] : "";
+    setEditHolidayDate(dateFormatted);
+    setEditHolidayType(h.type || "Public Holiday");
+    const isMandatory =
+      h.mandatory ||
+      String(h.type || "").toLowerCase().includes("gazetted") ||
+      String(h.type || "").toLowerCase().includes("national") ||
+      String(h.type || "").toLowerCase().includes("public");
+    setEditHolidayMandatory(isMandatory);
+    setEditHolidayDescription(h.description || "");
+    setShowEditHolidayModal(true);
+  };
+
+  // Submit Updated Holiday (PUT /api/holidays/:id)
+  const handleUpdateHoliday = async (e) => {
+    e.preventDefault();
+    if (!editHolidayTitle.trim() || !editHolidayDate) {
+      toast.warning("Please provide a holiday title and date");
+      return;
+    }
+
+    setUpdatingHoliday(true);
+    try {
+      const payload = {
+        title: editHolidayTitle.trim(),
+        date: editHolidayDate,
+        type: editHolidayType,
+        mandatory: editHolidayMandatory,
+        description: editHolidayDescription.trim() || "Official corporate holiday",
+      };
+
+      const res = await apiRequest(`/holidays/${editingHolidayId}`, {
+        method: "PUT",
+        body: payload,
+      });
+
+      if (res.success || res.data) {
+        toast.success(`🎉 Corporate Holiday "${payload.title}" updated successfully!`);
+        setShowEditHolidayModal(false);
+        // Optimistically update local holiday state immediately
+        setHolidays((prev) =>
+          prev.map((item) =>
+            (item.id || item._id) === editingHolidayId
+              ? { ...item, ...payload, title: payload.title, date: payload.date, type: payload.type, description: payload.description }
+              : item
+          )
+        );
+        await fetchCalendarData();
+      } else {
+        toast.error(res.message || "Failed to update holiday");
+      }
+    } catch (err) {
+      console.error("Failed to update holiday:", err);
+      toast.error(err.message || "Failed to update holiday");
+    } finally {
+      setUpdatingHoliday(false);
+    }
+  };
 
   // Employee Custom Events State (backend is source of truth)
   const [customEvents, setCustomEvents] = useState([]);
@@ -103,7 +184,88 @@ export default function EmployeeCalendar() {
     return `${mins} mins`;
   };
 
-  // No localStorage sync needed — backend API is the source of truth
+  // Dynamic Google Calendar Live Fetcher
+  const fetchGoogleLiveHolidays = async (targetYear = holidayYear, targetRegion = holidayRegion, forceRefresh = false) => {
+    setIsSyncingGoogle(true);
+    try {
+      const res = await apiRequest(`/holidays/google-live?year=${targetYear}&region=${targetRegion}&refresh=${forceRefresh ? "true" : "false"}`);
+      if (res && res.success && Array.isArray(res.data)) {
+        setHolidays(res.data);
+        setGoogleLiveCount(res.total || res.data.length);
+        if (forceRefresh) {
+          toast.success(`🎉 Refreshed ${res.data.length} live holidays from Google Calendar (${targetRegion.toUpperCase()} · ${targetYear})`);
+        }
+      } else {
+        throw new Error(res?.message || "Failed to load Google Calendar feed");
+      }
+    } catch (err) {
+      console.warn("Could not fetch Google Calendar live holidays, falling back to database:", err);
+      try {
+        const fallbackRes = await apiRequest(`/holidays?year=${targetYear}`);
+        const list = Array.isArray(fallbackRes) ? fallbackRes : (fallbackRes?.data || fallbackRes?.holidays || []);
+        setHolidays(list);
+      } catch (fErr) {
+        toast.error("Failed to load holiday calendar");
+      }
+    } finally {
+      setIsSyncingGoogle(false);
+    }
+  };
+
+  // Synchronize Google Calendar holidays to Database (HR / Admin or user manual trigger)
+  const handleSyncGoogleToDatabase = async () => {
+    setIsSyncingGoogle(true);
+    try {
+      const res = await apiRequest("/holidays/sync-google", {
+        method: "POST",
+        body: { year: holidayYear, region: holidayRegion },
+      });
+      if (res.success) {
+        toast.success(res.message || "Successfully synced Google Calendar to corporate database!");
+        await fetchGoogleLiveHolidays(holidayYear, holidayRegion, true);
+      } else {
+        toast.error(res.message || "Failed to sync to database");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to sync to database");
+    } finally {
+      setIsSyncingGoogle(false);
+    }
+  };
+
+  // Dynamic Year Change Handler
+  const handleYearChange = (newYear) => {
+    const yr = parseInt(newYear, 10);
+    setHolidayYear(yr);
+    setCurrentDate(new Date(yr, currentDate.getMonth(), 1));
+    fetchGoogleLiveHolidays(yr, holidayRegion, false);
+  };
+
+  // Dynamic Region Change Handler
+  const handleRegionChange = (newRegion) => {
+    setHolidayRegion(newRegion);
+    fetchGoogleLiveHolidays(holidayYear, newRegion, false);
+  };
+
+  // Generate 1-click personal Google Calendar add URL
+  const makeGoogleCalendarUrl = (h) => {
+    if (!h || !h.date) return "#";
+    const dStr = String(h.date).replace(/-/g, "");
+    const d = parseLocalDate(h.date);
+    const nextD = new Date(d);
+    nextD.setDate(nextD.getDate() + 1);
+    const endYear = nextD.getFullYear();
+    const endMonth = String(nextD.getMonth() + 1).padStart(2, "0");
+    const endDay = String(nextD.getDate()).padStart(2, "0");
+    const nextStr = `${endYear}${endMonth}${endDay}`;
+
+    const title = encodeURIComponent(h.title || h.name || "Corporate Holiday");
+    const details = encodeURIComponent(
+      `${h.description || "Official Holiday"}\n\nClassification: ${h.type || "Gazetted"}\nVerified dynamic sync via Google Calendar Feed`
+    );
+    const location = encodeURIComponent("All Offices (Pan-India)");
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dStr}/${nextStr}&details=${details}&location=${location}`;
+  };
 
   useEffect(() => {
     fetchCalendarData();
@@ -115,8 +277,9 @@ export default function EmployeeCalendar() {
 
   const fetchCalendarData = async () => {
     try {
+      const currentYr = currentDate.getFullYear();
       const [holidayRes, leaveRes, eventRes] = await Promise.allSettled([
-        apiRequest("/holidays"),
+        apiRequest(`/holidays?year=${currentYr}`),
         apiRequest("/leaves/my"),
         apiRequest("/events/my"),
       ]);
@@ -124,8 +287,18 @@ export default function EmployeeCalendar() {
       if (holidayRes.status === "fulfilled") {
         const val = holidayRes.value;
         const list = Array.isArray(val) ? val : (val?.data || val?.holidays || []);
-        setHolidays(list);
+        if (list.length > 0) {
+          setHolidays(list);
+          setGoogleLiveCount(list.length);
+        } else {
+          const googleRes = await apiRequest(`/holidays/google-live?year=${currentYr}&region=${holidayRegion}`);
+          if (googleRes?.success && Array.isArray(googleRes.data)) {
+            setHolidays(googleRes.data);
+            setGoogleLiveCount(googleRes.total || googleRes.data.length);
+          }
+        }
       }
+
       if (leaveRes.status === "fulfilled") {
         const val = leaveRes.value;
         const list = Array.isArray(val) ? val : (val?.data || val?.leaves || []);
@@ -206,12 +379,22 @@ export default function EmployeeCalendar() {
 
   const prevMonth = (e) => {
     e?.preventDefault();
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    setCurrentDate(newDate);
+    if (newDate.getFullYear() !== holidayYear) {
+      setHolidayYear(newDate.getFullYear());
+      fetchGoogleLiveHolidays(newDate.getFullYear(), holidayRegion, false);
+    }
   };
 
   const nextMonth = (e) => {
     e?.preventDefault();
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    setCurrentDate(newDate);
+    if (newDate.getFullYear() !== holidayYear) {
+      setHolidayYear(newDate.getFullYear());
+      fetchGoogleLiveHolidays(newDate.getFullYear(), holidayRegion, false);
+    }
   };
 
   const goToToday = (e) => {
@@ -219,6 +402,10 @@ export default function EmployeeCalendar() {
     const now = new Date();
     setCurrentDate(now);
     setSelectedDate(now);
+    if (now.getFullYear() !== holidayYear) {
+      setHolidayYear(now.getFullYear());
+      fetchGoogleLiveHolidays(now.getFullYear(), holidayRegion, false);
+    }
   };
 
   const prevDay = (e) => {
@@ -348,7 +535,55 @@ export default function EmployeeCalendar() {
     return "🏖️";
   };
 
-  // Live Holiday Summary & Stats
+  // Helper to detect long weekends & bridge leave opportunities
+  const getLongWeekendInfo = (dateStr) => {
+    if (!dateStr) return null;
+    const d = parseLocalDate(dateStr);
+    const day = d.getDay(); // 0 Sun, 1 Mon, 2 Tue, 3 Wed, 4 Thu, 5 Fri, 6 Sat
+    if (day === 5) {
+      return {
+        type: "long_weekend",
+        label: "🏖️ 3-Day Long Weekend (Fri–Sun)",
+        isLongWeekend: true,
+      };
+    }
+    if (day === 1) {
+      return {
+        type: "long_weekend",
+        label: "🏖️ 3-Day Long Weekend (Sat–Mon)",
+        isLongWeekend: true,
+      };
+    }
+    if (day === 4) {
+      return {
+        type: "bridge_day",
+        label: "💡 Bridge Opportunity (Take Fri off for 4-day weekend)",
+        isBridge: true,
+      };
+    }
+    if (day === 2) {
+      return {
+        type: "bridge_day",
+        label: "💡 Bridge Opportunity (Take Mon off for 4-day weekend)",
+        isBridge: true,
+      };
+    }
+    if (day === 3) {
+      return {
+        type: "midweek",
+        label: "⚡ Midweek Rest Day",
+      };
+    }
+    if (day === 0 || day === 6) {
+      return {
+        type: "weekend",
+        label: "📅 Weekend Observance",
+      };
+    }
+    return null;
+  };
+
+  // Live Holiday Summary & Stats with Long Weekend calculation
   const holidayStats = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -356,6 +591,7 @@ export default function EmployeeCalendar() {
     const total = holidays.length;
     let gazetted = 0;
     let optional = 0;
+    let longWeekends = 0;
     const upcoming = [];
 
     holidays.forEach((h) => {
@@ -369,6 +605,10 @@ export default function EmployeeCalendar() {
 
       if (h.date) {
         const d = parseLocalDate(h.date);
+        const dayOfWeek = d.getDay();
+        if (dayOfWeek === 1 || dayOfWeek === 5) {
+          longWeekends++;
+        }
         const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
         if (diffDays >= 0) {
           upcoming.push({ ...h, diffDays, parsedDate: d });
@@ -379,7 +619,7 @@ export default function EmployeeCalendar() {
     upcoming.sort((a, b) => a.diffDays - b.diffDays);
     const nextHoliday = upcoming[0] || null;
 
-    return { total, gazetted, optional, nextHoliday };
+    return { total, gazetted, optional, longWeekends, nextHoliday };
   }, [holidays]);
 
   // Upcoming holidays list
@@ -416,8 +656,11 @@ export default function EmployeeCalendar() {
           String(h.type || "").toLowerCase().includes("national") ||
           String(h.type || "").toLowerCase().includes("public");
 
+        const lwInfo = getLongWeekendInfo(h.date);
+
         if (holidayCategoryFilter === "gazetted") return isMandatory;
         if (holidayCategoryFilter === "optional") return !isMandatory;
+        if (holidayCategoryFilter === "long_weekends") return lwInfo?.isLongWeekend || lwInfo?.isBridge;
         if (holidayCategoryFilter === "upcoming") return diffDays >= 0;
         if (holidayCategoryFilter === "past") return diffDays < 0;
         return true;
@@ -428,6 +671,124 @@ export default function EmployeeCalendar() {
         return holidaySortOrder === "asc" ? da - db : db - da;
       });
   }, [holidays, holidaySearch, holidayCategoryFilter, holidaySortOrder]);
+
+  // Calendar Sync & Export Handlers (.ics for Google/Outlook and .csv)
+  const handleExportIcs = () => {
+    if (!holidays || holidays.length === 0) {
+      toast.warning("No corporate holidays available to export");
+      return;
+    }
+
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//PERN HRMS//Enterprise Holiday Calendar//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "X-WR-CALNAME:Quadratics Corporate Holidays 2026",
+      "X-WR-TIMEZONE:Asia/Kolkata",
+    ];
+
+    holidays.forEach((h) => {
+      if (!h.date) return;
+      const d = parseLocalDate(h.date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const dateStart = `${year}${month}${day}`;
+
+      const nextDay = new Date(d);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const endYear = nextDay.getFullYear();
+      const endMonth = String(nextDay.getMonth() + 1).padStart(2, "0");
+      const endDay = String(nextDay.getDate()).padStart(2, "0");
+      const dateEnd = `${endYear}${endMonth}${endDay}`;
+
+      const title = (h.title || h.name || "Corporate Holiday").replace(/,/g, "\\,");
+      const desc = (h.description || "Official Company Holiday").replace(/,/g, "\\,");
+      const uid = `holiday-${h.id || h._id || dateStart}@quadratics.com`;
+
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTAMP:${dateStart}T000000Z`);
+      lines.push(`DTSTART;VALUE=DATE:${dateStart}`);
+      lines.push(`DTEND;VALUE=DATE:${dateEnd}`);
+      lines.push(`SUMMARY:${title}`);
+      lines.push(`DESCRIPTION:${desc} (${h.type || "Corporate Holiday"})`);
+      lines.push("LOCATION:Quadratics Global Delivery & Pan-India Offices");
+      lines.push("STATUS:CONFIRMED");
+      lines.push("TRANSP:TRANSPARENT");
+      lines.push("END:VEVENT");
+    });
+
+    lines.push("END:VCALENDAR");
+
+    const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "Quadratics_Corporate_Holiday_Calendar_2026.ics");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("📅 Holiday Calendar (.ics) downloaded! Ready to import into Google Calendar or Outlook.");
+  };
+
+  const handleExportHolidayCSV = () => {
+    if (!holidays || holidays.length === 0) {
+      toast.warning("No corporate holidays available to export");
+      return;
+    }
+
+    const headers = [
+      "Date",
+      "Day of Week",
+      "Holiday Title",
+      "Category",
+      "Mandatory Paid Off",
+      "Long Weekend / Bridge Opportunity",
+      "Office Closure Status",
+      "Description",
+    ];
+
+    const rows = holidays.map((h) => {
+      const d = parseLocalDate(h.date);
+      const dateStr = d.toISOString().split("T")[0];
+      const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
+      const lw = getLongWeekendInfo(h.date);
+      const isMandatory =
+        h.mandatory ||
+        String(h.type || "").toLowerCase().includes("gazetted") ||
+        String(h.type || "").toLowerCase().includes("national") ||
+        String(h.type || "").toLowerCase().includes("public");
+
+      const closureStatus = isMandatory ? "Physical Offices Closed" : "Office Open (Floating Holiday)";
+
+      return [
+        `"${dateStr}"`,
+        `"${dayName}"`,
+        `"${(h.title || h.name || "").replace(/"/g, '""')}"`,
+        `"${h.type || "Gazetted"}"`,
+        `"${isMandatory ? "Yes" : "Optional / Restricted"}"`,
+        `"${lw?.label || "Standard"}"`,
+        `"${closureStatus}"`,
+        `"${(h.description || "").replace(/"/g, '""')}"`,
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "Quadratics_Holiday_Calendar_2026.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("📊 Holiday Calendar CSV downloaded!");
+  };
 
   // Declare Corporate Holiday Handler (HR / Admin)
   const handleDeclareHoliday = async (e) => {
@@ -581,7 +942,7 @@ export default function EmployeeCalendar() {
     }, 100);
   };
 
-  // Timeline events for selected date
+  // Timeline events for selected date (Realistic enterprise schedule)
   const selectedDateEvents = useMemo(() => {
     const key = formatDateKey(selectedDate);
     const dayHolidays = holidayMap.get(key) || [];
@@ -592,58 +953,149 @@ export default function EmployeeCalendar() {
 
     const items = [];
 
-    // Custom employee events first (RED theme) — pass startTime/endTime for accurate positioning
+    // 1. Corporate Holiday (Office closure / Paid Statutory Rest)
+    if (dayHolidays.length > 0) {
+      dayHolidays.forEach((h) => {
+        const isMandatory =
+          h.mandatory ||
+          String(h.type || "").toLowerCase().includes("gazetted") ||
+          String(h.type || "").toLowerCase().includes("national") ||
+          String(h.type || "").toLowerCase().includes("public");
+
+        items.push({
+          time: "All Day · Paid Off",
+          startTime: "09:00",
+          endTime: "18:00",
+          title: `🎉 ${h.title || h.name} (Corporate Holiday)`,
+          category: "Holiday",
+          type: "holiday",
+          duration: "Full Day Paid Off",
+          tag: isMandatory ? "Mandatory Paid Off" : "Floating / Optional",
+          isHoliday: true,
+        });
+      });
+    }
+
+    // 2. Approved Employee Leave (PTO)
+    if (dayLeaves.length > 0) {
+      dayLeaves.forEach((l) => {
+        items.push({
+          time: "All Day · PTO",
+          startTime: "09:00",
+          endTime: "18:00",
+          title: `🌴 ${l.leaveType?.name || "Leave"} (${l.status})`,
+          category: "Leave",
+          type: "leave",
+          duration: "Full Day PTO",
+          tag: l.status || "Approved Leave",
+          isLeave: true,
+        });
+      });
+    }
+
+    // 3. Weekend Non-Working Day (Saturday or Sunday)
+    if (isSat || isSun) {
+      items.push({
+        time: "All Day · Rest Day",
+        startTime: "09:00",
+        endTime: "18:00",
+        title: isSun ? "☕ Sunday Weekly Off" : "☕ Saturday Weekend Rest Day",
+        category: "Off",
+        type: "weekend",
+        duration: "Weekly Rest Day",
+        tag: "Weekly Off · No Roster",
+        isWeekend: true,
+      });
+    }
+
+    // 4. Standard Enterprise Shift & Lunch Break on Regular Business Days (Mon–Fri)
+    if (!isSat && !isSun && dayHolidays.length === 0 && dayLeaves.length === 0) {
+      // General Work Shift: 09:30 AM to 06:30 PM (9 hours = 8h work + 1h lunch)
+      items.push({
+        id: "shift-general",
+        time: "09:30 AM - 06:30 PM",
+        startTime: "09:30",
+        endTime: "18:30",
+        title: "💼 Standard General Shift (09:30 AM – 06:30 PM)",
+        category: "Shift",
+        type: "shift",
+        duration: "9 hrs (8h Work + 1h Break)",
+        tag: "Active Roster · General Shift",
+        isShiftRoster: true,
+      });
+
+      // Lunch & Refreshment Window: 01:00 PM to 02:00 PM
+      items.push({
+        id: "break-lunch",
+        time: "01:00 PM - 02:00 PM",
+        startTime: "13:00",
+        endTime: "14:00",
+        title: "🍽️ Lunch & Refreshment Break",
+        category: "Break",
+        type: "break",
+        duration: "1 hr",
+        tag: "Company Break Window",
+        isBreak: true,
+      });
+    }
+
+    // 5. Custom Employee Events (RED theme: Meetings, Tasks, Syncs)
     dayCustom.forEach((c) => {
       items.push({
         id: c.id || c._id,
         isCustom: true,
         time: c.time,
         title: `📌 ${c.title}`,
-        category: c.category,
+        category: c.category || "Meeting",
         type: "custom", // RED color theme!
         duration: c.duration || "1 hr",
-        tag: c.tag || "Custom Event",
+        tag: c.tag || `Custom ${c.category || "Event"}`,
         startTime: c.startTime,
         endTime: c.endTime,
       });
     });
 
-    if (dayHolidays.length > 0) {
-      dayHolidays.forEach((h) => {
-        items.push({
-          time: "Full Day",
-          title: `🎉 ${h.title}`,
-          category: "Holiday",
-          type: "holiday",
-          tag: h.type || "Public Holiday",
-        });
-      });
-    }
-
-    if (dayLeaves.length > 0) {
-      dayLeaves.forEach((l) => {
-        items.push({
-          time: "Full Day",
-          title: `🌴 ${l.leaveType?.name || "Leave"} (${l.status})`,
-          category: "Leave",
-          type: "leave",
-          tag: l.status,
-        });
-      });
-    }
-
-    if (isSat || isSun) {
-      items.push({
-        time: "All Day",
-        title: "☕ Weekend Non-Working Day",
-        category: "Off",
-        type: "weekend",
-        tag: "Weekly Off",
-      });
-    }
+    // Sort chronologically by start time
+    items.sort((a, b) => {
+      const getMins = (item) => {
+        if (item.startTime) {
+          const [h, m] = item.startTime.split(":").map(Number);
+          if (!Number.isNaN(h)) return h * 60 + (m || 0);
+        }
+        if (item.isShiftRoster) return 9 * 60 + 30;
+        return 9 * 60;
+      };
+      return getMins(a) - getMins(b);
+    });
 
     return items;
   }, [selectedDate, holidayMap, leaveMap, customEventsMap]);
+
+  // Layout events for Day Planner canvas without overlap (Shift roster drawn as background corridor)
+  const dayPlannerEvents = useMemo(() => {
+    // Exclude full-day shift roster from event blocks because it is drawn as a dedicated background corridor
+    const actualEvents = selectedDateEvents.filter((e) => !e.isShiftRoster);
+
+    // Calculate position for each event
+    const positioned = actualEvents.map((evt) => ({
+      ...evt,
+      pos: calculateEventPosition(evt),
+    })).sort((a, b) => a.pos.startMins - b.pos.startMins);
+
+    // Compute overlapping column tracks so simultaneous events sit side-by-side without collision
+    const columns = [];
+    const withCols = positioned.map((evt) => {
+      let col = 0;
+      while (columns[col] && columns[col] > evt.pos.startMins) {
+        col++;
+      }
+      columns[col] = evt.pos.endMins;
+      return { ...evt, col };
+    });
+
+    const totalCols = Math.max(1, columns.length);
+    return withCols.map((evt) => ({ ...evt, totalCols }));
+  }, [selectedDateEvents]);
 
   return (
     <>
@@ -765,7 +1217,7 @@ export default function EmployeeCalendar() {
         {loading ? (
           <div className="calendar-loading">Loading Calendar & Timeline Data...</div>
         ) : (
-          <div className="calendar-workspace">
+          <div className={`calendar-workspace ${viewMode}-mode`}>
             {/* Left Panel: Grid View OR Timeline View */}
             <div className="calendar-grid-panel">
               {viewMode === "grid" && (
@@ -777,13 +1229,13 @@ export default function EmployeeCalendar() {
                   </div>
                   <div className="calendar-nav-btns">
                     <button type="button" onClick={prevMonth} className="nav-btn" title="Previous Month">
-                      &larr; Prev
+                      ◀ Prev
                     </button>
                     <button type="button" onClick={goToToday} className="nav-btn today-btn" title="Go to Today">
                       Today
                     </button>
                     <button type="button" onClick={nextMonth} className="nav-btn" title="Next Month">
-                      Next &rarr;
+                      Next ▶
                     </button>
                   </div>
                 </div>
@@ -817,6 +1269,12 @@ export default function EmployeeCalendar() {
                       const isHolidayToday = hasHoliday && cellDiff === 0 && cell.isCurrentMonth;
                       const isHolidayTomorrow = hasHoliday && cellDiff === 1 && cell.isCurrentMonth;
                       const isHolidayImminent = isHolidayToday || isHolidayTomorrow;
+                      const isWeekend = cell.date.getDay() === 0 || cell.date.getDay() === 6;
+
+                      const customEvts = getCustomEventsForDate(cell.date);
+                      const totalBadges = customEvts.length + dailyHolidays.length + dailyLeaves.length;
+                      const maxVisibleBadges = 2;
+                      let renderedCount = 0;
 
                       return (
                         <div
@@ -825,7 +1283,7 @@ export default function EmployeeCalendar() {
                             setSelectedDate(cell.date);
                             setShowDayDetailModal(true);
                           }}
-                          className={`calendar-day ${!cell.isCurrentMonth ? "other-month" : ""} ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${hasHoliday ? "has-holiday" : ""} ${isHolidayToday ? "holiday-today-cell holiday-imminent-day" : ""} ${isHolidayTomorrow ? "holiday-tomorrow-cell holiday-imminent-day" : ""}`}
+                          className={`calendar-day ${!cell.isCurrentMonth ? "other-month" : ""} ${isWeekend ? "is-weekend" : ""} ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${hasHoliday ? "has-holiday" : ""} ${isHolidayToday ? "holiday-today-cell holiday-imminent-day" : ""} ${isHolidayTomorrow ? "holiday-tomorrow-cell holiday-imminent-day" : ""}`}
                         >
                           <div className="day-header">
                             <div className="day-number-cluster">
@@ -843,18 +1301,22 @@ export default function EmployeeCalendar() {
                           </div>
 
                           <div className="day-events">
-                            {getCustomEventsForDate(cell.date).map((customEvt) => (
-                              <div
-                                key={customEvt.id}
-                                className="holiday-badge custom-event"
-                                title={`${customEvt.title} (${customEvt.time})`}
-                              >
-                                <span className="event-dot" />
-                                <span className="event-title">{customEvt.title}</span>
-                              </div>
-                            ))}
+                            {customEvts.slice(0, maxVisibleBadges).map((customEvt) => {
+                              renderedCount++;
+                              return (
+                                <div
+                                  key={customEvt.id}
+                                  className="holiday-badge custom-event"
+                                  title={`${customEvt.title} (${customEvt.time})`}
+                                >
+                                  <span className="event-dot" />
+                                  <span className="event-title">{customEvt.title}</span>
+                                </div>
+                              );
+                            })}
 
-                            {dailyHolidays.map((holiday, idx) => {
+                            {dailyHolidays.slice(0, Math.max(0, maxVisibleBadges - renderedCount)).map((holiday, idx) => {
+                              renderedCount++;
                               const isImminentBadge = isHolidayToday || isHolidayTomorrow;
                               return (
                                 <div
@@ -870,18 +1332,34 @@ export default function EmployeeCalendar() {
                               );
                             })}
 
-                            {dailyLeaves.map((leave, idx) => (
-                              <div
-                                key={`l-${idx}`}
-                                className={`holiday-badge personal-leave ${leave.status?.toLowerCase() || "approved"}`}
-                                title={`${leave.leaveType?.name || "Leave"} - ${leave.status}`}
-                              >
-                                <span className="event-dot" />
-                                <span className="event-title">
-                                  {leave.leaveType?.name || "PTO"} ({leave.status})
-                                </span>
+                            {dailyLeaves.slice(0, Math.max(0, maxVisibleBadges - renderedCount)).map((leave, idx) => {
+                              renderedCount++;
+                              return (
+                                <div
+                                  key={`l-${idx}`}
+                                  className={`holiday-badge personal-leave ${leave.status?.toLowerCase() || "approved"}`}
+                                  title={`${leave.leaveType?.name || "Leave"} - ${leave.status}`}
+                                >
+                                  <span className="event-dot" />
+                                  <span className="event-title">
+                                    {leave.leaveType?.name || "PTO"} ({leave.status})
+                                  </span>
+                                </div>
+                              );
+                            })}
+
+                            {totalBadges > maxVisibleBadges && (
+                              <div className="holiday-badge more-events-badge" title="Click to view all events in Day Planner">
+                                +{totalBadges - maxVisibleBadges} more
                               </div>
-                            ))}
+                            )}
+
+                            {isWeekend && cell.isCurrentMonth && totalBadges === 0 && (
+                              <div className="holiday-badge weekend-cell-badge" title="Corporate Weekly Off">
+                                <span className="weekend-emoji">☕</span>
+                                <span className="event-title">Weekly Off</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -906,13 +1384,13 @@ export default function EmployeeCalendar() {
                     <div className="timeline-header-actions">
                       <div className="timeline-day-nav">
                         <button type="button" onClick={prevDay} className="nav-btn" title="Previous Day">
-                          &larr; Prev Day
+                          ◀ Prev
                         </button>
                         <button type="button" onClick={goToToday} className="nav-btn today-btn" title="Go to Today">
                           Today
                         </button>
                         <button type="button" onClick={nextDay} className="nav-btn" title="Next Day">
-                          Next Day &rarr;
+                          Next ▶
                         </button>
                       </div>
                       <button
@@ -925,9 +1403,105 @@ export default function EmployeeCalendar() {
                     </div>
                   </div>
 
+                  {/* Shift Status & Roster Context Bar */}
+                  <div className="timeline-roster-status-bar">
+                    {(() => {
+                      const isTodaySel = isTodayDate(selectedDate);
+                      const key = formatDateKey(selectedDate);
+                      const dayHolidays = holidayMap.get(key) || [];
+                      const dayLeaves = leaveMap.get(key) || [];
+                      const isSun = selectedDate.getDay() === 0;
+                      const isSat = selectedDate.getDay() === 6;
+
+                      if (dayHolidays.length > 0) {
+                        return (
+                          <div className="roster-status-banner holiday">
+                            <span className="status-icon">🎉</span>
+                            <div className="status-info">
+                              <strong>Corporate Holiday · Office Closed</strong>
+                              <span>{dayHolidays.map((h) => h.title || h.name).join(", ")} · Paid Statutory Observance</span>
+                            </div>
+                            <span className="status-pill holiday">Paid Off</span>
+                          </div>
+                        );
+                      }
+                      if (dayLeaves.length > 0) {
+                        return (
+                          <div className="roster-status-banner leave">
+                            <span className="status-icon">🌴</span>
+                            <div className="status-info">
+                              <strong>Approved Leave / PTO</strong>
+                              <span>{dayLeaves.map((l) => `${l.leaveType?.name || "Leave"} (${l.status})`).join(", ")}</span>
+                            </div>
+                            <span className="status-pill leave">Approved PTO</span>
+                          </div>
+                        );
+                      }
+                      if (isSat || isSun) {
+                        return (
+                          <div className="roster-status-banner weekend">
+                            <span className="status-icon">☕</span>
+                            <div className="status-info">
+                              <strong>{isSun ? "Sunday Weekly Off" : "Saturday Weekend Rest Day"}</strong>
+                              <span>Corporate Weekly Off · No Business Shift Scheduled</span>
+                            </div>
+                            <span className="status-pill weekend">Weekly Off</span>
+                          </div>
+                        );
+                      }
+
+                      // Business Working Day
+                      let liveShiftStatus = "Standard Shift: 09:30 AM – 06:30 PM";
+                      let livePillClass = "active";
+                      let livePillText = "Active Roster";
+                      if (isTodaySel) {
+                        if (nowMins < 9 * 60 + 30) {
+                          liveShiftStatus = "Shift Starts at 09:30 AM · General Enterprise Roster";
+                          livePillClass = "upcoming";
+                          livePillText = "Upcoming Shift";
+                        } else if (nowMins >= 9 * 60 + 30 && nowMins < 13 * 60) {
+                          liveShiftStatus = "🟢 In Progress: Morning Core Hours (09:30 AM – 01:00 PM)";
+                          livePillClass = "in-progress";
+                          livePillText = "Working Hours";
+                        } else if (nowMins >= 13 * 60 && nowMins < 14 * 60) {
+                          liveShiftStatus = "🍽️ Lunch & Break Window (01:00 PM – 02:00 PM)";
+                          livePillClass = "break";
+                          livePillText = "Lunch Break";
+                        } else if (nowMins >= 14 * 60 && nowMins < 18 * 60 + 30) {
+                          liveShiftStatus = "🟢 In Progress: Afternoon Delivery Hours (02:00 PM – 06:30 PM)";
+                          livePillClass = "in-progress";
+                          livePillText = "Working Hours";
+                        } else {
+                          liveShiftStatus = "🌙 Shift Completed for Today (09:30 AM – 06:30 PM) · Off Duty";
+                          livePillClass = "completed";
+                          livePillText = "Shift Completed";
+                        }
+                      }
+
+                      return (
+                        <div className="roster-status-banner work">
+                          <span className="status-icon">💼</span>
+                          <div className="status-info">
+                            <strong>Enterprise Shift Roster · General Shift (9 hrs)</strong>
+                            <span>{liveShiftStatus}</span>
+                          </div>
+                          <span className={`status-pill ${livePillClass}`}>{livePillText}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   <div className="timeline-axis-bar">
                     {timelineHours.map((hourStr, idx) => (
-                      <div key={idx} className="timeline-hour-slot">
+                      <div
+                        key={idx}
+                        className="timeline-hour-slot clickable-slot"
+                        onClick={() => {
+                          handleSlotClick(idx + SHIFT_START_HOUR);
+                          setShowDayDetailModal(true);
+                        }}
+                        title={`Click to schedule an event at ${hourStr}`}
+                      >
                         <span className="hour-label">{hourStr}</span>
                         <div className="hour-tick" />
                       </div>
@@ -980,10 +1554,41 @@ export default function EmployeeCalendar() {
                         <span>🗓️ Company Observances · {year}</span>
                       </div>
                       <h3>Official Corporate Holidays</h3>
-                      <p className="holiday-list-subtitle">Annual company declared holidays, gazetted observances, and restricted leaves.</p>
+                      <p className="holiday-list-subtitle">Annual company declared holidays, gazetted observances, long weekends, and floating leaves.</p>
                     </div>
 
                     <div className="holiday-list-header-actions">
+                      <div className="calendar-nav-btns">
+                        <button type="button" onClick={prevMonth} className="nav-btn" title="Previous Month">
+                          ◀ Prev
+                        </button>
+                        <button type="button" onClick={goToToday} className="nav-btn today-btn" title="Go to Today">
+                          Today
+                        </button>
+                        <button type="button" onClick={nextMonth} className="nav-btn" title="Next Month">
+                          Next ▶
+                        </button>
+                      </div>
+
+                      <div className="holiday-export-btn-group">
+                        <button
+                          type="button"
+                          className="holiday-sync-btn"
+                          onClick={handleExportIcs}
+                          title="Download .ics calendar file for Google Calendar, Outlook, and Apple Calendar"
+                        >
+                          <span>📅</span> Sync (.ics)
+                        </button>
+                        <button
+                          type="button"
+                          className="holiday-csv-btn"
+                          onClick={handleExportHolidayCSV}
+                          title="Export Holiday List to CSV spreadsheet"
+                        >
+                          <span>📊</span> Export CSV
+                        </button>
+                      </div>
+
                       {isHrOrAdmin && (
                         <button
                           type="button"
@@ -1002,13 +1607,108 @@ export default function EmployeeCalendar() {
                     </div>
                   </div>
 
+                  {/* Dynamic Google Calendar Live Sync Control Bar */}
+                  <div className="google-calendar-dynamic-bar">
+                    <div className="gcal-live-badge-group">
+                      <div className="gcal-status-indicator">
+                        <span className={`gcal-pulse-dot ${isSyncingGoogle ? "syncing" : ""}`} />
+                        <div className="gcal-status-text">
+                          <span className="gcal-status-title">Google Calendar Live Feed</span>
+                          <span className="gcal-status-sub">
+                            {isSyncingGoogle ? "Connecting to Google Calendar..." : `Official Public Holidays · ${holidayRegion.toUpperCase()} (${holidays.length} Observances)`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="gcal-controls-row">
+                      {/* Region Selector */}
+                      <div className="gcal-select-wrap">
+                        <label className="gcal-control-label">🌐 Region:</label>
+                        <select
+                          value={holidayRegion}
+                          onChange={(e) => handleRegionChange(e.target.value)}
+                          className="gcal-dropdown"
+                          disabled={isSyncingGoogle}
+                        >
+                          <option value="india">🇮🇳 India (Official Google Cal)</option>
+                          <option value="usa">🇺🇸 United States</option>
+                          <option value="uk">🇬🇧 United Kingdom</option>
+                          <option value="singapore">🇸🇬 Singapore</option>
+                          <option value="australia">🇦🇺 Australia</option>
+                        </select>
+                      </div>
+
+                      {/* Year Selector */}
+                      <div className="gcal-select-wrap">
+                        <label className="gcal-control-label">📅 Year:</label>
+                        <select
+                          value={holidayYear}
+                          onChange={(e) => handleYearChange(e.target.value)}
+                          className="gcal-dropdown year-select"
+                          disabled={isSyncingGoogle}
+                        >
+                          {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map((yr) => (
+                            <option key={yr} value={yr}>
+                              {yr}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Live Refresh Trigger */}
+                      <button
+                        type="button"
+                        className="gcal-refresh-btn"
+                        onClick={() => fetchGoogleLiveHolidays(holidayYear, holidayRegion, true)}
+                        disabled={isSyncingGoogle}
+                        title="Fetch fresh real-time holidays from Google Calendar"
+                      >
+                        <span className={`refresh-icon ${isSyncingGoogle ? "spin" : ""}`}>🔄</span>
+                        <span>{isSyncingGoogle ? "Syncing..." : "Sync Google Cal"}</span>
+                      </button>
+
+                      {/* HR / Admin Sync to Database */}
+                      {isHrOrAdmin && (
+                        <button
+                          type="button"
+                          className="gcal-save-db-btn"
+                          onClick={handleSyncGoogleToDatabase}
+                          disabled={isSyncingGoogle}
+                          title="Persist live Google Calendar holidays to corporate PostgreSQL database"
+                        >
+                          <span>💾</span> Save to DB
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Floating / Optional Holiday Policy & Allowance Banner */}
+                  <div className="floating-holiday-policy-banner">
+                    <div className="policy-banner-content">
+                      <span className="policy-banner-icon">⭐</span>
+                      <div className="policy-banner-text">
+                        <div className="policy-title-row">
+                          <h4>Corporate Floating / Optional Holiday Policy ({holidayYear})</h4>
+                          <span className="policy-allowance-badge">Allowance: 2 Floating Days / Year</span>
+                        </div>
+                        <p>
+                          All permanent employees are entitled to <strong>2 Optional / Floating Holidays</strong> per year in addition to statutory Gazetted Holidays. Apply under <em>Restricted Leaves</em> at least 3 business days in advance.
+                        </p>
+                      </div>
+                    </div>
+                    <a href="/employee/leaves" className="policy-action-link" title="Apply for Optional Holiday Leave">
+                      Apply Floating Leave →
+                    </a>
+                  </div>
+
                   {/* Search and Category Filter Toolbar */}
                   <div className="holiday-filter-toolbar">
                     <div className="holiday-search-wrap">
                       <span className="holiday-search-icon">🔍</span>
                       <input
                         type="text"
-                        placeholder="Search holidays by name, month, or description..."
+                        placeholder="Search holidays by name, month, long weekend, or festival..."
                         value={holidaySearch}
                         onChange={(e) => setHolidaySearch(e.target.value)}
                         className="holiday-search-input"
@@ -1045,6 +1745,13 @@ export default function EmployeeCalendar() {
                         onClick={() => setHolidayCategoryFilter("optional")}
                       >
                         ⭐ Optional ({holidayStats.optional})
+                      </button>
+                      <button
+                        type="button"
+                        className={`holiday-filter-pill ${holidayCategoryFilter === "long_weekends" ? "active" : ""}`}
+                        onClick={() => setHolidayCategoryFilter("long_weekends")}
+                      >
+                        🏖️ Long Weekends ({holidayStats.longWeekends})
                       </button>
                       <button
                         type="button"
@@ -1110,6 +1817,8 @@ export default function EmployeeCalendar() {
                             String(h.type || "").toLowerCase().includes("national") ||
                             String(h.type || "").toLowerCase().includes("public");
 
+                          const lwInfo = getLongWeekendInfo(h.date);
+
                           return (
                             <div
                               key={h.id || h._id || idx}
@@ -1137,6 +1846,9 @@ export default function EmployeeCalendar() {
                                     <div className="holiday-festive-pod">
                                       <span className="holiday-card-emoji">{emoji}</span>
                                       <h4>{h.title || h.name}</h4>
+                                      <span className="gcal-source-tag" title="Verified via Google Calendar Feed">
+                                        🗓️ Google Cal
+                                      </span>
                                     </div>
                                     <span className="h-date">{formattedDateStr}</span>
                                   </div>
@@ -1153,21 +1865,51 @@ export default function EmployeeCalendar() {
                                       ) : (
                                         <span className="optional-pill">⭐ Optional Holiday</span>
                                       )}
+                                      {lwInfo && (
+                                        <span className={`holiday-lw-pill ${lwInfo.type}`}>
+                                          {lwInfo.label}
+                                        </span>
+                                      )}
+                                      <span className={`holiday-office-pill ${isMandatory ? "closed" : "open"}`}>
+                                        {isMandatory ? "🏢 Offices Closed (Pan-India)" : "🏢 Office Open · Floating"}
+                                      </span>
                                       <span className={`holiday-status-chip ${isPast ? "past" : isToday ? "today-glow" : isTomorrow ? "tomorrow-glow" : "upcoming"}`}>
                                         {isToday ? "🎉 Active Today" : isTomorrow ? "⚡ Tomorrow" : countdownStr}
                                       </span>
                                     </div>
 
-                                    {isHrOrAdmin && (
-                                      <button
-                                        type="button"
-                                        className="holiday-delete-btn"
-                                        onClick={() => handleDeleteHoliday(h.id || h._id, h.title || h.name)}
-                                        title="Delete corporate holiday"
+                                    <div className="holiday-card-actions-row">
+                                      <a
+                                        href={makeGoogleCalendarUrl(h)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="add-to-gcal-link-btn"
+                                        title="Add this holiday event to your personal Google Calendar"
                                       >
-                                        🗑️
-                                      </button>
-                                    )}
+                                        <span>📅</span> Add to Google Calendar
+                                      </a>
+
+                                      {isHrOrAdmin && (
+                                        <div className="holiday-admin-btn-group">
+                                          <button
+                                            type="button"
+                                            className="holiday-edit-btn"
+                                            onClick={() => openEditHolidayModal(h)}
+                                            title="Edit corporate holiday (HR / Admin)"
+                                          >
+                                            ✏️ Edit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="holiday-delete-btn"
+                                            onClick={() => handleDeleteHoliday(h.id || h._id, h.title || h.name)}
+                                            title="Delete corporate holiday"
+                                          >
+                                            🗑️
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1186,10 +1928,12 @@ export default function EmployeeCalendar() {
             </div>
 
 
-            {/* Right Side Panel: Inspector & Upcoming Holidays */}
-            <div className="calendar-sidebar">
-              {/* Selected Day Timeline Inspector */}
-              <div className="sidebar-card timeline-inspector-card">
+            {/* Right Side Panel: Inspector & Upcoming Holidays (Adapts cleanly to current view mode) */}
+            {viewMode !== "holidays" && (
+              <div className="calendar-sidebar">
+                {/* Selected Day Timeline Inspector (Shown in Month Grid mode) */}
+                {viewMode === "grid" && (
+                  <div className="sidebar-card timeline-inspector-card">
                 <div className="inspector-card-header">
                   <div>
                     <h3>🗓️ Day Inspector Timeline</h3>
@@ -1323,6 +2067,123 @@ export default function EmployeeCalendar() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* In Shift Timeline View: Show Roster Metrics & Quick Action (eliminates duplicate timeline) */}
+            {viewMode === "timeline" && (
+              <div className="sidebar-card shift-roster-summary-card">
+                <div className="inspector-card-header">
+                  <div>
+                    <h3>💼 Roster Overview</h3>
+                    <span className="inspector-date">
+                      {selectedDate.toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="add-event-toggle-btn"
+                    onClick={() => setShowAddModal(!showAddModal)}
+                    title="Create Event on Selected Date"
+                  >
+                    {showAddModal ? "✕ Cancel" : "➕ Add Event"}
+                  </button>
+                </div>
+
+                {showAddModal && (
+                  <form className="add-event-form" onSubmit={handleAddCustomEvent}>
+                    <h4>Add Event on {formatDateKey(selectedDate)}</h4>
+                    <input
+                      type="text"
+                      placeholder="Event Title (e.g. Client Pitch)"
+                      value={newEventTitle}
+                      onChange={(e) => setNewEventTitle(e.target.value)}
+                      className="event-input-field"
+                      required
+                    />
+
+                    <div className="clock-picker-row">
+                      <div className="clock-field-group">
+                        <label className="clock-field-label">🕒 Start Time</label>
+                        <select
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="event-input-field clock-input"
+                          required
+                        >
+                          {timeOptions12.map((opt) => (
+                            <option key={`start-${opt.value}`} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="clock-field-group">
+                        <label className="clock-field-label">🕒 End Time</label>
+                        <select
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="event-input-field clock-input"
+                          required
+                        >
+                          {timeOptions12.map((opt) => (
+                            <option key={`end-${opt.value}`} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-row-2">
+                      <div className="duration-preview-chip">
+                        ⏱️ Duration: <strong>{calculateDuration(startTime, endTime)}</strong>
+                      </div>
+                      <select
+                        value={newEventCategory}
+                        onChange={(e) => setNewEventCategory(e.target.value)}
+                        className="event-select-field"
+                      >
+                        <option value="Meeting">Meeting 🤝</option>
+                        <option value="Task">Task 🎯</option>
+                        <option value="Deadline">Deadline ⏳</option>
+                        <option value="Reminder">Reminder 🔔</option>
+                      </select>
+                    </div>
+
+                    <button type="submit" className="save-event-btn red-accent-btn">
+                      🔴 Save Red Timeline Event
+                    </button>
+                  </form>
+                )}
+
+                <div className="roster-metrics-list">
+                  <div className="roster-metric-item">
+                    <span className="metric-icon">🏢</span>
+                    <div className="metric-detail">
+                      <strong>Standard Business Shift</strong>
+                      <span>09:30 AM – 06:30 PM (9 hrs)</span>
+                    </div>
+                  </div>
+                  <div className="roster-metric-item">
+                    <span className="metric-icon">🍽️</span>
+                    <div className="metric-detail">
+                      <strong>Lunch & Refreshment</strong>
+                      <span>01:00 PM – 02:00 PM (1 hr Break)</span>
+                    </div>
+                  </div>
+                  <div className="roster-metric-item">
+                    <span className="metric-icon">📌</span>
+                    <div className="metric-detail">
+                      <strong>Custom Meetings / Tasks</strong>
+                      <span>{getCustomEventsForDate(selectedDate).length} Scheduled for this day</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
               {/* Upcoming Holidays Card */}
               <div className="sidebar-card">
@@ -1373,35 +2234,38 @@ export default function EmployeeCalendar() {
               </div>
 
 
-              {/* Calendar Legend Card */}
-              <div className="legend-card">
-                <h3>Calendar Legend</h3>
-                <div className="legend-list">
-                  <div className="legend-item">
-                    <span className="legend-color public-holiday" />
-                    <span>Public Holiday (Mandatory Off)</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-color optional-holiday" />
-                    <span>Optional / Restricted Holiday</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-color imminent-legend" />
-                    <span>Imminent Holiday (Today / Tomorrow 🎉⚡)</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-color personal-leave" />
-                    <span>My Approved Leaves (PTO)</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-color personal-leave-pending" />
-                    <span>My Pending Leaves</span>
+              {/* Calendar Legend Card (Only shown in Month Grid mode) */}
+              {viewMode === "grid" && (
+                <div className="legend-card">
+                  <h3>Calendar Legend</h3>
+                  <div className="legend-list">
+                    <div className="legend-item">
+                      <span className="legend-color public-holiday" />
+                      <span>Public Holiday (Mandatory Off)</span>
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-color optional-holiday" />
+                      <span>Optional / Restricted Holiday</span>
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-color imminent-legend" />
+                      <span>Imminent Holiday (Today / Tomorrow 🎉⚡)</span>
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-color personal-leave" />
+                      <span>My Approved Leaves (PTO)</span>
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-color personal-leave-pending" />
+                      <span>My Pending Leaves</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
         {/* =====================================================
             DAY PLANNER POPUP MODAL (12-HOUR MORNING TO EVENING TIMELINE)
@@ -1519,22 +2383,47 @@ export default function EmployeeCalendar() {
                     </div>
                   )}
 
-                  {/* Positioned Event Blocks */}
-                  {selectedDateEvents.map((evt, idx) => {
-                    const pos = calculateEventPosition(evt);
-                    const isPast = isTodayDate(selectedDate) && nowMins > pos.startMins;
-                    const isCompleted = isTodayDate(selectedDate) && nowMins >= pos.endMins;
+                  {/* Enterprise Shift Roster Working-Hours Background Corridor */}
+                  {selectedDate.getDay() !== 0 && selectedDate.getDay() !== 6 && (holidayMap.get(formatDateKey(selectedDate)) || []).length === 0 && (leaveMap.get(formatDateKey(selectedDate)) || []).length === 0 && (
+                    <div
+                      className="planner-shift-corridor"
+                      style={{
+                        top: `${(9.5 - SHIFT_START_HOUR) * 60}px`,
+                        height: `${9 * 60}px`,
+                      }}
+                    >
+                      <div className="shift-corridor-label-track">
+                        <span className="shift-corridor-badge">💼 General Shift · 09:30 AM – 06:30 PM</span>
+                        <span className="shift-corridor-status">Active Working Hours</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Positioned Non-Overlapping Event Blocks */}
+                  {dayPlannerEvents.map((evt, idx) => {
+                    const isPast = isTodayDate(selectedDate) && nowMins > evt.pos.startMins;
+                    const isCompleted = isTodayDate(selectedDate) && nowMins >= evt.pos.endMins;
                     const progressPercent = isTodayDate(selectedDate)
-                      ? Math.min(100, Math.max(0, ((nowMins - pos.startMins) / (pos.endMins - pos.startMins)) * 100))
+                      ? Math.min(100, Math.max(0, ((nowMins - evt.pos.startMins) / (evt.pos.endMins - evt.pos.startMins)) * 100))
                       : 0;
+
+                    // Non-overlapping horizontal column positioning
+                    const totalCols = evt.totalCols || 1;
+                    const colIndex = evt.col || 0;
+                    const colWidthPct = 100 / totalCols;
+                    const leftStyle = totalCols > 1 ? `calc(95px + ${colIndex * colWidthPct}% * 0.88)` : "95px";
+                    const widthStyle = totalCols > 1 ? `calc(${colWidthPct}% * 0.88)` : "calc(100% - 115px)";
 
                     return (
                       <div
                         key={idx}
                         className={`planner-event-block ${evt.type} ${isCompleted ? "completed-event" : ""}`}
                         style={{
-                          top: `${pos.top}px`,
-                          height: `${Math.max(48, pos.height)}px`,
+                          top: `${evt.pos.top}px`,
+                          height: `${Math.max(48, evt.pos.height)}px`,
+                          left: leftStyle,
+                          width: widthStyle,
+                          right: "auto",
                         }}
                       >
                         {/* Progress fill overlay if active today */}
@@ -1675,6 +2564,114 @@ export default function EmployeeCalendar() {
                     disabled={declaringHoliday}
                   >
                     {declaringHoliday ? "Declaring..." : "🎉 Declare Holiday"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* =====================================================
+            HR / ADMIN EDIT CORPORATE HOLIDAY MODAL
+        ===================================================== */}
+
+        {showEditHolidayModal && (
+          <div className="day-planner-modal-backdrop" onClick={() => setShowEditHolidayModal(false)}>
+            <div className="declare-holiday-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="declare-modal-header edit-modal-header">
+                <div className="declare-modal-title">
+                  <span className="declare-icon-pill edit-icon-pill">✏️</span>
+                  <div>
+                    <h2>Edit Corporate Holiday</h2>
+                    <p>Update title, observance date, or classification. Changes instantly reflect for all employees.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="close-modal-btn"
+                  onClick={() => setShowEditHolidayModal(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form className="declare-holiday-form" onSubmit={handleUpdateHoliday}>
+                <div className="form-group-field">
+                  <label>Holiday Title *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Diwali / Deepavali, Eid al-Fitr, Good Friday"
+                    value={editHolidayTitle}
+                    onChange={(e) => setEditHolidayTitle(e.target.value)}
+                    required
+                    className="declare-input"
+                  />
+                </div>
+
+                <div className="form-row-2">
+                  <div className="form-group-field">
+                    <label>Observance Date *</label>
+                    <input
+                      type="date"
+                      value={editHolidayDate}
+                      onChange={(e) => setEditHolidayDate(e.target.value)}
+                      required
+                      className="declare-input"
+                    />
+                  </div>
+                  <div className="form-group-field">
+                    <label>Holiday Classification</label>
+                    <select
+                      value={editHolidayType}
+                      onChange={(e) => setEditHolidayType(e.target.value)}
+                      className="declare-select"
+                    >
+                      <option value="Public Holiday">🏛️ Public Holiday</option>
+                      <option value="National Holiday">🇮🇳 National Holiday</option>
+                      <option value="Gazetted Holiday">📜 Gazetted Holiday</option>
+                      <option value="Optional Holiday">⭐ Optional / Restricted Holiday</option>
+                      <option value="Company Off">🏢 Company Off</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group-field">
+                  <label>Description / Cultural Background</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Brief description of the corporate observance, celebration details, and office closure schedule..."
+                    value={editHolidayDescription}
+                    onChange={(e) => setEditHolidayDescription(e.target.value)}
+                    className="declare-textarea"
+                  />
+                </div>
+
+                <label className="declare-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={editHolidayMandatory}
+                    onChange={(e) => setEditHolidayMandatory(e.target.checked)}
+                  />
+                  <div>
+                    <strong>Mandatory Paid Company Off</strong>
+                    <span>All corporate offices closed; full paid leave applied for all employees</span>
+                  </div>
+                </label>
+
+                <div className="declare-modal-actions">
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={() => setShowEditHolidayModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="save-holiday-submit-btn update-holiday-btn"
+                    disabled={updatingHoliday}
+                  >
+                    {updatingHoliday ? "Saving..." : "✓ Save Changes"}
                   </button>
                 </div>
               </form>

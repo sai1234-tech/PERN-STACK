@@ -685,17 +685,47 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+  max-height: 84px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  padding-right: 4px;
   margin-bottom: 0.75rem;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.45) rgba(226, 232, 240, 0.5);
+}
+
+.kpi-shortcuts-grid::-webkit-scrollbar {
+  width: 5px;
+}
+
+.kpi-shortcuts-grid::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.5);
+  border-radius: 9999px;
+}
+
+.kpi-shortcuts-grid::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.45);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+.kpi-shortcuts-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.75);
 }
 
 .shortcut-chip {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.48rem 0.6rem;
+  height: 38px;
+  min-height: 38px;
+  max-height: 38px;
+  padding: 0 0.65rem;
   border-radius: 10px;
   text-decoration: none;
   min-width: 0;
@@ -704,6 +734,7 @@
   overflow: hidden;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  scroll-snap-align: start;
 }
 
 .shortcut-chip .chip-icon {
@@ -850,6 +881,26 @@
 /* ==========================================================================
    Dark Theme - Operational Module Shortcuts (Luminous High Contrast)
    ========================================================================== */
+
+[data-theme="dark"] .kpi-shortcuts-grid,
+html[data-theme="dark"] .kpi-shortcuts-grid {
+  scrollbar-color: rgba(129, 140, 248, 0.5) rgba(30, 41, 59, 0.5) !important;
+}
+
+[data-theme="dark"] .kpi-shortcuts-grid::-webkit-scrollbar-track,
+html[data-theme="dark"] .kpi-shortcuts-grid::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5) !important;
+}
+
+[data-theme="dark"] .kpi-shortcuts-grid::-webkit-scrollbar-thumb,
+html[data-theme="dark"] .kpi-shortcuts-grid::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.5) !important;
+}
+
+[data-theme="dark"] .kpi-shortcuts-grid::-webkit-scrollbar-thumb:hover,
+html[data-theme="dark"] .kpi-shortcuts-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.8) !important;
+}
 
 [data-theme="dark"] .shortcut-chip,
 html[data-theme="dark"] .shortcut-chip {

@@ -1287,6 +1287,94 @@ export function handleDemoApi(endpoint, options = {}) {
     }
   }
 
+  // --- Manager Dashboard & Team Endpoints ---
+  if (norm.startsWith("/manager") || norm.startsWith("/resignations/team")) {
+    const allEmployees = getMergedEmployees();
+    const directReports = allEmployees.filter((e) => {
+      const repMgr = String(
+        e.reportsTo?.name || e.reportsTo || e.employment?.reportsTo || e.employment?.reportingManager || ""
+      ).toLowerCase();
+      return repMgr.includes("vikas") || repMgr === "17" || repMgr === "emp017" || Boolean(e.reportsTo || e.employment?.reportsTo);
+    });
+
+    if (norm === "/manager/overview" || norm === "/manager/team") {
+      return {
+        success: true,
+        data: {
+          teamSize: directReports.length,
+          pendingLeaves: 0,
+          pendingTimesheets: 0,
+          teamMembers: directReports,
+        },
+      };
+    }
+
+    if (norm.startsWith("/manager/team-leaves")) {
+      return { success: true, data: [] };
+    }
+
+    if (norm.startsWith("/manager/team-timesheets")) {
+      return { success: true, data: [] };
+    }
+
+    if (norm.startsWith("/manager/projects")) {
+      return { success: true, data: [] };
+    }
+
+    if (norm.startsWith("/resignations/team")) {
+      return { success: true, data: [] };
+    }
+  }
+
+  // --- Resource Allocation Endpoints ---
+  if (norm.startsWith("/allocation")) {
+    let allocMap = {};
+    try {
+      const saved = localStorage.getItem("hrms_resource_allocation_matrix");
+      if (saved) allocMap = JSON.parse(saved) || {};
+    } catch (_) {}
+
+    if (method === "POST" || method === "PATCH" || method === "PUT") {
+      try {
+        const body = options.body ? JSON.parse(options.body) : {};
+        const empId = String(body.empId || body.id || "");
+        if (empId) {
+          allocMap[empId] = {
+            status: body.status || "Allocated",
+            project: body.status === "Allocated" ? (body.projectName || body.project || "") : null,
+            sowNumber: body.status === "Allocated" ? (body.sowNumber || "") : "",
+            name: body.employeeName || allocMap[empId]?.name || "",
+            code: body.employeeCode || allocMap[empId]?.code || "",
+            department: body.department || allocMap[empId]?.department || "Engineering",
+            role: body.role || allocMap[empId]?.role || "Engineer",
+            releasedToBench: body.status === "Bench",
+          };
+          localStorage.setItem("hrms_resource_allocation_matrix", JSON.stringify(allocMap));
+        }
+      } catch (_) {}
+      return { success: true, data: allocMap };
+    }
+
+    const list = Object.entries(allocMap).map(([empId, val], idx) => ({
+      id: val.id || idx + 1,
+      empId,
+      employeeName: val.name || "",
+      employeeCode: val.code || "",
+      department: val.department || "Engineering",
+      role: val.role || "Engineer",
+      projectName: val.project || "",
+      sowNumber: val.sowNumber || "",
+      status: val.status || "Bench",
+      notes: val.releasedToBench ? "RELEASED_TO_BENCH" : "",
+    }));
+
+    return {
+      success: true,
+      data: list,
+      count: list.length,
+    };
+  }
+
   // Fallback for any other endpoint
   return {
     success: true,

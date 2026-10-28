@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   askAiAssistant,
   queryAiAnalytics,
@@ -8,19 +8,48 @@ import {
   getAiHubOverview,
 } from "../../services/aiIntelligenceService";
 import { getCandidates } from "../../services/candidateService";
+import { useAuth } from "../../context/AuthContext";
+import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import { toast } from "react-toastify";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import "./AiIntelligenceHub.css";
 
 const AI_TABS = [
   { id: "assistant", label: "1. AI HR & Policy Assistant", icon: "💬", desc: "Conversational Employee Q&A, Policies & Self-Service" },
   { id: "analytics", label: "2. AI HR Analytics", icon: "📊", desc: "Natural Language Workforce Insights & Charts" },
-  { id: "attendance", label: "3. Smart Attendance Monitoring", icon: "⏱️", desc: "Pattern Anomaly Engine & Explanations" },
+  { id: "attendance", label: "3. Smart Attendance Monitoring", icon: "⏱️", desc: "Real-Time Biometric Telemetry & Anomaly Engine" },
   { id: "recruitment", label: "4. AI Recruitment Assistant", icon: "🎯", desc: "Resume Skill Match & Interview Generator" },
   { id: "policy", label: "5. HR Policy Search", icon: "📑", desc: "Semantic Policy Retrieval & Clause Citations" },
 ];
 
+const PATTERN_ICONS = {
+  CHRONIC_LATE_ARRIVALS: "⏰",
+  LATE_ARRIVAL_VARIANCE: "🕒",
+  MISSING_PUNCH_OUT: "🚪",
+  SHIFT_DURATION_VARIANCE: "📉",
+  UNEXCUSED_ABSENCE_GAP: "🚫",
+  PENDING_REGULARIZATION_REVIEW: "📝",
+};
+
+function buildCandidateProfileSummary(c) {
+  if (!c) return "";
+  const skillsStr = Array.isArray(c.skills) ? c.skills.join(", ") : String(c.skills || "");
+  return [
+    c.name || `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+    c.designation ? `Role: ${c.designation}` : "",
+    c.department ? `Department: ${c.department}` : "",
+    c.experience ? `Experience: ${c.experience}` : "",
+    skillsStr ? `Technical Skills: ${skillsStr}` : "",
+    c.status ? `Pipeline Stage: ${c.status}` : "",
+    c.bgv_status ? `BGV Status: ${c.bgv_status}` : "",
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
 export default function AiIntelligenceHub() {
+  const navigate = useNavigate();
+  const { user, employee: currentEmployee } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(() => {
@@ -45,7 +74,7 @@ export default function AiIntelligenceHub() {
   const [chatMessages, setChatMessages] = useState([
     {
       sender: "ai",
-      text: "Hello! I am your AI HR & Policy Assistant. I can help answer questions about company policies, leave balances, approval status, employment letters, project deployment, reporting manager, and attendance. What would you like to know today?",
+      text: "Hello! I am your AI HR & Policy Assistant connected to live PostgreSQL records. Ask me about your leave balances, leave status, employment letters, project deployment, reporting manager, attendance punches, or company policies.",
       intent: "GREETING",
       confidence: 1.0,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -86,6 +115,10 @@ export default function AiIntelligenceHub() {
   const [anomalyData, setAnomalyData] = useState(null);
   const [loadingAnomalies, setLoadingAnomalies] = useState(false);
   const [severityFilter, setSeverityFilter] = useState("ALL");
+  const [departmentFilter, setDepartmentFilter] = useState("ALL");
+  const [patternFilter, setPatternFilter] = useState("ALL");
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [attendanceViewMode, setAttendanceViewMode] = useState("anomalies"); // "anomalies" | "roster"
   const [lookbackDays, setLookbackDays] = useState(30);
 
   // ---------------------------------------------------------------------------
@@ -94,9 +127,7 @@ export default function AiIntelligenceHub() {
   const [candidateList, setCandidateList] = useState([]);
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
   const [targetRole, setTargetRole] = useState("Lead Cloud Architect");
-  const [customResume, setCustomResume] = useState(
-    "Senior Cloud & DevOps Engineer with 7 years experience in Azure, Kubernetes cluster management, Docker containers, Terraform infrastructure as code, Node.js microservices, PostgreSQL, and GitOps workflows."
-  );
+  const [customResume, setCustomResume] = useState("");
   const [recruitmentResult, setRecruitmentResult] = useState(null);
   const [isMatchingCandidate, setIsMatchingCandidate] = useState(false);
 
@@ -124,7 +155,7 @@ export default function AiIntelligenceHub() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "attendance" && !anomalyData) {
+    if (activeTab === "attendance" && !Array.isArray(anomalyData?.anomalies)) {
       loadAnomalies(lookbackDays);
     } else if (activeTab === "analytics" && !analyticsResult) {
       runInitialAnalytics();
@@ -145,6 +176,30 @@ export default function AiIntelligenceHub() {
       const res = await getAiHubOverview();
       if (res && res.success) {
         setOverview(res);
+        if (res.attendanceSummary) {
+          setAnomalyData((prev) =>
+            prev?.anomalies
+              ? prev
+              : {
+                  scope: res.attendanceSummary.scope,
+                  lookbackDays: res.attendanceSummary.lookbackDays ?? 30,
+                  anomaliesFound: res.attendanceSummary.anomaliesDetected,
+                  criticalCount: res.attendanceSummary.criticalAlerts,
+                  warningCount: res.attendanceSummary.warningAlerts,
+                  scannedPunches: res.attendanceSummary.scannedPunches ?? 0,
+                  scannedEmployees: res.attendanceSummary.scannedEmployees ?? 0,
+                  employeesWithPunches: res.attendanceSummary.employeesWithPunches ?? 0,
+                  overallPunctualityRate: res.attendanceSummary.overallPunctualityRate ?? 100,
+                  avgWorkforceHours: res.attendanceSummary.avgWorkforceHours ?? 0,
+                  autoClosedCount: res.attendanceSummary.autoClosedCount ?? 0,
+                  departmentBreakdown: res.attendanceSummary.departmentBreakdown ?? [],
+                  patternBreakdown: res.attendanceSummary.patternBreakdown ?? [],
+                  employeeTelemetry: res.attendanceSummary.employeeTelemetry ?? [],
+                  recentPunches: res.attendanceSummary.recentPunches ?? [],
+                  anomalies: res.attendanceSummary.anomalies ?? [],
+                }
+          );
+        }
       }
     } catch (err) {
       console.warn("Could not load AI Hub overview:", err.message);
@@ -158,7 +213,31 @@ export default function AiIntelligenceHub() {
       const list = await getCandidates();
       if (Array.isArray(list) && list.length > 0) {
         setCandidateList(list);
-        setSelectedCandidateId(String(list[0].id));
+        const first = list[0];
+        const firstId = String(first.id);
+        const firstSummary = buildCandidateProfileSummary(first);
+        const initialRole = first.designation && [
+          "Lead Cloud Architect",
+          "Senior Full-Stack PERN Engineer",
+          "DevOps & SRE Specialist",
+          "Staff Data Engineer",
+          "Quality Assurance Automation Lead"
+        ].includes(first.designation)
+          ? first.designation
+          : targetRole;
+
+        setSelectedCandidateId(firstId);
+        setCustomResume(firstSummary);
+
+        // Immediately run live AI candidate analysis against DB record
+        const matchRes = await analyzeCandidateWithAi({
+          candidateId: Number(first.id),
+          customResumeText: firstSummary,
+          targetRole: initialRole,
+        });
+        if (matchRes && matchRes.success) {
+          setRecruitmentResult(matchRes);
+        }
       }
     } catch (err) {
       console.warn("Could not fetch candidate directory:", err.message);
@@ -172,7 +251,9 @@ export default function AiIntelligenceHub() {
       if (res && res.success) {
         setAnomalyData(res);
         if (isManual) {
-          toast.success(`Scanned ${res.scannedPunches || 0} punches across ${res.scannedEmployees || 0} employees.`);
+          toast.success(
+            `Scanned ${res.scannedPunches || 0} biometric punches across ${res.scannedEmployees || 0} employees.`
+          );
         }
       }
     } catch (err) {
@@ -273,7 +354,7 @@ export default function AiIntelligenceHub() {
       const res = await queryAiAnalytics(q);
       if (res && res.success) {
         setAnalyticsResult(res);
-        toast.success("Workforce analytics query resolved.");
+        toast.success("Workforce analytics query resolved from PostgreSQL.");
       } else {
         toast.error(res?.message || "Analytics query could not be completed.");
       }
@@ -287,6 +368,18 @@ export default function AiIntelligenceHub() {
   // ---------------------------------------------------------------------------
   // ACTIONS: TAB 4 RECRUITMENT MATCH
   // ---------------------------------------------------------------------------
+  const handleCandidateSelectChange = (candId) => {
+    setSelectedCandidateId(candId);
+    if (!candId) {
+      setCustomResume("");
+      return;
+    }
+    const found = candidateList.find((c) => String(c.id) === String(candId));
+    if (found) {
+      setCustomResume(buildCandidateProfileSummary(found));
+    }
+  };
+
   const handleRunCandidateMatch = async () => {
     setIsMatchingCandidate(true);
     try {
@@ -331,44 +424,199 @@ export default function AiIntelligenceHub() {
     }
   };
 
-  // Filtered anomalies
-  const anomalies = anomalyData?.anomalies || [];
-  const filteredAnomalies =
-    severityFilter === "ALL"
-      ? anomalies
-      : anomalies.filter((a) => a.severity?.toUpperCase() === severityFilter);
+  // ---------------------------------------------------------------------------
+  // DERIVED SMART ATTENDANCE FILTERS & ROLE-SCOPED TELEMETRY
+  // ---------------------------------------------------------------------------
+  const userRoleLower = String(user?.role || "employee").toLowerCase();
+  const isHrEnterpriseView = useMemo(() => {
+    if (anomalyData?.scope) {
+      return anomalyData.scope === "ENTERPRISE";
+    }
+    return (
+      ["hr", "admin", "super_admin", "hr_admin", "hr_manager", "hr_operations", "leadership", "executive"].includes(
+        userRoleLower
+      ) ||
+      userRoleLower.includes("hr") ||
+      userRoleLower.includes("admin")
+    );
+  }, [anomalyData?.scope, userRoleLower]);
+
+  const matchesLoggedInEmployee = (record) => {
+    if (!record) return false;
+    const myUserId = user?.id || user?.userId;
+    const myEmpId = currentEmployee?.id;
+    const myEmpCode = currentEmployee?.employee_code;
+    const myEmail = (user?.email || currentEmployee?.email || "").toLowerCase();
+    const myName = (
+      currentEmployee?.first_name
+        ? `${currentEmployee.first_name} ${currentEmployee.last_name || ""}`.trim()
+        : user?.name || ""
+    ).toLowerCase();
+
+    if (myUserId && (String(record.userId) === String(myUserId) || String(record.employeeId) === String(myUserId))) {
+      return true;
+    }
+    if (myEmpId && (String(record.employeeId) === String(myEmpId) || String(record.userId) === String(myEmpId))) {
+      return true;
+    }
+    if (myEmpCode && record.employeeCode && String(record.employeeCode).toLowerCase() === String(myEmpCode).toLowerCase()) {
+      return true;
+    }
+    if (myEmail && record.employeeEmail && String(record.employeeEmail).toLowerCase() === myEmail) {
+      return true;
+    }
+    if (myName && record.employeeName && String(record.employeeName).toLowerCase() === myName) {
+      return true;
+    }
+    return false;
+  };
+
+  const anomalies = useMemo(() => {
+    const raw = anomalyData?.anomalies || [];
+    if (isHrEnterpriseView) return raw;
+    if (anomalyData?.scope === "PERSONAL") return raw;
+    return raw.filter(matchesLoggedInEmployee);
+  }, [anomalyData, isHrEnterpriseView, user, currentEmployee]);
+
+  const employeeTelemetry = useMemo(() => {
+    const raw = anomalyData?.employeeTelemetry || [];
+    if (isHrEnterpriseView) return raw;
+    if (anomalyData?.scope === "PERSONAL") return raw;
+    return raw.filter(matchesLoggedInEmployee);
+  }, [anomalyData, isHrEnterpriseView, user, currentEmployee]);
+
+  const recentPunches = useMemo(() => {
+    const raw = anomalyData?.recentPunches || [];
+    if (isHrEnterpriseView) return raw;
+    if (anomalyData?.scope === "PERSONAL") return raw;
+    return raw.filter(matchesLoggedInEmployee);
+  }, [anomalyData, isHrEnterpriseView, user, currentEmployee]);
+
+  const availableDepartments = useMemo(() => {
+    const depts = new Set();
+    anomalies.forEach((a) => {
+      if (a.department) depts.add(a.department);
+    });
+    employeeTelemetry.forEach((e) => {
+      if (e.department) depts.add(e.department);
+    });
+    return ["ALL", ...Array.from(depts).sort()];
+  }, [anomalies, employeeTelemetry]);
+
+  const availablePatterns = useMemo(() => {
+    const map = new Map();
+    anomalies.forEach((a) => {
+      const type = a.type || a.patternType;
+      const label = a.patternLabel || type?.replace(/_/g, " ");
+      if (type) {
+        map.set(type, { type, label, count: (map.get(type)?.count || 0) + 1 });
+      }
+    });
+    return Array.from(map.values());
+  }, [anomalies]);
+
+  const filteredAnomalies = useMemo(() => {
+    const q = employeeSearch.trim().toLowerCase();
+    return anomalies.filter((item) => {
+      if (severityFilter !== "ALL" && item.severity?.toUpperCase() !== severityFilter) {
+        return false;
+      }
+      if (isHrEnterpriseView && departmentFilter !== "ALL" && item.department !== departmentFilter) {
+        return false;
+      }
+      if (patternFilter !== "ALL" && (item.type || item.patternType) !== patternFilter) {
+        return false;
+      }
+      if (isHrEnterpriseView && q) {
+        const hay = `${item.employeeName || ""} ${item.employeeCode || ""} ${item.department || ""} ${item.designation || ""} ${item.managerName || ""} ${item.patternLabel || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [anomalies, severityFilter, departmentFilter, patternFilter, employeeSearch, isHrEnterpriseView]);
+
+  const filteredRoster = useMemo(() => {
+    const q = employeeSearch.trim().toLowerCase();
+    return employeeTelemetry.filter((emp) => {
+      if (isHrEnterpriseView && departmentFilter !== "ALL" && emp.department !== departmentFilter) {
+        return false;
+      }
+      if (isHrEnterpriseView && q) {
+        const hay = `${emp.employeeName || ""} ${emp.employeeCode || ""} ${emp.department || ""} ${emp.designation || ""} ${emp.managerName || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [employeeTelemetry, departmentFilter, employeeSearch, isHrEnterpriseView]);
 
   return (
-    <div className="ai-intelligence-container" role="main">
-      {/* ── HEADER BANNER ────────────────────────────────────────── */}
+    <>
+      <EmployeeHeader />
+      <div className="ai-intelligence-container" role="main">
+        {/* ── HEADER BANNER ────────────────────────────────────────── */}
       <header className="ai-hero-card">
         <div className="ai-hero-meta">
           <div className="ai-live-badge">
             <span className="ai-pulse-dot" />
-            PERN AI INTELLIGENCE SYSTEM
+            PERN AI INTELLIGENCE SYSTEM • LIVE POSTGRESQL TELEMETRY
           </div>
           <h1 className="ai-hero-title">Cognitive HRMS Intelligence Engine</h1>
           <p className="ai-hero-subtitle">
-            Enterprise AI capabilities powered by Express APIs &amp; PostgreSQL. Seamlessly orchestrating Natural
-            Language Self-Service, Workforce Analytics, Pattern Anomaly Detection, Candidate Qualification Matching, and Semantic Policy Search.
+            Enterprise AI capabilities powered 100% by live Express APIs &amp; PostgreSQL relational tables.
+            Orchestrating Natural Language Self-Service, Workforce Analytics, Biometric Pattern Anomaly Detection,
+            Candidate Qualification Matching, and Semantic Policy Search.
           </p>
         </div>
 
         <div className="ai-hero-stats">
-          <div className="ai-stat-pod">
+          <div
+            className="ai-stat-pod"
+            title="All AI cognitive subsystems currently active"
+          >
             <span className="ai-stat-label">Active AI Modules</span>
-            <span className="ai-stat-value">5 / 5</span>
-            <span className="ai-stat-tag text-emerald">100% Operational</span>
+            <span className="ai-stat-value">
+              {overview?.moduleSummary?.activeCount ??
+                overview?.featuresEnabled?.filter((f) => f.status === "Active")?.length ??
+                AI_TABS.length}{" "}
+              / {overview?.moduleSummary?.totalCount ?? overview?.featuresEnabled?.length ?? AI_TABS.length}
+            </span>
+            <span className="ai-stat-tag text-emerald">
+              {overview?.moduleSummary?.statusText ?? "100% Operational"}
+            </span>
           </div>
-          <div className="ai-stat-pod">
+          <div
+            className="ai-stat-pod"
+            onClick={() => {
+              setActiveTab("attendance");
+              setSearchParams({ tab: "attendance" });
+            }}
+            style={{ cursor: "pointer" }}
+            title="Click to view Attendance Anomaly Detection Engine"
+          >
             <span className="ai-stat-label">Attendance Anomalies</span>
-            <span className="ai-stat-value">{anomalyData?.anomaliesFound ?? "10"}</span>
-            <span className="ai-stat-tag text-amber">{anomalyData?.criticalCount ?? 2} Critical Flagged</span>
+            <span className="ai-stat-value">
+              {anomalyData?.anomaliesFound ?? overview?.attendanceSummary?.anomaliesDetected ?? 0}
+            </span>
+            <span className="ai-stat-tag text-amber">
+              {anomalyData?.criticalCount ?? overview?.attendanceSummary?.criticalAlerts ?? 0} Critical Flagged
+            </span>
           </div>
-          <div className="ai-stat-pod">
+          <div
+            className="ai-stat-pod"
+            onClick={() => {
+              setActiveTab("policy");
+              setSearchParams({ tab: "policy" });
+            }}
+            style={{ cursor: "pointer" }}
+            title="Click to view Semantic HR Policy Vault"
+          >
             <span className="ai-stat-label">Policy Vault</span>
-            <span className="ai-stat-value">12 Doc Sets</span>
-            <span className="ai-stat-tag text-cyan">Semantic Index Active</span>
+            <span className="ai-stat-value">
+              {`${overview?.policySummary?.totalPolicySets ?? 0} Doc Sets`}
+            </span>
+            <span className="ai-stat-tag text-cyan">
+              {overview?.policySummary?.semanticIndexStatus ?? "PostgreSQL Indexed"}
+            </span>
           </div>
         </div>
       </header>
@@ -412,77 +660,229 @@ export default function AiIntelligenceHub() {
                       <span className="assistant-role-badge">Authorized Persona-Aware Engine</span>
                     </div>
                   </div>
-                  <span className="assistant-security-pill">🔒 Express &amp; PostgreSQL Protected</span>
+                  <span className="assistant-security-pill">🔒 Live PostgreSQL Connected</span>
                 </div>
 
                 {/* Messages Feed */}
                 <div className="chat-messages-scroll" role="log" aria-live="polite">
-                  {chatMessages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`chat-bubble-row ${msg.sender === "user" ? "user-row" : "ai-row"}`}
-                    >
-                      {msg.sender === "ai" && <span className="bubble-avatar">🤖</span>}
-                      <div className={`chat-bubble ${msg.sender}`}>
-                        <div className="bubble-top-meta">
-                          <span className="bubble-sender">{msg.sender === "user" ? "You" : "AI HR Assistant"}</span>
-                          {msg.intent && (
-                            <span className="intent-badge">
-                              {msg.intent} {msg.confidence ? `(${(msg.confidence * 100).toFixed(0)}%)` : ""}
+                  {chatMessages.map((msg, idx) => {
+                    const attRecord = msg.structuredData?.attendanceRecord || null;
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`chat-bubble-row ${msg.sender === "user" ? "user-row" : "ai-row"}`}
+                      >
+                        {msg.sender === "ai" && <span className="bubble-avatar">🤖</span>}
+                        <div className={`chat-bubble ${msg.sender}`}>
+                          <div className="bubble-top-meta">
+                            <span className="bubble-sender">
+                              {msg.sender === "user" ? "You" : "AI HR Assistant"}
                             </span>
-                          )}
-                          <span className="bubble-time">{msg.timestamp}</span>
-                        </div>
+                            {msg.intent && (
+                              <span className="intent-badge">
+                                {msg.intent} {msg.confidence ? `(${(msg.confidence * 100).toFixed(0)}%)` : ""}
+                              </span>
+                            )}
+                            <span className="bubble-time">{msg.timestamp}</span>
+                          </div>
 
-                        <div className="bubble-content-text">
-                          {msg.text.split("\n\n").map((para, pIdx) => (
-                            <p key={pIdx}>{para}</p>
-                          ))}
-                        </div>
+                          <div className="bubble-content-text">
+                            {String(msg.text || "")
+                              .split("\n\n")
+                              .map((para, pIdx) => {
+                                const parts = para.split(/(\*\*[^*]+\*\*)/g);
+                                return (
+                                  <p key={pIdx}>
+                                    {parts.map((part, partIdx) => {
+                                      if (part.startsWith("**") && part.endsWith("**")) {
+                                        return <strong key={partIdx}>{part.slice(2, -2)}</strong>;
+                                      }
+                                      return part;
+                                    })}
+                                  </p>
+                                );
+                              })}
+                          </div>
 
-                        {/* Structured Data: Leave Balances Card */}
-                        {msg.structuredData?.balances && (
-                          <div className="structured-balances-grid">
-                            {msg.structuredData.balances.map((b, bIdx) => (
-                              <div key={bIdx} className="leave-balance-chip">
-                                <div className="balance-chip-header">
-                                  <span className="balance-type">{b.type}</span>
-                                  <span className="balance-remaining">{b.remaining} left</span>
+                          {/* Structured Data: Attendance Telemetry Card */}
+                          {attRecord && (
+                            <div className="structured-attendance-card">
+                              <div className="attendance-card-header">
+                                <div className="attendance-header-meta">
+                                  <span className="attendance-badge-telemetry">
+                                    <span className="telemetry-radar-dot"></span> ⏱️ Biometric Telemetry
+                                  </span>
+                                  <span className="attendance-badge-date">📅 {attRecord.date}</span>
                                 </div>
-                                <div className="balance-progress-track">
-                                  <div
-                                    className="balance-progress-bar"
-                                    style={{
-                                      width: `${Math.min(100, Math.max(0, (b.remaining / (b.total || 1)) * 100))}%`,
-                                    }}
-                                  />
+                                <span
+                                  className={`attendance-status-badge ${
+                                    attRecord.isLate
+                                      ? "late"
+                                      : attRecord.isMissing
+                                      ? "missing"
+                                      : "present"
+                                  }`}
+                                >
+                                  <span className="status-pulse-dot" />
+                                  {attRecord.isLate
+                                    ? "Late Arrival"
+                                    : attRecord.isMissing
+                                    ? "Not Punched"
+                                    : "On-Time / Present"}
+                                </span>
+                              </div>
+
+                              <div className="attendance-telemetry-grid">
+                                {/* Clock In Pod */}
+                                <div className="attendance-telemetry-pod checkin">
+                                  <div className="pod-label-row">
+                                    <span>Clock In</span>
+                                    <span className="pod-icon">🟢</span>
+                                  </div>
+                                  <div className="pod-value">{attRecord.checkIn}</div>
+                                  <div className="pod-subtext">
+                                    <span>🔒 PostgreSQL Attendance Log</span>
+                                  </div>
                                 </div>
-                                <div className="balance-chip-footer">
-                                  <span>Allocated: {b.total}</span>
-                                  <span>Used: {b.used}</span>
+
+                                {/* Clock Out Pod */}
+                                <div className="attendance-telemetry-pod checkout">
+                                  <div className="pod-label-row">
+                                    <span>Clock Out</span>
+                                    <span className="pod-icon">🚪</span>
+                                  </div>
+                                  <div className="pod-value">
+                                    {String(attRecord.checkOut || "")
+                                      .toLowerCase()
+                                      .includes("pending") ||
+                                    String(attRecord.checkOut || "")
+                                      .toLowerCase()
+                                      .includes("active") ? (
+                                      <span className="pod-live-pill">
+                                        <span className="status-pulse-dot live" /> Active
+                                      </span>
+                                    ) : (
+                                      attRecord.checkOut
+                                    )}
+                                  </div>
+                                  <div className="pod-subtext">
+                                    {String(attRecord.checkOut || "")
+                                      .toLowerCase()
+                                      .includes("pending") ||
+                                    String(attRecord.checkOut || "")
+                                      .toLowerCase()
+                                      .includes("active")
+                                      ? "⏳ Shift in progress"
+                                      : "🏁 Status Recorded"}
+                                  </div>
+                                </div>
+
+                                {/* Shift Status Pod */}
+                                <div
+                                  className={`attendance-telemetry-pod status ${
+                                    attRecord.isLate ? "is-late" : ""
+                                  }`}
+                                >
+                                  <div className="pod-label-row">
+                                    <span>Shift Status</span>
+                                    <span className="pod-icon">📊</span>
+                                  </div>
+                                  <div className="pod-value" style={{ textTransform: "capitalize" }}>
+                                    {attRecord.status || (attRecord.isLate ? "Late" : "Present")}
+                                  </div>
+                                  <div className="pod-subtext">
+                                    {attRecord.isLate
+                                      ? `⚠️ Checked-in past 09:30 (${attRecord.lateMinutes || 0}m late)`
+                                      : attRecord.totalHours
+                                      ? `⏱️ ${attRecord.totalHours} hrs logged`
+                                      : "🎯 Standard Shift Window"}
+                                  </div>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
 
-                        {/* Structured Data: Actionable Quick Links */}
-                        {msg.actionableLinks && msg.actionableLinks.length > 0 && (
-                          <div className="actionable-links-tray">
-                            <span className="actionable-title">Suggested Next Actions:</span>
-                            <div className="actionable-buttons">
-                              {msg.actionableLinks.map((link, lIdx) => (
-                                <Link key={lIdx} to={link.path} className="actionable-link-btn">
-                                  {link.label} →
-                                </Link>
+                              <div className="attendance-footer-strip">
+                                <div className="attendance-terminal-info">
+                                  <span>📍 Location: {attRecord.workLocation || "Registered Office"}</span>
+                                </div>
+                                <div className="attendance-sync-status">
+                                  <span>⚡ PostgreSQL Synced</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Structured Data: Leave Balances Card */}
+                          {msg.structuredData?.balances && msg.structuredData.balances.length > 0 && (
+                            <div className="structured-balances-grid">
+                              {msg.structuredData.balances.map((b, bIdx) => (
+                                <div key={bIdx} className="leave-balance-chip">
+                                  <div className="balance-chip-header">
+                                    <span className="balance-type">{b.type}</span>
+                                    <span className="balance-remaining">{b.remaining} left</span>
+                                  </div>
+                                  <div className="balance-progress-track">
+                                    <div
+                                      className="balance-progress-bar"
+                                      style={{
+                                        width: `${Math.min(
+                                          100,
+                                          Math.max(0, (b.remaining / (b.total || 1)) * 100)
+                                        )}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="balance-chip-footer">
+                                    <span>Allocated: {b.total}</span>
+                                    <span>Used: {b.used}</span>
+                                  </div>
+                                </div>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          {/* Structured Data: Actionable Quick Links */}
+                          {msg.actionableLinks && msg.actionableLinks.length > 0 && (
+                            <div className="actionable-links-tray">
+                              <span className="actionable-title">Suggested Next Actions:</span>
+                              <div className="actionable-buttons">
+                                {msg.actionableLinks.map((link, lIdx) => {
+                                  const targetUrl = link.url || link.path || "/";
+                                  return (
+                                    <Link
+                                      key={lIdx}
+                                      to={targetUrl}
+                                      onClick={(e) => {
+                                        if (targetUrl.includes("tab=")) {
+                                          e.preventDefault();
+                                          const tabId = new URLSearchParams(
+                                            targetUrl.split("?")[1] || ""
+                                          ).get("tab");
+                                          if (tabId && AI_TABS.some((t) => t.id === tabId)) {
+                                            setActiveTab(tabId);
+                                            setSearchParams({ tab: tabId });
+                                            return;
+                                          }
+                                        }
+                                        if (targetUrl.startsWith("/")) {
+                                          e.preventDefault();
+                                          navigate(targetUrl);
+                                        }
+                                      }}
+                                      className="actionable-link-btn"
+                                    >
+                                      {link.label} →
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {msg.sender === "user" && <span className="bubble-avatar user-icon">👤</span>}
                       </div>
-                      {msg.sender === "user" && <span className="bubble-avatar user-icon">👤</span>}
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {isAsking && (
                     <div className="chat-bubble-row ai-row">
@@ -524,7 +924,7 @@ export default function AiIntelligenceHub() {
               <div className="assistant-sidebar">
                 <div className="quick-prompts-card">
                   <h4 className="side-card-title">💡 Natural Language Prompt Starters</h4>
-                  <p className="side-card-desc">Click any question below to test live retrieval:</p>
+                  <p className="side-card-desc">Click any question below to test live PostgreSQL retrieval:</p>
                   <div className="prompt-pill-list">
                     {assistantSuggestions.map((promptText, idx) => (
                       <button
@@ -543,10 +943,10 @@ export default function AiIntelligenceHub() {
                   <h4 className="side-card-title">🛡️ Architectural Safeguards</h4>
                   <ul className="safeguards-list">
                     <li>
-                      <strong>Zero Role Escalation:</strong> Employees only retrieve their own leave, attendance, and project data.
+                      <strong>Zero Static Data:</strong> Every answer is resolved dynamically from live PostgreSQL records.
                     </li>
                     <li>
-                      <strong>PostgreSQL Backed:</strong> Interprets user intent, executes parameterized SQL queries against live tables.
+                      <strong>Zero Role Escalation:</strong> Employees only retrieve their own leave, attendance, and project data.
                     </li>
                     <li>
                       <strong>Direct Actions:</strong> Auto-suggests deep links to leave request portals, document downloads, or tickets.
@@ -590,7 +990,7 @@ export default function AiIntelligenceHub() {
                   <button
                     key={idx}
                     type="button"
-                    className="preset-chip"
+                    className={`preset-chip ${analyticsQuery === preset ? "active" : ""}`}
                     onClick={() => {
                       setAnalyticsQuery(preset);
                       handleRunAnalytics(preset);
@@ -609,18 +1009,35 @@ export default function AiIntelligenceHub() {
                 <div className="analytics-summary-banner">
                   <div className="analytics-banner-header">
                     <span className="analytics-badge">AI Workforce Intelligence</span>
-                    <h3 className="analytics-title">{analyticsResult.title}</h3>
+                    <h3 className="analytics-title">
+                      {analyticsResult.title || analyticsResult.metricTitle || "Workforce Analytics Summary"}
+                    </h3>
                   </div>
-                  <p className="analytics-narrative">{analyticsResult.summary}</p>
+                  <p className="analytics-narrative">
+                    {String(analyticsResult.summary || "")
+                      .split(/(\*\*[^*]+\*\*)/g)
+                      .map((part, pIdx) =>
+                        part.startsWith("**") && part.endsWith("**") ? (
+                          <strong key={pIdx}>{part.slice(2, -2)}</strong>
+                        ) : (
+                          part
+                        )
+                      )}
+                  </p>
                 </div>
 
                 {/* Key Metrics Cards */}
                 {analyticsResult.keyMetrics && (
                   <div className="analytics-kpi-grid">
-                    {Object.entries(analyticsResult.keyMetrics).map(([key, val], idx) => (
+                    {(Array.isArray(analyticsResult.keyMetrics)
+                      ? analyticsResult.keyMetrics.map((m) => [m.label, m.value])
+                      : Object.entries(analyticsResult.keyMetrics)
+                    ).map(([key, val], idx) => (
                       <div key={idx} className="kpi-card">
-                        <span className="kpi-label">{key.replace(/([A-Z])/g, " $1").toUpperCase()}</span>
-                        <span className="kpi-value">{String(val)}</span>
+                        <span className="kpi-label">{String(key).replace(/([A-Z])/g, " $1").toUpperCase()}</span>
+                        <span className="kpi-value">
+                          {val && typeof val === "object" ? String(val.value ?? "") : String(val ?? "")}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -630,39 +1047,75 @@ export default function AiIntelligenceHub() {
                 {analyticsResult.chartData && (
                   <div className="analytics-chart-card">
                     <h4 className="chart-card-heading">
-                      Visual Distribution: {analyticsResult.chartData.chartType?.toUpperCase()} Breakdown
+                      Visual Distribution:{" "}
+                      {(analyticsResult.chartData.chartType || analyticsResult.chartType || "BAR").toUpperCase()}{" "}
+                      Breakdown
                     </h4>
 
-                    {/* Department / Category Bar Charts */}
-                    {Array.isArray(analyticsResult.chartData.data) && (
-                      <div className="custom-bars-container">
-                        {analyticsResult.chartData.data.map((item, idx) => {
-                          const label = item.department || item.name || item.status || `Group ${idx + 1}`;
-                          const val = Number(item.rate || item.count || item.value || 0);
-                          const formattedVal = item.rate !== undefined ? `${val}%` : val;
-                          const barWidth = Math.min(100, Math.max(12, val * 5));
+                    {(() => {
+                      const bars = Array.isArray(analyticsResult.chartData)
+                        ? analyticsResult.chartData
+                        : Array.isArray(analyticsResult.chartData.data)
+                        ? analyticsResult.chartData.data
+                        : [];
+                      const maxBarVal = Math.max(
+                        ...bars.map((b) => Number(b.rate ?? b.count ?? b.value ?? 0)),
+                        1
+                      );
+                      return (
+                        bars.length > 0 && (
+                          <div className="custom-bars-container">
+                            {bars.map((item, idx) => {
+                              const label =
+                                item.department || item.name || item.label || item.status || `Group ${idx + 1}`;
+                              const val = Number(item.rate ?? item.count ?? item.value ?? 0);
+                              const isRate =
+                                item.rate !== undefined ||
+                                String(analyticsResult.chartType || "").toUpperCase() === "DOUGHNUT";
+                              const formattedVal = isRate
+                                ? item.subValue
+                                  ? `${val}% (${item.subValue})`
+                                  : `${val}%`
+                                : item.subValue
+                                ? `${val} (${item.subValue})`
+                                : val;
+                              const barWidth = Math.min(
+                                100,
+                                Math.max(18, Math.round((val / maxBarVal) * 95))
+                              );
 
-                          return (
-                            <div key={idx} className="bar-row">
-                              <span className="bar-label">{label}</span>
-                              <div className="bar-track">
-                                <div className="bar-fill" style={{ width: `${barWidth}%` }}>
-                                  <span className="bar-fill-text">{formattedVal}</span>
+                              return (
+                                <div key={idx} className="bar-row">
+                                  <span className="bar-label">{label}</span>
+                                  <div className="bar-track">
+                                    <div className="bar-fill" style={{ width: `${barWidth}%` }}>
+                                      <span className="bar-fill-text">{formattedVal}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                              );
+                            })}
+                          </div>
+                        )
+                      );
+                    })()}
                   </div>
                 )}
 
                 {/* Breakdown Table if provided */}
                 {Array.isArray(analyticsResult.breakdown) && analyticsResult.breakdown.length > 0 && (
                   <div className="analytics-table-card">
-                    <h4 className="table-card-heading">Detailed Data Breakdown</h4>
-                    <div className="table-responsive">
+                    <div className="roster-card-header" style={{ marginBottom: "12px" }}>
+                      <h4 className="table-card-heading" style={{ margin: 0 }}>
+                        Detailed Data Breakdown ({analyticsResult.breakdown.length} Records)
+                      </h4>
+                      {analyticsResult.breakdown.length > 2 && (
+                        <span className="scroll-records-badge">
+                          ↕ Showing 2 of {analyticsResult.breakdown.length} records • Scroll for more
+                        </span>
+                      )}
+                    </div>
+                    <div className="table-responsive two-records-table-scroll">
                       <table className="ai-data-table">
                         <thead>
                           <tr>
@@ -684,161 +1137,752 @@ export default function AiIntelligenceHub() {
                     </div>
                   </div>
                 )}
+
+                {/* AI Methodology & Data Lineage Footer */}
+                {analyticsResult.explanation && (
+                  <div className="governance-notice-bar">
+                    <span className="gov-icon">🧠</span>
+                    <span>
+                      <strong>Data Lineage &amp; Methodology:</strong> {analyticsResult.explanation}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
         {/* =========================================================
-            TAB 3: SMART ATTENDANCE MONITORING
+            TAB 3: SMART ATTENDANCE MONITORING (ROLE-SCOPED: PERSONAL VS HR ENTERPRISE)
             ========================================================= */}
         {activeTab === "attendance" && (
           <div className="ai-tab-panel attendance-panel">
-            {/* Header & Filter Controls */}
-            <div className="attendance-controls-bar">
-              <div className="controls-left">
-                <h3 className="section-title">Automated Attendance Anomaly Detection</h3>
-                <p className="section-sub">
-                  Rule-based detection combined with AI explanation of unusual attendance, check-out omissions, and shift variances.
-                </p>
+            {/* Command Center Header & Controls */}
+            <div className="smart-attendance-command-bar">
+              <div className="command-bar-top">
+                <div className="controls-left">
+                  <div className="smart-radar-pill">
+                    <span className="radar-live-dot" />
+                    {isHrEnterpriseView
+                      ? `ENTERPRISE BIOMETRIC & SHIFT TELEMETRY • ${lookbackDays}-DAY WORKFORCE WINDOW`
+                      : `PERSONAL BIOMETRIC TELEMETRY • MY ${lookbackDays}-DAY ATTENDANCE MONITOR`}
+                  </div>
+                  <h3 className="section-title">
+                    {isHrEnterpriseView
+                      ? "Enterprise Smart Attendance & Pattern Anomaly Monitoring"
+                      : "My Smart Attendance & Biometric Pattern Monitor"}
+                  </h3>
+                  <p className="section-sub">
+                    {isHrEnterpriseView ? (
+                      <>
+                        Real-time cross-correlation of all employees&apos; PostgreSQL <code>attendance</code> punches,
+                        system EOD auto-close events, <code>leaves</code>, and <code>employees</code> master records.
+                      </>
+                    ) : (
+                      <>
+                        Personal attendance telemetry, punctuality compliance, and shift pattern analysis for{" "}
+                        <strong>
+                          {employeeTelemetry[0]?.employeeName ||
+                            (currentEmployee?.first_name
+                              ? `${currentEmployee.first_name} ${currentEmployee.last_name || ""}`.trim()
+                              : user?.name || "your profile")}
+                        </strong>{" "}
+                        ({employeeTelemetry[0]?.employeeCode || currentEmployee?.employee_code || "My Profile"}).
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="controls-right">
+                  {/* View Switcher: Anomaly Feed vs Workforce/Personal Telemetry */}
+                  <div className="view-mode-toggle">
+                    <button
+                      type="button"
+                      className={`view-mode-btn ${attendanceViewMode === "anomalies" ? "active" : ""}`}
+                      onClick={() => setAttendanceViewMode("anomalies")}
+                    >
+                      🚨 {isHrEnterpriseView ? `Anomaly Alerts (${anomalies.length})` : `My Pattern Flags (${anomalies.length})`}
+                    </button>
+                    <button
+                      type="button"
+                      className={`view-mode-btn ${attendanceViewMode === "roster" ? "active" : ""}`}
+                      onClick={() => setAttendanceViewMode("roster")}
+                    >
+                      {isHrEnterpriseView
+                        ? `👥 Workforce Telemetry (${employeeTelemetry.length})`
+                        : `📅 My Punch Logs (${recentPunches.length})`}
+                    </button>
+                  </div>
+
+                  <select
+                    className="lookback-select"
+                    value={lookbackDays}
+                    onChange={(e) => {
+                      const days = Number(e.target.value);
+                      setLookbackDays(days);
+                      loadAnomalies(days, true);
+                    }}
+                  >
+                    <option value={7}>Last 7 Days</option>
+                    <option value={15}>Last 15 Days</option>
+                    <option value={30}>Last 30 Days</option>
+                    <option value={60}>Last 60 Days</option>
+                    <option value={90}>Last 90 Days</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    className="scan-refresh-btn"
+                    onClick={() => loadAnomalies(lookbackDays, true)}
+                    disabled={loadingAnomalies}
+                  >
+                    🔄 {loadingAnomalies ? "Scanning DB..." : isHrEnterpriseView ? "Re-Scan Workforce" : "Refresh My Logs"}
+                  </button>
+                </div>
               </div>
 
-              <div className="controls-right">
-                <div className="severity-filter-group">
-                  {["ALL", "CRITICAL", "WARNING"].map((lvl) => (
+              {/* Search, Department (HR Only), and Severity Filter Bar */}
+              <div className="command-bar-filters">
+                {isHrEnterpriseView ? (
+                  <>
+                    <div className="smart-search-input-wrap">
+                      <span className="smart-search-icon">🔍</span>
+                      <input
+                        type="text"
+                        className="smart-search-input"
+                        placeholder="Search employee name, code, designation, department, or manager..."
+                        value={employeeSearch}
+                        onChange={(e) => setEmployeeSearch(e.target.value)}
+                      />
+                      {employeeSearch && (
+                        <button
+                          type="button"
+                          className="smart-search-clear"
+                          onClick={() => setEmployeeSearch("")}
+                          title="Clear search"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="filter-select-wrap">
+                      <label className="filter-mini-label">Department:</label>
+                      <select
+                        className="smart-dept-select"
+                        value={departmentFilter}
+                        onChange={(e) => setDepartmentFilter(e.target.value)}
+                      >
+                        {availableDepartments.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept === "ALL" ? "All Departments" : dept}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <div className="personal-scope-banner-pill">
+                    <span>🔒</span>
+                    <span>
+                      <strong>Personal Privacy Scope Active:</strong> Showing only your own biometric attendance records and shift telemetry.
+                    </span>
+                  </div>
+                )}
+
+                {attendanceViewMode === "anomalies" && (
+                  <div className="severity-filter-group">
+                    {[
+                      { id: "ALL", label: `All (${anomalies.length})` },
+                      {
+                        id: "CRITICAL",
+                        label: `Critical (${anomalies.filter((a) => a.severity === "CRITICAL").length})`,
+                      },
+                      {
+                        id: "WARNING",
+                        label: `Warning (${anomalies.filter((a) => a.severity === "WARNING").length})`,
+                      },
+                    ].map((lvl) => (
+                      <button
+                        key={lvl.id}
+                        type="button"
+                        className={`filter-btn ${lvl.id.toLowerCase()} ${
+                          severityFilter === lvl.id ? "active" : ""
+                        }`}
+                        onClick={() => setSeverityFilter(lvl.id)}
+                      >
+                        {lvl.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Pattern Filter Chips */}
+              {attendanceViewMode === "anomalies" && availablePatterns.length > 0 && (
+                <div className="pattern-chips-strip">
+                  <span className="pattern-strip-label">Filter by Pattern:</span>
+                  <button
+                    type="button"
+                    className={`pattern-chip-btn ${patternFilter === "ALL" ? "active" : ""}`}
+                    onClick={() => setPatternFilter("ALL")}
+                  >
+                    All Patterns ({anomalies.length})
+                  </button>
+                  {availablePatterns.map((pat) => (
                     <button
-                      key={lvl}
+                      key={pat.type}
                       type="button"
-                      className={`filter-btn ${severityFilter === lvl ? "active" : ""}`}
-                      onClick={() => setSeverityFilter(lvl)}
+                      className={`pattern-chip-btn ${patternFilter === pat.type ? "active" : ""}`}
+                      onClick={() =>
+                        setPatternFilter((prev) => (prev === pat.type ? "ALL" : pat.type))
+                      }
                     >
-                      {lvl}
+                      <span>{PATTERN_ICONS[pat.type] || "⚡"}</span> {pat.label}
+                      <span className="pattern-chip-count">{pat.count}</span>
                     </button>
                   ))}
                 </div>
-
-                <select
-                  className="lookback-select"
-                  value={lookbackDays}
-                  onChange={(e) => {
-                    const days = Number(e.target.value);
-                    setLookbackDays(days);
-                    loadAnomalies(days);
-                  }}
-                >
-                  <option value={7}>Last 7 Days</option>
-                  <option value={15}>Last 15 Days</option>
-                  <option value={30}>Last 30 Days</option>
-                  <option value={60}>Last 60 Days</option>
-                </select>
-
-                <button
-                  type="button"
-                  className="scan-refresh-btn"
-                  onClick={() => loadAnomalies(lookbackDays, true)}
-                  disabled={loadingAnomalies}
-                >
-                  🔄 {loadingAnomalies ? "Scanning..." : "Re-Scan Biometrics"}
-                </button>
-              </div>
+              )}
             </div>
 
-            {/* Top Counters Banner */}
+            {/* 5-Card Live Telemetry KPI Banner */}
             {anomalyData && (
-              <div className="anomaly-kpi-banner">
-                <div className="anomaly-counter-card">
-                  <span className="counter-icon">📋</span>
-                  <div>
-                    <span className="counter-num">{anomalyData.scannedPunches}</span>
-                    <span className="counter-desc">Total Punches Scanned</span>
+              <div className="anomaly-kpi-banner five-col">
+                <div className="anomaly-counter-card telemetry-blue">
+                  <div className="counter-icon-box blue">📋</div>
+                  <div className="counter-meta">
+                    <span className="counter-num">
+                      {isHrEnterpriseView
+                        ? anomalyData.scannedPunches ?? 0
+                        : employeeTelemetry[0]?.totalPunchesInWindow ?? recentPunches.length ?? 0}
+                    </span>
+                    <span className="counter-desc">
+                      {isHrEnterpriseView ? "Biometric Punches Scanned" : "My Punches Scanned"}
+                    </span>
+                    <span className="counter-sub">Rolling {lookbackDays}-day SQL window</span>
                   </div>
                 </div>
-                <div className="anomaly-counter-card">
-                  <span className="counter-icon">👥</span>
-                  <div>
-                    <span className="counter-num">{anomalyData.scannedEmployees}</span>
-                    <span className="counter-desc">Consultants Monitored</span>
+
+                <div className="anomaly-counter-card telemetry-indigo">
+                  <div className="counter-icon-box indigo">👥</div>
+                  <div className="counter-meta">
+                    <span className="counter-num">
+                      {isHrEnterpriseView
+                        ? anomalyData.scannedEmployees ?? 0
+                        : employeeTelemetry[0]?.employeeCode || currentEmployee?.employee_code || "1"}
+                    </span>
+                    <span className="counter-desc">
+                      {isHrEnterpriseView ? "Active Employees Monitored" : "Monitored Employee Profile"}
+                    </span>
+                    <span className="counter-sub">
+                      {isHrEnterpriseView
+                        ? `${anomalyData.employeesWithPunches ?? 0} with active punch logs`
+                        : `${employeeTelemetry[0]?.department || "Assigned Practice"} • ${
+                            employeeTelemetry[0]?.approvedLeaveDays ?? 0
+                          } leave days`}
+                    </span>
                   </div>
                 </div>
-                <div className="anomaly-counter-card critical">
-                  <span className="counter-icon">🚨</span>
-                  <div>
-                    <span className="counter-num">{anomalyData.criticalCount}</span>
-                    <span className="counter-desc">Critical Pattern Flags</span>
+
+                <div className="anomaly-counter-card telemetry-emerald">
+                  <div className="counter-icon-box emerald">🎯</div>
+                  <div className="counter-meta">
+                    <span className="counter-num">
+                      {isHrEnterpriseView
+                        ? `${anomalyData.overallPunctualityRate ?? 100}%`
+                        : `${employeeTelemetry[0]?.onTimeRate ?? anomalyData.overallPunctualityRate ?? 100}%`}
+                    </span>
+                    <span className="counter-desc">
+                      {isHrEnterpriseView ? "Workforce Punctuality" : "My Punctuality Rate"}
+                    </span>
+                    <span className="counter-sub">
+                      Avg Shift:{" "}
+                      {isHrEnterpriseView
+                        ? anomalyData.avgWorkforceHours ?? 0
+                        : employeeTelemetry[0]?.avgWorkingHours ?? anomalyData.avgWorkforceHours ?? 0}{" "}
+                      hrs/day
+                    </span>
                   </div>
                 </div>
-                <div className="anomaly-counter-card warning">
-                  <span className="counter-icon">⚠️</span>
-                  <div>
-                    <span className="counter-num">{anomalyData.warningCount}</span>
-                    <span className="counter-desc">Warning Level Flags</span>
+
+                <div
+                  className="anomaly-counter-card critical"
+                  onClick={() => {
+                    setAttendanceViewMode("anomalies");
+                    setSeverityFilter(severityFilter === "CRITICAL" ? "ALL" : "CRITICAL");
+                  }}
+                  style={{ cursor: "pointer" }}
+                  title="Click to filter Critical anomalies"
+                >
+                  <div className="counter-icon-box red">🚨</div>
+                  <div className="counter-meta">
+                    <span className="counter-num">
+                      {anomalies.filter((a) => a.severity === "CRITICAL").length}
+                    </span>
+                    <span className="counter-desc">
+                      {isHrEnterpriseView ? "Critical Pattern Flags" : "My Critical Flags"}
+                    </span>
+                    <span className="counter-sub">
+                      {isHrEnterpriseView ? "Immediate HR/Manager action" : "Requires regularization"}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="anomaly-counter-card warning"
+                  onClick={() => {
+                    setAttendanceViewMode("anomalies");
+                    setSeverityFilter(severityFilter === "WARNING" ? "ALL" : "WARNING");
+                  }}
+                  style={{ cursor: "pointer" }}
+                  title="Click to filter Warning anomalies"
+                >
+                  <div className="counter-icon-box amber">⚠️</div>
+                  <div className="counter-meta">
+                    <span className="counter-num">
+                      {anomalies.filter((a) => a.severity === "WARNING").length}
+                    </span>
+                    <span className="counter-desc">
+                      {isHrEnterpriseView ? "Warning Level Flags" : "My Warning Flags"}
+                    </span>
+                    <span className="counter-sub">
+                      {anomalyData.autoClosedCount ?? 0} system auto-closed shifts
+                    </span>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Anomalies Feed Cards */}
-            <div className="anomalies-feed-grid">
-              {filteredAnomalies.length === 0 ? (
-                <div className="empty-anomalies-card">
-                  <span className="empty-icon">✅</span>
-                  <h4>No Attendance Anomalies Detected</h4>
-                  <p>All scanned punch records adhere strictly to company shifts and punctuality guidelines.</p>
-                </div>
-              ) : (
-                filteredAnomalies.map((item, idx) => (
-                  <div key={idx} className={`anomaly-card severity-${item.severity?.toLowerCase()}`}>
-                    <div className="anomaly-card-header">
-                      <div className="anomaly-card-user">
-                        <span className="anomaly-avatar">{item.employeeName?.charAt(0) || "E"}</span>
-                        <div>
-                          <h4 className="anomaly-emp-name">{item.employeeName}</h4>
-                          <span className="anomaly-emp-code">
-                            {item.employeeCode} • {item.department || "Delivery Practice"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="anomaly-badges">
-                        <span className={`severity-tag ${item.severity?.toLowerCase()}`}>{item.severity}</span>
-                        <span className="anomaly-score-tag">Risk Score: {item.anomalyScore || 85}/100</span>
-                      </div>
-                    </div>
-
-                    <div className="anomaly-type-pill">
-                      <span>Pattern:</span> <strong>{item.type?.replace(/_/g, " ")}</strong>
-                    </div>
-
-                    <div className="anomaly-explanation-box">
-                      <span className="ai-sparkle">✨ AI Explanation:</span>
-                      <p>{item.explanation}</p>
-                    </div>
-
-                    <div className="anomaly-action-box">
-                      <span className="action-tag">Recommended Resolution:</span>
-                      <p>{item.recommendedAction}</p>
-                    </div>
-
-                    <div className="anomaly-card-footer">
-                      <button
-                        type="button"
-                        className="anomaly-action-btn primary"
-                        onClick={() => toast.success(`Regularization ticket triggered for ${item.employeeName}`)}
-                      >
-                        Trigger Regularization
-                      </button>
-                      <button
-                        type="button"
-                        className="anomaly-action-btn secondary"
-                        onClick={() => toast.info(`Flagged to Delivery Manager for ${item.employeeName}`)}
-                      >
-                        Notify Manager
-                      </button>
-                    </div>
+            {/* VIEW MODE 1: ANOMALY CARDS FEED (2 RECORDS VISIBLE, REMAINING SCROLLABLE) */}
+            {attendanceViewMode === "anomalies" ? (
+              <div className="anomalies-feed-wrapper">
+                {filteredAnomalies.length > 2 && (
+                  <div className="scroll-records-indicator">
+                    <span className="scroll-indicator-left">
+                      <span className="scroll-dot" />
+                      Showing <strong>2 records</strong> in viewport ({filteredAnomalies.length} total matched)
+                    </span>
+                    <span className="scroll-indicator-right">
+                      ↕ Scroll inside feed to view remaining {filteredAnomalies.length - 2} record
+                      {filteredAnomalies.length - 2 === 1 ? "" : "s"}
+                    </span>
                   </div>
-                ))
-              )}
-            </div>
+                )}
+                <div className="anomalies-feed-grid two-records-cards-scroll">
+                {filteredAnomalies.length === 0 ? (
+                  <div className="empty-anomalies-card">
+                    <span className="empty-icon">✅</span>
+                    <h4>
+                      {isHrEnterpriseView
+                        ? "No Matching Attendance Anomalies Found"
+                        : "Your Attendance Telemetry is 100% Compliant"}
+                    </h4>
+                    <p>
+                      {anomalies.length > 0
+                        ? "No anomalies match your active filter criteria. Try resetting the severity, department, or search filters."
+                        : isHrEnterpriseView
+                        ? "All scanned employee punch records in PostgreSQL adhere to shift and punctuality policies."
+                        : "You have no late-arrival patterns, missing punch-outs, or abnormal shift variances in the selected window."}
+                    </p>
+                    {anomalies.length > 0 && (
+                      <button
+                        type="button"
+                        className="reset-filters-btn"
+                        onClick={() => {
+                          setSeverityFilter("ALL");
+                          setDepartmentFilter("ALL");
+                          setPatternFilter("ALL");
+                          setEmployeeSearch("");
+                        }}
+                      >
+                        Reset Active Filters
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  filteredAnomalies.map((item, idx) => {
+                    const score = item.anomalyScore ?? item.severityScore ?? 75;
+                    const sevLower = (item.severity || "WARNING").toLowerCase();
+                    const pType = item.type || item.patternType || "SHIFT_VARIANCE";
+                    const pIcon = PATTERN_ICONS[pType] || "⚡";
+                    const initials = String(item.employeeName || "E")
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase();
+
+                    return (
+                      <article
+                        key={item.id || idx}
+                        className={`anomaly-card-v2 severity-${sevLower}`}
+                      >
+                        {/* Top Accent Strip */}
+                        <div className="anomaly-card-top-bar" />
+
+                        {/* Employee Identity & Risk Gauge Header */}
+                        <div className="anomaly-v2-header">
+                          <div className="anomaly-v2-identity">
+                            <div className={`anomaly-v2-avatar-wrap ${sevLower}`}>
+                              {item.profilePhoto ? (
+                                <img
+                                  src={item.profilePhoto}
+                                  alt={item.employeeName}
+                                  className="anomaly-v2-avatar-img"
+                                />
+                              ) : (
+                                <span className="anomaly-v2-avatar-initials">{initials}</span>
+                              )}
+                              <span className={`avatar-status-dot ${sevLower}`} />
+                            </div>
+
+                            <div className="anomaly-v2-user-info">
+                              <div className="anomaly-v2-name-row">
+                                <h4 className="anomaly-v2-name">{item.employeeName}</h4>
+                                <span className="anomaly-v2-empcode">{item.employeeCode}</span>
+                              </div>
+                              <div className="anomaly-v2-role-row">
+                                <span className="anomaly-v2-designation">{item.designation}</span>
+                                <span className="anomaly-v2-dot">•</span>
+                                <span className="anomaly-v2-dept-pill">{item.department}</span>
+                              </div>
+                              <div className="anomaly-v2-manager-row">
+                                <span>👤 Reports to: <strong>{item.managerName || "Direct Lead"}</strong></span>
+                                <span>📍 {item.workLocation || "Corporate Office"}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Severity & Risk Score Meter */}
+                          <div className="anomaly-v2-score-cluster">
+                            <span className={`severity-badge-v2 ${sevLower}`}>
+                              <span className="sev-pulse-dot" />
+                              {item.severity}
+                            </span>
+                            <div className="risk-score-box">
+                              <div className="risk-score-top">
+                                <span className="risk-label">Risk Index</span>
+                                <span className={`risk-val ${sevLower}`}>{score}/100</span>
+                              </div>
+                              <div className="risk-progress-track">
+                                <div
+                                  className={`risk-progress-fill ${sevLower}`}
+                                  style={{ width: `${Math.min(100, Math.max(10, score))}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pattern Classification Banner */}
+                        <div className="anomaly-v2-pattern-banner">
+                          <div className="pattern-banner-left">
+                            <span className="pattern-banner-icon">{pIcon}</span>
+                            <div>
+                              <span className="pattern-banner-sub">DETECTED BIOMETRIC PATTERN</span>
+                              <strong className="pattern-banner-title">
+                                {item.patternLabel || pType.replace(/_/g, " ")}
+                              </strong>
+                            </div>
+                          </div>
+                          <div className="pattern-banner-right">
+                            {item.metricHighlight && (
+                              <span className="pattern-highlight-chip">{item.metricHighlight}</span>
+                            )}
+                            <span className="pattern-occurrences-badge">
+                              {item.detectedCount || 1}x in {lookbackDays}d
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 4-Column Live Employee Telemetry Grid */}
+                        <div className="anomaly-v2-telemetry-grid">
+                          <div className="telemetry-mini-cell">
+                            <span className="t-cell-label">Window Punches</span>
+                            <span className="t-cell-val">
+                              {item.totalPunchesInWindow ?? 0}{" "}
+                              <small>shifts</small>
+                            </span>
+                          </div>
+                          <div className="telemetry-mini-cell">
+                            <span className="t-cell-label">On-Time Rate</span>
+                            <span
+                              className={`t-cell-val ${
+                                (item.onTimeRate ?? 100) < 70 ? "text-danger" : "text-ok"
+                              }`}
+                            >
+                              {item.onTimeRate ?? 0}%
+                            </span>
+                          </div>
+                          <div className="telemetry-mini-cell">
+                            <span className="t-cell-label">Avg Working Hrs</span>
+                            <span className="t-cell-val">
+                              {item.avgWorkingHours ?? 0} <small>hrs/d</small>
+                            </span>
+                          </div>
+                          <div className="telemetry-mini-cell">
+                            <span className="t-cell-label">Latest Check-In</span>
+                            <span className="t-cell-val">{item.latestCheckIn || "None"}</span>
+                          </div>
+                        </div>
+
+                        {/* Affected Dates Timeline Chips */}
+                        {Array.isArray(item.affectedDates) && item.affectedDates.length > 0 && (
+                          <div className="anomaly-v2-dates-row">
+                            <span className="dates-row-label">📅 Flagged Dates:</span>
+                            <div className="dates-chips-wrap">
+                              {item.affectedDates.map((dStr, dIdx) => (
+                                <span key={dIdx} className="flagged-date-chip">
+                                  {dStr}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Explanation & Recommended Resolution */}
+                        <div className="anomaly-v2-insights-stack">
+                          <div className="anomaly-v2-explanation">
+                            <div className="insight-box-header">
+                              <span className="insight-icon">🧠</span>
+                              <span className="insight-title">AI Diagnostic Telemetry</span>
+                            </div>
+                            <p>{item.explanation || item.narrativeExplanation}</p>
+                          </div>
+
+                          <div className="anomaly-v2-resolution">
+                            <div className="insight-box-header">
+                              <span className="insight-icon">🛡️</span>
+                              <span className="insight-title">Recommended Resolution</span>
+                            </div>
+                            <p>{item.recommendedAction || item.suggestedAction}</p>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons Footer */}
+                        <div className="anomaly-v2-footer">
+                          {isHrEnterpriseView ? (
+                            <>
+                              <button
+                                type="button"
+                                className="anomaly-v2-btn primary"
+                                onClick={() => {
+                                  toast.success(
+                                    `Regularization workflow initiated for ${item.employeeName} (${item.employeeCode}).`
+                                  );
+                                }}
+                              >
+                                <span>📋</span> Trigger Regularization
+                              </button>
+                              <button
+                                type="button"
+                                className="anomaly-v2-btn secondary"
+                                onClick={() => {
+                                  toast.info(
+                                    `Escalation alert dispatched to ${item.managerName || "Reporting Manager"} for ${item.employeeName}.`
+                                  );
+                                }}
+                              >
+                                <span>📨</span> Notify Manager
+                              </button>
+                              <button
+                                type="button"
+                                className="anomaly-v2-btn ghost"
+                                onClick={() => navigate("/hr/employees")}
+                                title="View Employee Directory"
+                              >
+                                <span>👤</span> Profile →
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="anomaly-v2-btn primary"
+                                onClick={() => navigate("/employee/attendance")}
+                              >
+                                <span>📋</span> Submit Regularization
+                              </button>
+                              <button
+                                type="button"
+                                className="anomaly-v2-btn secondary"
+                                onClick={() => navigate("/employee/leaves")}
+                              >
+                                <span>🏖️</span> Apply Leave
+                              </button>
+                              <button
+                                type="button"
+                                className="anomaly-v2-btn ghost"
+                                onClick={() => setAttendanceViewMode("roster")}
+                              >
+                                <span>📅</span> My Logs →
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
+                </div>
+              </div>
+            ) : isHrEnterpriseView ? (
+              /* VIEW MODE 2 (HR ENTERPRISE): FULL MONITORED EMPLOYEE BIOMETRIC TELEMETRY ROSTER */
+              <div className="telemetry-roster-card">
+                <div className="roster-card-header">
+                  <div>
+                    <h4 className="roster-title">
+                      Live Workforce Biometric Telemetry Roster ({filteredRoster.length} Employees)
+                    </h4>
+                    <p className="roster-sub">
+                      Direct PostgreSQL aggregation of every active employee&apos;s check-ins, punctuality compliance, working hours, and leave days over the last {lookbackDays} days.
+                    </p>
+                  </div>
+                  {filteredRoster.length > 2 && (
+                    <span className="scroll-records-badge">
+                      ↕ Showing 2 of {filteredRoster.length} records • Scroll for remaining {filteredRoster.length - 2}
+                    </span>
+                  )}
+                </div>
+
+                <div className="table-responsive two-records-table-scroll">
+                  <table className="ai-data-table telemetry-roster-table">
+                    <thead>
+                      <tr>
+                        <th>EMPLOYEE</th>
+                        <th>DEPARTMENT &amp; ROLE</th>
+                        <th>REPORTING MANAGER</th>
+                        <th>WINDOW PUNCHES</th>
+                        <th>PUNCTUALITY</th>
+                        <th>LATE MINS</th>
+                        <th>AVG SHIFT HRS</th>
+                        <th>APPROVED LEAVES</th>
+                        <th>LATEST CHECK-IN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRoster.map((emp, idx) => (
+                        <tr key={emp.employeeCode || idx}>
+                          <td>
+                            <div className="roster-emp-cell">
+                              <strong>{emp.employeeName}</strong>
+                              <span className="roster-emp-code">{emp.employeeCode}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="roster-emp-cell">
+                              <span>{emp.department}</span>
+                              <small className="text-muted">{emp.designation}</small>
+                            </div>
+                          </td>
+                          <td>{emp.managerName}</td>
+                          <td>
+                            <strong>{emp.totalPunchesInWindow}</strong> shifts ({emp.onTimePunches} on-time)
+                          </td>
+                          <td>
+                            <span
+                              className={`roster-rate-pill ${
+                                emp.totalPunchesInWindow === 0
+                                  ? "neutral"
+                                  : emp.onTimeRate >= 85
+                                  ? "good"
+                                  : emp.onTimeRate >= 60
+                                  ? "warn"
+                                  : "bad"
+                              }`}
+                            >
+                              {emp.totalPunchesInWindow === 0 ? "No Punches" : `${emp.onTimeRate}%`}
+                            </span>
+                          </td>
+                          <td>{emp.totalLateMinutes > 0 ? `${emp.totalLateMinutes} mins` : "0 mins"}</td>
+                          <td>
+                            {emp.avgWorkingHours > 0 ? `${emp.avgWorkingHours} hrs` : "—"}
+                            {emp.totalOvertimeHours > 0 ? ` (+${emp.totalOvertimeHours}h OT)` : ""}
+                          </td>
+                          <td>{emp.approvedLeaveDays} days</td>
+                          <td>
+                            <div className="roster-emp-cell">
+                              <span>{emp.latestCheckIn}</span>
+                              {emp.recentDate && <small className="text-muted">{emp.recentDate}</small>}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              /* VIEW MODE 2 (PERSONAL EMPLOYEE): MY BIOMETRIC PUNCH LOGS */
+              <div className="telemetry-roster-card">
+                <div className="roster-card-header">
+                  <div>
+                    <h4 className="roster-title">
+                      My Biometric Punch Logs ({recentPunches.length} Records in Last {lookbackDays} Days)
+                    </h4>
+                    <p className="roster-sub">
+                      Live PostgreSQL <code>attendance</code> records for your profile.
+                    </p>
+                  </div>
+                  {recentPunches.length > 2 && (
+                    <span className="scroll-records-badge">
+                      ↕ Showing 2 of {recentPunches.length} records • Scroll for remaining {recentPunches.length - 2}
+                    </span>
+                  )}
+                </div>
+
+                {recentPunches.length === 0 ? (
+                  <div className="empty-anomalies-card">
+                    <span className="empty-icon">📅</span>
+                    <h4>No Biometric Punch Records in Window</h4>
+                    <p>No attendance punches were recorded for your account in the last {lookbackDays} days.</p>
+                  </div>
+                ) : (
+                  <div className="table-responsive two-records-table-scroll">
+                    <table className="ai-data-table telemetry-roster-table">
+                      <thead>
+                        <tr>
+                          <th>DATE</th>
+                          <th>CLOCK IN</th>
+                          <th>CLOCK OUT</th>
+                          <th>WORKING HOURS</th>
+                          <th>LATE MINUTES</th>
+                          <th>STATUS</th>
+                          <th>REMARKS / POLICY</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentPunches.map((p, idx) => (
+                          <tr key={p.id || idx}>
+                            <td>
+                              <strong>{p.date}</strong>
+                            </td>
+                            <td>{p.checkIn}</td>
+                            <td>{p.checkOut}</td>
+                            <td>
+                              {p.workingHours > 0 ? `${p.workingHours} hrs` : "—"}
+                              {p.overtimeHours > 0 ? ` (+${p.overtimeHours}h OT)` : ""}
+                            </td>
+                            <td>{p.lateMinutes > 0 ? `${p.lateMinutes} mins` : "0 mins"}</td>
+                            <td>
+                              <span
+                                className={`roster-rate-pill ${
+                                  p.isLate ? "warn" : String(p.status).toLowerCase() === "absent" ? "bad" : "good"
+                                }`}
+                              >
+                                {p.status}
+                              </span>
+                            </td>
+                            <td>{p.remarks || "Standard Biometric Log"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -853,20 +1897,20 @@ export default function AiIntelligenceHub() {
                 <div className="recruitment-card">
                   <h3 className="rec-card-title">Candidate Profile &amp; Role Requirements</h3>
                   <p className="rec-card-desc">
-                    Extract candidate skills, evaluate fit percentage against target staff-augmentation requisitions, and generate custom technical interview guides.
+                    Select any candidate from the PostgreSQL <code>candidates</code> table or paste a resume summary to compute skill alignment and generate technical interview questions.
                   </p>
 
                   <div className="form-group">
-                    <label className="form-label">Select Candidate from Pipeline:</label>
+                    <label className="form-label">Select Candidate from PostgreSQL Pipeline:</label>
                     <select
                       className="form-select"
                       value={selectedCandidateId}
-                      onChange={(e) => setSelectedCandidateId(e.target.value)}
+                      onChange={(e) => handleCandidateSelectChange(e.target.value)}
                     >
-                      <option value="">-- Use Custom Resume Below --</option>
+                      <option value="">-- Use Custom Resume Text Below --</option>
                       {candidateList.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.first_name || c.name} {c.last_name || ""} ({c.position || "Applicant"})
+                          {c.first_name || c.name} {c.last_name || ""} ({c.candidate_id || `ID-${c.id}`} • {c.designation || c.status || "Applicant"})
                         </option>
                       ))}
                     </select>
@@ -888,13 +1932,13 @@ export default function AiIntelligenceHub() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Candidate Resume / Technical Summary:</label>
+                    <label className="form-label">Candidate Resume / DB Profile Summary:</label>
                     <textarea
                       rows={5}
                       className="form-textarea"
                       value={customResume}
                       onChange={(e) => setCustomResume(e.target.value)}
-                      placeholder="Paste extracted resume text or candidate skill profile here..."
+                      placeholder="Select a candidate above to load their live PostgreSQL skills profile, or paste resume text here..."
                     />
                   </div>
 
@@ -904,7 +1948,8 @@ export default function AiIntelligenceHub() {
                     onClick={handleRunCandidateMatch}
                     disabled={isMatchingCandidate}
                   >
-                    <span>🎯</span> {isMatchingCandidate ? "Evaluating Qualifications..." : "Run AI Skill Match & Gap Analysis"}
+                    <span>🎯</span>{" "}
+                    {isMatchingCandidate ? "Evaluating Qualifications..." : "Run AI Skill Match & Gap Analysis"}
                   </button>
                 </div>
               </div>
@@ -924,8 +1969,14 @@ export default function AiIntelligenceHub() {
                         <span className={`fit-badge ${recruitmentResult.matchRating?.toLowerCase()}`}>
                           {recruitmentResult.matchRating?.replace(/_/g, " ")}
                         </span>
-                        <h4 className="match-candidate-name">{recruitmentResult.candidateName}</h4>
-                        <span className="match-target-role">Target Requisition: {recruitmentResult.targetRole}</span>
+                        <h4 className="match-candidate-name">
+                          {recruitmentResult.candidateName}{" "}
+                          <small className="text-muted">({recruitmentResult.candidateId})</small>
+                        </h4>
+                        <span className="match-target-role">
+                          Target Requisition: {recruitmentResult.targetRole}
+                          {recruitmentResult.candidateStatus ? ` • Pipeline: ${recruitmentResult.candidateStatus}` : ""}
+                        </span>
                       </div>
                     </div>
 
@@ -933,14 +1984,18 @@ export default function AiIntelligenceHub() {
                     <div className="skills-breakdown-section">
                       <div className="skills-column">
                         <span className="skills-column-title text-emerald">
-                          ✓ Matched Skills ({recruitmentResult.matchedSkills?.length || 0})
+                          ✓ Matched &amp; Verified Skills ({recruitmentResult.matchedSkills?.length || 0})
                         </span>
                         <div className="skill-pills-row">
-                          {recruitmentResult.matchedSkills?.map((skill, idx) => (
-                            <span key={idx} className="skill-pill matched">
-                              ✓ {skill}
-                            </span>
-                          ))}
+                          {recruitmentResult.matchedSkills?.length === 0 ? (
+                            <span className="text-muted">No matching skills detected in profile text.</span>
+                          ) : (
+                            recruitmentResult.matchedSkills?.map((skill, idx) => (
+                              <span key={idx} className="skill-pill matched">
+                                ✓ {skill}
+                              </span>
+                            ))
+                          )}
                         </div>
                       </div>
 
@@ -990,7 +2045,9 @@ export default function AiIntelligenceHub() {
                   <div className="rec-placeholder-card">
                     <span className="placeholder-icon">📄</span>
                     <h4>No Candidate Analyzed Yet</h4>
-                    <p>Select a candidate from the dropdown or paste resume text on the left, then click "Run AI Skill Match".</p>
+                    <p>
+                      Select a candidate from the PostgreSQL pipeline dropdown or paste resume text on the left, then click &quot;Run AI Skill Match&quot;.
+                    </p>
                   </div>
                 )}
               </div>
@@ -1057,9 +2114,23 @@ export default function AiIntelligenceHub() {
                   </div>
 
                   <div className="policy-answer-body">
-                    {policyResult.answer.split("\n\n").map((chunk, cIdx) => (
-                      <p key={cIdx}>{chunk}</p>
-                    ))}
+                    {String(policyResult.answer || "")
+                      .split("\n\n")
+                      .map((chunk, cIdx) => {
+                        const cleanChunk = chunk.replace(/^>\s*/, "");
+                        const parts = cleanChunk.split(/(\*\*[^*]+\*\*)/g);
+                        return (
+                          <p key={cIdx}>
+                            {parts.map((part, pIdx) =>
+                              part.startsWith("**") && part.endsWith("**") ? (
+                                <strong key={pIdx}>{part.slice(2, -2)}</strong>
+                              ) : (
+                                part
+                              )
+                            )}
+                          </p>
+                        );
+                      })}
                   </div>
                 </div>
 
@@ -1102,5 +2173,6 @@ export default function AiIntelligenceHub() {
         )}
       </div>
     </div>
+    </>
   );
 }

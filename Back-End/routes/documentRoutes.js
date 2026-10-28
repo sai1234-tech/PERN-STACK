@@ -10,6 +10,7 @@ import {
     RequestDocument,
     updateDocumentStatus,
     deleteDocument,
+    bulkDeleteDocuments,
     getAllDocuments
 } from "../controllers/documentController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -90,6 +91,18 @@ router.patch(
     "/:id/status",
     authorizeRoles("hr", "admin"),
     updateDocumentStatus
+);
+
+// Bulk delete documents
+router.post(
+    "/bulk-delete",
+    authorizeRoles("employee", "manager", "hr", "admin"),
+    bulkDeleteDocuments
+);
+router.delete(
+    "/bulk",
+    authorizeRoles("employee", "manager", "hr", "admin"),
+    bulkDeleteDocuments
 );
 
 // Delete document

@@ -3,7 +3,7 @@ import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import Loader from "../../components/common/Loader";
 import ErrorMessage from "../../components/common/ErrorMessage";
 import { useDocuments } from "../../hooks/useDocuments";
-import { downloadDocument } from "../../services/documentService";
+import { downloadDocument, bulkDeleteDocuments } from "../../services/documentService";
 import { formatDate } from "../../utils/date";
 import "../../styles/employee/documents.css";
 
@@ -30,6 +30,8 @@ function EmployeeDocuments() {
       return [];
     }
   });
+  const [selectedDocIds, setSelectedDocIds] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   // Real-time synchronization when HR submits a request from another tab/window
   useEffect(() => {
@@ -295,12 +297,73 @@ function EmployeeDocuments() {
       } else {
         await reload(true);
       }
+      setActionNotice?.(`"${title}" has been deleted from your vault.`);
       setMessage(`"${title}" has been deleted from your vault.`);
+      setSelectedDocIds((prev) => prev.filter((id) => id !== docId));
       try {
         window.dispatchEvent(new CustomEvent("hrms:data_changed"));
       } catch {}
     } catch (err) {
       setActionError(err.message || "Failed to delete document.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggleSelectDoc = (id) => {
+    const sId = String(id);
+    setSelectedDocIds((prev) =>
+      prev.includes(sId) ? prev.filter((item) => item !== sId) : [...prev, sId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    const currentFilteredIds = filteredDocs.map((d) => String(d._id || d.id));
+    if (currentFilteredIds.length === 0) return;
+    const allSelected = currentFilteredIds.every((id) => selectedDocIds.includes(id));
+    if (allSelected) {
+      setSelectedDocIds((prev) => prev.filter((id) => !currentFilteredIds.includes(id)));
+    } else {
+      setSelectedDocIds((prev) => Array.from(new Set([...prev, ...currentFilteredIds])));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDocIds.length === 0) return;
+    setActionError("");
+    setMessage("");
+    setBusy(true);
+
+    const idsToDelete = [...selectedDocIds];
+    const count = idsToDelete.length;
+
+    try {
+      const nextDeleted = Array.from(new Set([...deletedIds, ...idsToDelete]));
+      setDeletedIds(nextDeleted);
+      try {
+        localStorage.setItem("hrms_deleted_employee_doc_ids", JSON.stringify(nextDeleted));
+        localStorage.setItem("hrms_deleted_hr_doc_ids", JSON.stringify(nextDeleted));
+      } catch {}
+
+      const numericIds = idsToDelete.map(Number).filter((id) => !isNaN(id) && id > 0);
+      if (numericIds.length > 0) {
+        try {
+          await bulkDeleteDocuments(numericIds);
+        } catch {
+          await Promise.allSettled(numericIds.map((id) => remove(id)));
+        }
+      }
+
+      await reload(true);
+      setMessage(`Successfully deleted ${count} selected document${count > 1 ? "s" : ""} from your vault.`);
+      setSelectedDocIds([]);
+      setShowBulkDeleteModal(false);
+
+      try {
+        window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      } catch {}
+    } catch (err) {
+      setActionError(err.message || "Failed to delete selected documents.");
     } finally {
       setBusy(false);
     }
@@ -936,8 +999,82 @@ function EmployeeDocuments() {
               </div>
             </div>
 
+            {/* Bulk Selection Bar */}
+            {selectedDocIds.length > 0 && (
+              <div
+                className="doc-bulk-action-bar"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.85rem 1.25rem",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "12px",
+                  marginBottom: "1.25rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span
+                    style={{
+                      background: "#ef4444",
+                      color: "#fff",
+                      fontSize: "0.75rem",
+                      fontWeight: 800,
+                      padding: "0.2rem 0.55rem",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {selectedDocIds.length}
+                  </span>
+                  <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#991b1b" }}>
+                    document{selectedDocIds.length > 1 ? "s" : ""} selected
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.4rem",
+                      background: "#dc2626",
+                      color: "#fff",
+                      border: "none",
+                      padding: "0.45rem 0.85rem",
+                      borderRadius: "8px",
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span>🗑️</span> Delete Selected ({selectedDocIds.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDocIds([])}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #cbd5e1",
+                      padding: "0.45rem 0.75rem",
+                      borderRadius: "8px",
+                      fontSize: "0.82rem",
+                      color: "#475569",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="doc-card-grid">
               {filteredDocs.map((doc) => {
+                const docId = String(doc._id || doc.id);
+                const isSelected = selectedDocIds.includes(docId);
                 const isRequested = doc.status === "requested" || doc.status === "rejected";
                 const displayType = doc.documentType || "General Document";
                 const titleText =
@@ -952,17 +1089,50 @@ function EmployeeDocuments() {
                 return (
                   <div
                     key={doc._id || doc.id}
-                    className={`vault-doc-card ${isRequested ? "urgent-request" : ""}`}
+                    className={`vault-doc-card ${isRequested ? "urgent-request" : ""} ${isSelected ? "card-selected" : ""}`}
                     style={
-                      isRequested
+                      isSelected
+                        ? {
+                            border: "2px solid #0d9488",
+                            backgroundColor: "#f0fdfa",
+                            boxShadow: "0 4px 14px rgba(13, 148, 136, 0.15)",
+                            position: "relative",
+                          }
+                        : isRequested
                         ? {
                             border: "2px solid #ea580c",
                             backgroundColor: "#fffaf5",
                             boxShadow: "0 6px 18px -4px rgba(234, 88, 12, 0.15)",
+                            position: "relative",
                           }
-                        : {}
+                        : { position: "relative" }
                     }
                   >
+                    {/* Checkbox */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "12px",
+                        right: "12px",
+                        zIndex: 2,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${titleText}`}
+                        checked={isSelected}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelectDoc(docId);
+                        }}
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          cursor: "pointer",
+                          accentColor: "#0d9488",
+                        }}
+                      />
+                    </div>
                     <div className="doc-card-top">
                       <div
                         className="doc-type-icon"
@@ -1069,9 +1239,82 @@ function EmployeeDocuments() {
             </div>
           </section>
         )}
+
+        {/* Bulk Delete Modal */}
+        {showBulkDeleteModal && (
+          <div
+            className="modal-backdrop-wrap"
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15, 23, 42, 0.6)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              padding: "1rem",
+            }}
+            onClick={() => !busy && setShowBulkDeleteModal(false)}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: "16px",
+                maxWidth: "480px",
+                width: "100%",
+                padding: "1.5rem",
+                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: "0 0 0.75rem", fontSize: "1.15rem", color: "#991b1b", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span>🗑️</span> Delete {selectedDocIds.length} Selected Documents?
+              </h3>
+              <p style={{ margin: "0 0 1rem", fontSize: "0.9rem", color: "#334155", lineHeight: 1.5 }}>
+                Are you sure you want to permanently delete these <strong>{selectedDocIds.length}</strong> selected documents from your vault? This action cannot be undone.
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setShowBulkDeleteModal(false)}
+                  style={{
+                    padding: "0.55rem 1rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    background: "#fff",
+                    color: "#475569",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={handleBulkDelete}
+                  style={{
+                    padding: "0.55rem 1rem",
+                    borderRadius: "8px",
+                    border: "none",
+                    background: "#dc2626",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {busy ? "Deleting..." : `Delete ${selectedDocIds.length} Documents`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );
 }
 
 export default EmployeeDocuments;
+

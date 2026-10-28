@@ -482,8 +482,17 @@ html[data-theme="dark"],
   color: #94a3b8 !important;
 }
 
+[data-theme="dark"] .location-address-text {
+  color: #cbd5e1 !important;
+}
+
 [data-theme="dark"] .shift-rail {
   background: #1e293b !important;
+}
+
+[data-theme="dark"] .shift-min-val,
+[data-theme="dark"] .shift-max-val {
+  color: #94a3b8 !important;
 }
 
 [data-theme="dark"] .shift-target-badge {

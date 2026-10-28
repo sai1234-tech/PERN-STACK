@@ -872,6 +872,9 @@ function EmployeeDashboard() {
                 <span>👥</span> Manager Workspace
               </Link>
             )}
+            <Link to="/employee/profile" className="emp-action-btn secondary" title="View & Edit My Profile Dossier">
+              <span>👤</span> My Profile
+            </Link>
             <Link to="/employee/payroll" className="emp-action-btn secondary" title="View Payslips & Salary">
               <span>💰</span> My Payroll
             </Link>
@@ -946,7 +949,10 @@ function EmployeeDashboard() {
               <div className="kpi-icon-pod indigo">🌴</div>
             </div>
             <div className="kpi-stat-row">
-              <span className="kpi-big-num">{leaveBalanceDays} Days</span>
+              <div className="kpi-num-unit-group">
+                <span className="kpi-big-num">{leaveBalanceDays}</span>
+                <span className="kpi-unit-label">Days</span>
+              </div>
               <span className="kpi-badge-chip indigo">Carry Forward</span>
             </div>
             <div className="kpi-progress-rail">
@@ -1014,8 +1020,9 @@ function EmployeeDashboard() {
                   ? "Absent"
                   : "Not Checked In"}
               </span>
-              <span className="location-marker-text">
-                <span className="location-pin-icon">📍</span> 5A1 Melange Towers, Madhapur, Hyderabad
+              <span className="location-marker-text" title="5A1 Melange Towers, Madhapur, Hyderabad">
+                <span className="location-pin-icon">📍</span>
+                <span className="location-address-text">5A1 Melange Towers, Madhapur, Hyderabad</span>
               </span>
             </div>
 

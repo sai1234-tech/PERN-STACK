@@ -6,6 +6,10 @@ import {
   getAllAllocations,
   upsertAllocation,
   updateAllocationStatus,
+  loadUnifiedResourceMatrix,
+  DUMMY_EMP_IDS,
+  DEFAULT_PROJECT_CODES,
+  DEFAULT_PROJECT_NAMES,
 } from "../../services/allocationService";
 import {
   getClients,
@@ -21,25 +25,10 @@ import {
   createTransition,
   updateTransition,
 } from "../../services/clientMasterService";
+import { useSyncRefresh } from "../../utils/syncManager";
 import "./ResourceAllocation.css";
 
 const STORAGE_KEY = "hrms_resource_allocation_matrix";
-
-const PROJECT_SUGGESTIONS = [
-  "Project Titan",
-  "Project Phoenix",
-  "Project Apollo",
-  "Project Nexus",
-  "Project Horizon",
-  "Project Cyber",
-];
-
-const INITIAL_RESOURCE_POOL = [
-  { id: "EMP-101", name: "Aisha Sharma", role: "Frontend Developer", department: "Engineering", code: "EM0101", defaultStatus: "Allocated", defaultProject: "Project Titan" },
-  { id: "EMP-102", name: "Rohan Das", role: "Backend Developer", department: "IT", code: "EM0102", defaultStatus: "Bench", defaultProject: null },
-  { id: "EMP-103", name: "Sneha Patel", role: "UX Designer", department: "Engineering", code: "EM0103", defaultStatus: "Allocated", defaultProject: "Project Phoenix" },
-  { id: "EMP-104", name: "Karan Singh", role: "DevOps Engineer", department: "IT", code: "EM0104", defaultStatus: "Bench", defaultProject: null },
-];
 
 export default function ResourceAllocation() {
   const [activeTab, setActiveTab] = useState("deployments");
@@ -67,7 +56,7 @@ export default function ResourceAllocation() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addEmpId, setAddEmpId] = useState("");
   const [addStatus, setAddStatus] = useState("Bench");
-  const [addProject, setAddProject] = useState("Project Titan");
+  const [addProject, setAddProject] = useState("");
   const [addSowNumber, setAddSowNumber] = useState("");
 
   // Client Master Modal state
@@ -129,125 +118,120 @@ export default function ResourceAllocation() {
     notes: ""
   });
 
-  // Load all data
-  const loadData = async () => {
-    setLoading(true);
+  // Load all data using unified resource matrix engine
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [
-        empRes,
-        backendAllocations,
+        unifiedMatrixRes,
         clientsRes,
         projectsRes,
         ratesRes,
         transitionsRes
       ] = await Promise.allSettled([
-        getAllEmployees(),
-        getAllAllocations(),
+        loadUnifiedResourceMatrix(),
         getClients(),
         getClientProjects(),
         getRateCards(),
         getTransitions()
       ]);
 
-      const apiEmployees = empRes.status === "fulfilled"
-        ? (Array.isArray(empRes.value?.data) ? empRes.value.data : (Array.isArray(empRes.value) ? empRes.value : []))
-        : [];
+      const unified =
+        unifiedMatrixRes.status === "fulfilled" && unifiedMatrixRes.value
+          ? unifiedMatrixRes.value
+          : { employees: [], allocations: {} };
 
-      // Combine API employees with initial resource pool
-      const mergedList = [...INITIAL_RESOURCE_POOL];
-      const existingIds = new Set(INITIAL_RESOURCE_POOL.map(e => e.id));
-
-      apiEmployees.forEach(emp => {
-        const empId = emp._id || emp.id;
-        if (!existingIds.has(empId)) {
-          const name = `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || emp.name || emp.email || "Employee";
-          const code = emp.employeeCode || emp.employeeId || "EMP";
-          const dept = emp.employment?.department || emp.department || "Operations";
-          const role = emp.employment?.designation || emp.designation || "Engineer";
-
-          mergedList.push({
-            id: empId,
-            name,
-            code,
-            department: dept,
-            role,
-            defaultStatus: "Bench",
-            defaultProject: null,
-          });
-        }
-      });
+      const mergedList = unified.employees || [];
+      const allocMap = unified.allocations || {};
 
       setEmployees(mergedList);
-
-      // Load allocations from PostgreSQL backend
-      const allocMap = {};
-      if (backendAllocations.status === "fulfilled" && Array.isArray(backendAllocations.value) && backendAllocations.value.length > 0) {
-        backendAllocations.value.forEach(a => {
-          allocMap[a.empId] = {
-            status: a.status || "Bench",
-            project: a.status === "Allocated" ? a.projectName : null,
-            sowNumber: a.sowNumber || a.sow_number || "",
-            id: a.id,
-          };
-        });
-      }
-
-      // Fill in defaults for employees not yet explicitly allocated
-      mergedList.forEach(e => {
-        if (!allocMap[e.id]) {
-          allocMap[e.id] = {
-            status: e.defaultStatus || "Bench",
-            project: e.defaultProject || null,
-            sowNumber: "",
-          };
-        }
-      });
-
       setAllocations(allocMap);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allocMap));
 
-      // Set Master Entities
+      // Set Master Entities (filtering out legacy seeded default projects)
       if (clientsRes.status === "fulfilled" && clientsRes.value?.data) {
         setClients(clientsRes.value.data);
       }
-      if (projectsRes.status === "fulfilled" && projectsRes.value?.data) {
-        setClientProjects(projectsRes.value.data);
-      }
+      const baseProjects =
+        projectsRes.status === "fulfilled" && Array.isArray(projectsRes.value?.data)
+          ? projectsRes.value.data.filter(
+              (p) => !DEFAULT_PROJECT_CODES.has(p.project_code) && !DEFAULT_PROJECT_NAMES.has(p.project_name)
+            )
+          : [];
+
+      // Also include any active projects from live resource allocations so allocated projects immediately show in Active Projects / SOW Master
+      const mergedProjects = [...baseProjects];
+      Object.values(allocMap).forEach((al, idx) => {
+        if (al?.status === "Allocated" && al.project && !DEFAULT_PROJECT_NAMES.has(al.project)) {
+          const exists = mergedProjects.some(
+            (p) => String(p.project_name || "").trim().toLowerCase() === String(al.project).trim().toLowerCase()
+          );
+          if (!exists) {
+            mergedProjects.push({
+              id: `alloc-proj-${idx}-${al.project}`,
+              project_code: `PRJ-${String(al.project).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) || "ACT"}-0${idx + 1}`,
+              project_name: al.project,
+              client_name: al.sowNumber ? `SOW: ${al.sowNumber}` : "Active Client Engagement",
+              sow_number: al.sowNumber || "SOW-ACTIVE",
+              billing_type: "T&M",
+              start_date: new Date().toISOString().slice(0, 10),
+              end_date: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
+              delivery_manager_name: "Vikas Guru",
+              budgeted_hours: 1200,
+              status: "Active",
+            });
+          }
+        }
+      });
+      setClientProjects(mergedProjects);
       if (ratesRes.status === "fulfilled" && ratesRes.value?.data) {
-        setRateCards(ratesRes.value.data);
+        setRateCards(
+          ratesRes.value.data.filter((r) => !DEFAULT_PROJECT_NAMES.has(r.project_name))
+        );
         setCanManageCommercials(!!ratesRes.value.canManageCommercials);
       }
       if (transitionsRes.status === "fulfilled" && transitionsRes.value?.data) {
-        setTransitions(transitionsRes.value.data);
+        setTransitions(
+          transitionsRes.value.data.filter((t) => !DUMMY_EMP_IDS.has(String(t.emp_id)))
+        );
       }
 
     } catch (err) {
       console.error("Failed to load staff-augmentation data:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadData(false);
   }, []);
+
+  useSyncRefresh(() => loadData(true), { interval: 4000, silent: true });
 
   // Save allocation change helper with real PostgreSQL backend sync
   const updateAllocation = async (empId, status, project = null, sowNumber = null) => {
+    const key = String(empId);
+    const emp = employees.find(e => String(e.id) === String(empId));
     const updated = {
       ...allocations,
-      [empId]: {
+      [key]: {
         status,
         project: status === "Allocated" ? project : null,
-        sowNumber: status === "Allocated" ? (sowNumber !== null ? sowNumber : (allocations[empId]?.sowNumber || "")) : null
+        sowNumber: status === "Allocated" ? (sowNumber !== null ? sowNumber : (allocations[key]?.sowNumber || "")) : null,
+        name: emp?.name || allocations[key]?.name || "",
+        code: emp?.code || allocations[key]?.code || "",
+        department: emp?.department || allocations[key]?.department || "Engineering",
+        role: emp?.role || allocations[key]?.role || "Engineer",
+        releasedToBench: status === "Bench",
       },
     };
     setAllocations(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "allocations" } }));
+    window.dispatchEvent(new CustomEvent("hrms:data_changed"));
 
     // Persist to PostgreSQL backend
     try {
-      const emp = employees.find(e => String(e.id) === String(empId));
       if (emp) {
         await upsertAllocation({
           empId: String(empId),
@@ -255,11 +239,12 @@ export default function ResourceAllocation() {
           employeeCode: emp.code,
           department: emp.department,
           role: emp.role,
-          projectName: project || "Project Titan",
-          sowNumber: sowNumber || (allocations[empId]?.sowNumber || "SOW-2026-ENG-001"),
+          projectName: project || "",
+          sowNumber: sowNumber || (allocations[empId]?.sowNumber || ""),
           status,
           billability: status === "Allocated" ? "Billable" : "Internal",
-          allocationPercentage: status === "Allocated" ? 100 : 0
+          allocationPercentage: status === "Allocated" ? 100 : 0,
+          notes: status === "Bench" ? "RELEASED_TO_BENCH" : "",
         });
       }
     } catch (apiErr) {
@@ -484,7 +469,7 @@ export default function ResourceAllocation() {
   // Compute resource matrix items
   const matrixItems = useMemo(() => {
     return employees.map(e => {
-      const alloc = allocations[e.id] || { status: "Bench", project: null, sowNumber: "" };
+      const alloc = allocations[String(e.id)] || { status: "Bench", project: null, sowNumber: "" };
       return {
         ...e,
         status: alloc.status,
@@ -578,9 +563,9 @@ export default function ResourceAllocation() {
         {/* Banner */}
         <header className="resource-banner">
           <div>
-            <span className="resource-kicker">Staff-Augmentation & Client Engine</span>
-            <h1>Client & Resource Intelligence</h1>
-            <p>Manage enterprise client accounts, SOW contracts, rate-cards, resource allocations, and handover transitions.</p>
+            <span className="resource-kicker">Project Deployment &amp; SOW Management</span>
+            <h1>Resource Allocation</h1>
+            <p>Manage employee project deployments, client accounts, SOW contracts, rate-cards, and handover transitions.</p>
           </div>
           <div className="banner-action-cluster">
             {activeTab === "deployments" && (
@@ -1379,7 +1364,7 @@ export default function ResourceAllocation() {
                     required
                     value={projectInput}
                     onChange={(e) => setProjectInput(e.target.value)}
-                    placeholder="e.g. Project Titan"
+                    placeholder="Enter or pick a registered Client Project"
                     autoFocus
                   />
                 </label>
@@ -1390,25 +1375,9 @@ export default function ResourceAllocation() {
                     type="text"
                     value={sowInput}
                     onChange={(e) => setSowInput(e.target.value)}
-                    placeholder="e.g. SOW-2026-ENG-001"
+                    placeholder="Enter SOW Number"
                   />
                 </label>
-
-                <div className="quick-suggestions-wrap">
-                  <span className="field-hint">Or pick from standard suggestions:</span>
-                  <div className="suggestion-chips">
-                    {PROJECT_SUGGESTIONS.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        className={`chip-btn ${projectInput === p ? "active" : ""}`}
-                        onClick={() => setProjectInput(p)}
-                      >
-                        📁 {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               <div className="modal-footer">
@@ -1826,7 +1795,7 @@ export default function ResourceAllocation() {
                         ...transitionForm,
                         empId: e.target.value,
                         employeeName: emp ? emp.name : "",
-                        projectName: alloc?.project || "Project Titan",
+                        projectName: alloc?.project || "",
                         sowNumber: alloc?.sowNumber || ""
                       });
                     }}

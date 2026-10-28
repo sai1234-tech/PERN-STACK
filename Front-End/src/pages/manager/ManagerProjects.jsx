@@ -13,7 +13,9 @@ function ManagerProjects() {
   if (loading) return <Loader label="Loading Realtime Active Projects..." />;
   if (error) return <div style={{ padding: "2rem", color: "#e11d48", fontWeight: 700 }}>⚠️ {error}</div>;
 
-  const filtered = (projects || []).filter((p) => {
+  const safeProjects = Array.isArray(projects) ? projects : [];
+
+  const filtered = safeProjects.filter((p) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
     return (
@@ -22,7 +24,7 @@ function ManagerProjects() {
     );
   });
 
-  const totalHoursLogged = (projects || []).reduce((sum, p) => sum + Number(p.totalHours || 0), 0);
+  const totalHoursLogged = safeProjects.reduce((sum, p) => sum + Number(p.totalHours || 0), 0);
 
   return (
     <>
@@ -30,12 +32,14 @@ function ManagerProjects() {
       <div className="manager-projects-container">
         {/* Hero Banner Header */}
         <div className="manager-projects-header">
-          <div className="header-badge-capsule">
-            <span className="live-sprint-dot" />
-            <span>Active Team Deliverables & Sprints</span>
+          <div className="projects-hero-left">
+            <div className="header-badge-capsule">
+              <span className="live-sprint-dot" />
+              <span>Active Team Deliverables & Sprints</span>
+            </div>
+            <h2>Realtime Active Projects</h2>
+            <p>Monitor where your team is currently spending their time based on live timesheets and sprint allocations.</p>
           </div>
-          <h2>Realtime Active Projects</h2>
-          <p>Monitor where your team is currently spending their time based on live timesheets and sprint allocations.</p>
 
           <div className="projects-hero-metrics">
             <div className="hero-metric-pill">

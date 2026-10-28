@@ -190,8 +190,8 @@ export const intelligentSearch = async (req, res, next) => {
 export const analytics = async (req, res, next) => {
   try {
     const [head, byDept, exits, leavePend, late, tix, bgv, cand] = await Promise.all([
-      safe("SELECT count(*)::int n FROM employees WHERE status ILIKE 'active%'"),
-      safe("SELECT COALESCE(department,'Unassigned') d, count(*)::int n FROM employees WHERE status ILIKE 'active%' GROUP BY 1 ORDER BY n DESC LIMIT 6"),
+      safe("SELECT count(*)::int n FROM employees e WHERE COALESCE(NULLIF(to_jsonb(e)->>'status',''), NULLIF(e.employment->>'status',''), 'Active') ILIKE 'active%'"),
+      safe("SELECT COALESCE(NULLIF(to_jsonb(e)->>'department',''), NULLIF(e.employment->>'department',''), NULLIF(to_jsonb(e)->>'function',''), 'Engineering') d, count(*)::int n FROM employees e WHERE COALESCE(NULLIF(to_jsonb(e)->>'status',''), NULLIF(e.employment->>'status',''), 'Active') ILIKE 'active%' GROUP BY 1 ORDER BY n DESC LIMIT 6"),
       safe("SELECT count(*)::int n FROM resignations WHERE resignation_date >= CURRENT_DATE - INTERVAL '365 days'"),
       safe("SELECT count(*)::int n FROM leaves WHERE status ILIKE 'pending%'"),
       safe("SELECT count(*)::int total, COALESCE(sum(CASE WHEN is_late THEN 1 ELSE 0 END),0)::int late FROM attendance WHERE date >= CURRENT_DATE - INTERVAL '30 days'"),

@@ -83,71 +83,30 @@ export const initClientTables = async () => {
 
     await pool.query(queryText);
 
-    // Seed initial baseline records if table is empty
-    await seedClientMasterDefaults();
+    // Clean up any previously seeded default dummy projects/transitions
+    await cleanupDefaultSeedProjects();
 };
 
-const seedClientMasterDefaults = async () => {
+const cleanupDefaultSeedProjects = async () => {
     try {
-        const checkClient = await pool.query("SELECT COUNT(*) FROM clients;");
-        if (parseInt(checkClient.rows[0].count, 10) === 0) {
-            // Seed Clients
-            await pool.query(`
-                INSERT INTO clients (client_code, client_name, account_owner_name, client_manager_name, client_manager_email, status, msa_reference)
-                VALUES 
-                ('CLT-MSFT-001', 'Microsoft Enterprise Services', 'Meera Nair (VP Operations)', 'Sarah Connor', 'sconnor@microsoft.com', 'Active', 'MSA-2025-MSFT-GLOBAL'),
-                ('CLT-AWS-002', 'Amazon Web Services (AWS)', 'Vikas Guru (Delivery Lead)', 'David Miller', 'dmiller@amazon.com', 'Active', 'MSA-2024-AWS-CLOUD'),
-                ('CLT-QUAD-003', 'Quadratic Cloud Solutions', 'System Administrator', 'Alex Vance', 'avance@quadratics.com', 'Active', 'MSA-2026-QUAD-INTERNAL');
-            `);
-        }
-
-        const checkProjects = await pool.query("SELECT COUNT(*) FROM client_projects;");
-        if (parseInt(checkProjects.rows[0].count, 10) === 0) {
-            const msftClient = await pool.query("SELECT id FROM clients WHERE client_code = 'CLT-MSFT-001' LIMIT 1;");
-            const awsClient = await pool.query("SELECT id FROM clients WHERE client_code = 'CLT-AWS-002' LIMIT 1;");
-            const quadClient = await pool.query("SELECT id FROM clients WHERE client_code = 'CLT-QUAD-003' LIMIT 1;");
-
-            const msftId = msftClient.rows[0]?.id || 1;
-            const awsId = awsClient.rows[0]?.id || 2;
-            const quadId = quadClient.rows[0]?.id || 3;
-
-            await pool.query(`
-                INSERT INTO client_projects (project_code, client_id, client_name, project_name, sow_number, billing_type, start_date, end_date, delivery_manager_name, budgeted_hours, status)
-                VALUES
-                ('PRJ-TITAN-01', $1, 'Microsoft Enterprise Services', 'Project Titan (Cloud Transformation)', 'SOW-2026-ENG-001', 'T&M', '2026-01-01', '2026-12-31', 'Vikas Guru', 1600.00, 'Active'),
-                ('PRJ-PHOENIX-02', $2, 'Amazon Web Services (AWS)', 'Project Phoenix (Core Banking Migration)', 'SOW-2026-FIN-002', 'Fixed Price', '2026-02-15', '2026-11-30', 'Vikas Guru', 1200.00, 'Active'),
-                ('PRJ-APOLLO-03', $3, 'Quadratic Cloud Solutions', 'Project Apollo (AI Automation Engine)', 'SOW-2026-AI-003', 'T&M', '2026-03-01', '2026-10-31', 'Ananya Sharma', 800.00, 'Active');
-            `, [msftId, awsId, quadId]);
-        }
-
-        const checkRateCards = await pool.query("SELECT COUNT(*) FROM client_rate_cards;");
-        if (parseInt(checkRateCards.rows[0].count, 10) === 0) {
-            const pTitan = await pool.query("SELECT id, client_id FROM client_projects WHERE project_code = 'PRJ-TITAN-01' LIMIT 1;");
-            const pPhoenix = await pool.query("SELECT id, client_id FROM client_projects WHERE project_code = 'PRJ-PHOENIX-02' LIMIT 1;");
-
-            if (pTitan.rows.length > 0 && pPhoenix.rows.length > 0) {
-                await pool.query(`
-                    INSERT INTO client_rate_cards (client_id, project_id, client_name, project_name, sow_number, role_title, hourly_billing_rate, monthly_billing_rate, currency)
-                    VALUES
-                    ($1, $2, 'Microsoft Enterprise Services', 'Project Titan (Cloud Transformation)', 'SOW-2026-ENG-001', 'Lead Cloud Architect', 115.00, 18400.00, 'USD'),
-                    ($1, $2, 'Microsoft Enterprise Services', 'Project Titan (Cloud Transformation)', 'SOW-2026-ENG-001', 'Senior Full Stack Engineer', 90.00, 14400.00, 'USD'),
-                    ($3, $4, 'Amazon Web Services (AWS)', 'Project Phoenix (Core Banking Migration)', 'SOW-2026-FIN-002', 'DevOps / SRE Specialist', 105.00, 16800.00, 'USD'),
-                    ($3, $4, 'Amazon Web Services (AWS)', 'Project Phoenix (Core Banking Migration)', 'SOW-2026-FIN-002', 'UI/UX Design Consultant', 75.00, 12000.00, 'USD');
-                `, [pTitan.rows[0].client_id, pTitan.rows[0].id, pPhoenix.rows[0].client_id, pPhoenix.rows[0].id]);
-            }
-        }
-
-        const checkTransitions = await pool.query("SELECT COUNT(*) FROM resource_transitions;");
-        if (parseInt(checkTransitions.rows[0].count, 10) === 0) {
-            await pool.query(`
-                INSERT INTO resource_transitions (emp_id, employee_name, client_name, project_name, sow_number, transition_type, replacement_emp_id, replacement_emp_name, kt_start_date, kt_end_date, kt_status, client_approval_status, notes)
-                VALUES
-                ('EMP-101', 'Aisha Sharma', 'Microsoft Enterprise Services', 'Project Titan (Cloud Transformation)', 'SOW-2026-ENG-001', 'Replacement', 'EMP-102', 'Rohan Das', '2026-10-15', '2026-10-31', 'In Progress', 'Approved', 'Planned roll-off for promotion; Rohan Das undergoing 2-week client shadowing.'),
-                ('EMP-104', 'Karan Singh', 'Amazon Web Services (AWS)', 'Project Phoenix (Core Banking Migration)', 'SOW-2026-FIN-002', 'Roll-off', '', '', '2026-10-25', '2026-11-05', 'Scheduled', 'Pending', 'Project milestone complete; resource scheduled for release back to bench.');
-            `);
-        }
-    } catch (seedErr) {
-        console.warn("Client Master defaults notice:", seedErr.message);
+        await pool.query(`
+            DELETE FROM client_rate_cards
+            WHERE project_name IN (
+                'Project Titan (Cloud Transformation)',
+                'Project Phoenix (Core Banking Migration)',
+                'Project Apollo (AI Automation Engine)'
+            );
+        `);
+        await pool.query(`
+            DELETE FROM client_projects
+            WHERE project_code IN ('PRJ-TITAN-01', 'PRJ-PHOENIX-02', 'PRJ-APOLLO-03');
+        `);
+        await pool.query(`
+            DELETE FROM resource_transitions
+            WHERE emp_id IN ('EMP-101', 'EMP-102', 'EMP-103', 'EMP-104');
+        `);
+    } catch (cleanErr) {
+        console.warn("Default project cleanup notice:", cleanErr.message);
     }
 };
 
@@ -242,6 +201,7 @@ export const deleteClientRecord = async (id) => {
    PROJECT & SOW MASTER CRUD
 ------------------------------------------------------------- */
 export const findAllClientProjects = async () => {
+    await cleanupDefaultSeedProjects();
     const { rows } = await pool.query("SELECT * FROM client_projects ORDER BY project_code ASC;");
     return rows;
 };

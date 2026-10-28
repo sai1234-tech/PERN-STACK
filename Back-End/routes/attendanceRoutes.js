@@ -11,7 +11,8 @@ import {
     correctClockOut,
     approveManualAdjustment,
     rejectAttendance,
-    autoCloseMissingClockouts
+    autoCloseMissingClockouts,
+    reconcileAttendance
 } from "../controllers/attendanceController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
@@ -59,5 +60,8 @@ router.patch("/:attendanceId/reject", verifyToken, authorizeRoles("hr", "admin",
 
 // HR - Auto-close missing clock-outs policy
 router.post("/auto-close", verifyToken, authorizeRoles("hr", "admin"), autoCloseMissingClockouts);
+
+// HR / Manager - Reconcile regularization punch directly
+router.post("/reconcile", verifyToken, authorizeRoles("hr", "admin", "manager"), reconcileAttendance);
 
 export default router;

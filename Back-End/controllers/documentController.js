@@ -7,7 +7,8 @@ import {
     findDocumentById,
     findDocumentsByEmployeeId,
     updateDocumentRecord,
-    deleteDocumentRecord
+    deleteDocumentRecord,
+    bulkDeleteDocumentRecords
 } from "../repositories/documentRepository.js";
 import {
     findEmployeeById,
@@ -673,3 +674,75 @@ export const deleteDocument = async (req, res, next) => {
         return next(error);
     }
 };
+
+// =====================================================
+// 10. BULK DELETE DOCUMENTS
+// =====================================================
+export const bulkDeleteDocuments = async (req, res, next) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "ids must be a non-empty array of document IDs"
+            });
+        }
+
+        const validNumericIds = ids.map(Number).filter((id) => !isNaN(id) && id > 0);
+        const deletedIds = [];
+
+        for (const docId of validNumericIds) {
+            try {
+                const doc = await findDocumentById(docId);
+                if (doc) {
+                    if (req.user.role === "employee") {
+                        const employee = await findEmployeeByUserId(req.user.userId);
+                        const isOwner = employee && (
+                            Number(doc.employee_id) === Number(employee.id) ||
+                            Number(doc.employee_id) === Number(employee.user_id) ||
+                            Number(doc.employee_id) === Number(req.user.userId)
+                        );
+                        if (!isOwner) continue;
+                    }
+
+                    // Delete physical file if exists
+                    const fileLocations = [
+                        doc.file_path,
+                        doc.file_name ? path.join(uploadDirectory, doc.file_name) : null,
+                        doc.file_url ? path.join(uploadDirectory, path.basename(doc.file_url)) : null
+                    ].filter(Boolean);
+
+                    for (const fPath of fileLocations) {
+                        try {
+                            if (fs.existsSync(fPath)) {
+                                fs.unlinkSync(fPath);
+                            }
+                        } catch {}
+                    }
+
+                    await deleteDocumentRecord(docId);
+                    deletedIds.push(docId);
+                }
+            } catch (err) {
+                console.warn(`Error deleting document ${docId}:`, err.message);
+            }
+        }
+
+        broadcastBackendChange("documents", {
+            action: "bulk_delete",
+            deletedIds
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: `Successfully deleted ${deletedIds.length} documents`,
+            data: {
+                deletedCount: deletedIds.length,
+                deletedIds
+            }
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+

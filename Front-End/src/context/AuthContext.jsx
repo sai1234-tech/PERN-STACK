@@ -31,7 +31,7 @@ export function isLoginSessionExpired() {
         return true;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   return false;
 }
@@ -45,21 +45,12 @@ export function AuthProvider({ children }) {
     const session = response?.data && (response.data.user || response.data.token) ? response.data : response;
     const normalizedUser = { ...session.user, role: normalizeRole(session.user, session.employee) };
 
-    // Clear previous user's cached storage items
+    // Clear previous user's session-scoped storage items while preserving shared cross-role data
     try {
       sessionStorage.clear();
-      Object.keys(localStorage).forEach((key) => {
-        if (
-          key.startsWith("hrms_") &&
-          key !== "hrms_theme" &&
-          key !== "hrms_remember_email" &&
-          !key.startsWith("hrms_dismissed_doc_requests") &&
-          !key.startsWith("hrms_cleared_notifications")
-        ) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (e) {}
+      localStorage.removeItem("hrms_profile_photo");
+      localStorage.removeItem("hrms_selected_employee_id");
+    } catch (e) { }
 
     sessionStorage.setItem("hrms_token", session.token);
     sessionStorage.setItem("hrms_user", JSON.stringify(normalizedUser));
@@ -142,18 +133,7 @@ export function AuthProvider({ children }) {
       sessionStorage.clear();
       localStorage.removeItem("hrms_profile_photo");
       localStorage.removeItem("hrms_selected_employee_id");
-      Object.keys(localStorage).forEach((key) => {
-        if (
-          key.startsWith("hrms_") &&
-          key !== "hrms_theme" &&
-          key !== "hrms_remember_email" &&
-          !key.startsWith("hrms_dismissed_doc_requests") &&
-          !key.startsWith("hrms_cleared_notifications")
-        ) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (e) {}
+    } catch (e) { }
 
     setUser(null);
     setEmployee(null);
@@ -262,7 +242,7 @@ export function AuthProvider({ children }) {
             sessionStorage.setItem("hrms_employee", JSON.stringify(session.employee));
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     };
 
     const handleAuthExpired = () => {

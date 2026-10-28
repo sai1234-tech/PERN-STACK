@@ -426,26 +426,48 @@
 
 .kpi-stat-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
   margin-bottom: 0.65rem;
+  flex-wrap: nowrap;
+}
+
+.kpi-num-unit-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .kpi-big-num {
-  font-size: 1.9rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: #0f172a;
   line-height: 1;
   letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.kpi-unit-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: capitalize;
+  line-height: 1;
 }
 
 .kpi-badge-chip {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.22rem 0.55rem;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
 }
 
 .kpi-badge-chip.positive {
@@ -550,6 +572,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.75rem;
+  width: 100%;
 }
 
 /* Punch State Badges */
@@ -564,6 +587,9 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .punch-pulse-dot {
@@ -634,14 +660,32 @@
   color: #475569;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  padding: 0.4rem 0.95rem;
+  padding: 0.38rem 0.95rem;
   border-radius: 9999px;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .location-pin-icon {
   font-size: 0.9rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.location-address-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+  font-weight: 600;
+  min-width: 0;
 }
 
 /* Digital Stopwatch Box */
@@ -649,6 +693,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
   background: linear-gradient(145deg, #071720 0%, #0d2a33 55%, #05141c 100%);
   border: 1px solid rgba(45, 212, 191, 0.35);
   border-radius: 18px;
@@ -675,19 +721,23 @@
   gap: 0.35rem;
   position: relative;
   z-index: 1;
+  min-width: 0;
+  flex: 1;
 }
 
 .stopwatch-counter {
-  font-size: 3.1rem;
+  font-size: clamp(2.1rem, 3.2vw, 2.95rem);
   font-weight: 850;
   color: #38f4d3;
   font-family: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
-  letter-spacing: 0.05em;
-  line-height: 1;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 24px rgba(56, 244, 211, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
   position: relative;
   z-index: 1;
+  margin-top: 0.15rem;
+  white-space: nowrap;
 }
 
 .stopwatch-label {
@@ -699,6 +749,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .stopwatch-dot-accent {
@@ -708,6 +760,7 @@
   background: #2dd4bf;
   box-shadow: 0 0 6px #2dd4bf;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .stopwatch-status-chip {
@@ -723,13 +776,18 @@
   letter-spacing: 0.04em;
   backdrop-filter: blur(4px);
   white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 /* Shift Progress Bar */
 .shift-progress-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.55rem;
+  width: 100%;
 }
 
 .shift-rail {
@@ -739,6 +797,7 @@
   border-radius: 9999px;
   overflow: hidden;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+  position: relative;
 }
 
 .shift-fill {
@@ -748,27 +807,59 @@
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 0 14px rgba(16, 185, 129, 0.5);
   position: relative;
+  min-width: 4px;
 }
 
 .shift-labels-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
   font-size: 0.78rem;
   color: #64748b;
   font-weight: 650;
+  gap: 0.5rem;
+}
+
+.shift-min-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #64748b;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.shift-max-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #64748b;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .shift-target-badge {
   font-weight: 800;
   color: #0f766e;
   background: #ccfbf1;
-  padding: 0.22rem 0.75rem;
+  padding: 0.25rem 0.85rem;
   border-radius: 9999px;
   border: 1px solid #99f6e4;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(13, 148, 136, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 /* Punch Buttons Row */
@@ -1641,18 +1732,38 @@
   .digital-stopwatch-box {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1rem 1.25rem;
+    gap: 0.85rem;
+    padding: 1.15rem 1.25rem;
   }
 
   .stopwatch-counter {
-    font-size: 2.35rem;
+    font-size: clamp(2rem, 8vw, 2.45rem);
+  }
+
+  .stopwatch-status-chip {
+    align-self: flex-start;
   }
 
   .punch-status-line {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .location-marker-text {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: flex-start;
+  }
+
+  .shift-labels-row {
+    font-size: 0.74rem;
+    gap: 0.35rem;
+  }
+
+  .shift-target-badge {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.65rem;
   }
 
   .digital-stopwatch {

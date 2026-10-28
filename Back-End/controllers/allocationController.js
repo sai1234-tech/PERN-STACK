@@ -9,31 +9,7 @@ import { findAllEmployees } from "../repositories/employeeRepository.js";
 
 export const getAllAllocations = async (req, res) => {
     try {
-        let allocations = await findAllAllocations();
-
-        // If no allocations exist yet, sync default active employees as available/bench
-        if (allocations.length === 0) {
-            try {
-                const employees = await findAllEmployees();
-                for (const emp of employees.slice(0, 8)) {
-                    await upsertAllocationRecord({
-                        empId: String(emp.id),
-                        employeeName: `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || emp.name || "Employee",
-                        employeeCode: emp.employeeCode || "",
-                        department: emp.department || emp.employment?.department || "Engineering",
-                        role: emp.designation || emp.role || "Developer",
-                        projectName: emp.id % 2 === 0 ? "Project Titan" : "Project Phoenix",
-                        clientName: "Enterprise Global Client",
-                        status: emp.id % 2 === 0 ? "Allocated" : "Bench",
-                        billability: emp.id % 2 === 0 ? "Billable" : "Internal",
-                        allocationPercentage: 100
-                    });
-                }
-                allocations = await findAllAllocations();
-            } catch (seedErr) {
-                console.warn("Notice: Initial allocation seed fallback:", seedErr.message);
-            }
-        }
+        const allocations = await findAllAllocations();
 
         return res.status(200).json({
             success: true,
@@ -75,6 +51,7 @@ export const upsertAllocation = async (req, res) => {
             allocationPercentage,
             startDate,
             endDate,
+            sowNumber,
             notes
         } = req.body;
 
@@ -95,6 +72,7 @@ export const upsertAllocation = async (req, res) => {
             allocationPercentage,
             startDate,
             endDate,
+            sowNumber,
             notes
         });
 

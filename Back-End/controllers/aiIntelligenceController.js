@@ -3,7 +3,8 @@ import {
   handleHrAnalyticsQuery,
   detectAttendanceAnomalies,
   analyzeCandidateRecruitment,
-  searchHrPolicies
+  searchHrPolicies,
+  getPolicyVaultStats
 } from "../services/aiIntelligenceService.js";
 
 /**
@@ -51,7 +52,9 @@ export const queryAnalytics = async (req, res, next) => {
 export const getAttendanceAnomalies = async (req, res, next) => {
   try {
     const lookbackDays = Number(req.query?.lookbackDays || 30);
-    const response = await detectAttendanceAnomalies({ lookbackDays });
+    const userId = req.user?.userId || req.user?.id || null;
+    const role = req.user?.role || "employee";
+    const response = await detectAttendanceAnomalies({ lookbackDays, userId, role });
     return res.status(200).json(response);
   } catch (err) {
     next(err);
@@ -98,10 +101,16 @@ export const searchPolicy = async (req, res, next) => {
  */
 export const getAiHubOverview = async (req, res, next) => {
   try {
-    const [anomalyData, analyticsData] = await Promise.all([
-      detectAttendanceAnomalies({ lookbackDays: 30 }),
-      handleHrAnalyticsQuery(req.user?.role || "admin", "overview")
+    const userId = req.user?.userId || req.user?.id || null;
+    const role = req.user?.role || "employee";
+    const [anomalyData, analyticsData, policyStats] = await Promise.all([
+      detectAttendanceAnomalies({ lookbackDays: 30, userId, role }),
+      handleHrAnalyticsQuery(role, "overview"),
+      getPolicyVaultStats()
     ]);
+
+    const activeCount = 5;
+    const totalCount = 5;
 
     return res.status(200).json({
       success: true,
@@ -113,11 +122,31 @@ export const getAiHubOverview = async (req, res, next) => {
         { id: "recruitment", name: "AI Recruitment Assistant", status: "Active", capability: "Resume Parsing, Skill Match & Human-Governed Selection" },
         { id: "policy", name: "HR Policy Search", status: "Active", capability: "Semantic Document Search with Clause Citations" }
       ],
+      moduleSummary: {
+        activeCount,
+        totalCount,
+        operationalPercent: Math.round((activeCount / totalCount) * 100),
+        statusText: "100% Operational"
+      },
       attendanceSummary: {
+        scope: anomalyData.scope,
+        lookbackDays: anomalyData.lookbackDays,
         anomaliesDetected: anomalyData.anomaliesFound,
         criticalAlerts: anomalyData.criticalCount,
-        warningAlerts: anomalyData.warningCount
+        warningAlerts: anomalyData.warningCount,
+        scannedPunches: anomalyData.scannedPunches,
+        scannedEmployees: anomalyData.scannedEmployees,
+        employeesWithPunches: anomalyData.employeesWithPunches,
+        overallPunctualityRate: anomalyData.overallPunctualityRate,
+        avgWorkforceHours: anomalyData.avgWorkforceHours,
+        autoClosedCount: anomalyData.autoClosedCount,
+        departmentBreakdown: anomalyData.departmentBreakdown,
+        patternBreakdown: anomalyData.patternBreakdown,
+        employeeTelemetry: anomalyData.employeeTelemetry,
+        recentPunches: anomalyData.recentPunches,
+        anomalies: anomalyData.anomalies
       },
+      policySummary: policyStats,
       workforceSummary: analyticsData.keyMetrics
     });
   } catch (err) {

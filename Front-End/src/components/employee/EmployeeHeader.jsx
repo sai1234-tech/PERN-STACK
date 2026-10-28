@@ -15,6 +15,11 @@ import "./EmployeeHeader.css";
 
 // Route breadcrumb dictionary
 const ROUTE_CONTEXT_MAP = {
+  "/ai-assistant": { section: "Intelligence", title: "AI HR & Policy Assistant" },
+  "/ai": { section: "Intelligence", title: "Cognitive AI Intelligence Hub" },
+  "/ai-hub": { section: "Intelligence", title: "Cognitive AI Intelligence Hub" },
+  "/hr/ai": { section: "Intelligence", title: "HR AI Intelligence Hub" },
+  "/admin/ai": { section: "Intelligence", title: "Enterprise AI Intelligence Hub" },
   "/employee/dashboard": { section: "Workspace", title: "Overview" },
   "/employee/attendance": { section: "Time & Attendance", title: "Daily Attendance" },
   "/employee/leaves": { section: "Time Off", title: "Leaves & WFH Hub" },
@@ -41,6 +46,12 @@ const ROUTE_CONTEXT_MAP = {
   "/hr/leaves": { section: "Operations", title: "Leave Management" },
   "/hr/resignations": { section: "Operations", title: "Resignations" },
   "/hr/resources": { section: "Operations", title: "Resource Allocation" },
+  "/manager/resources": { section: "Operations", title: "Resource Allocation" },
+  "/resources": { section: "Operations", title: "Resource Allocation" },
+  "/hr/allocations": { section: "Operations", title: "Resource Allocation" },
+  "/admin/staff-aug": { section: "Operations", title: "Resource Allocation" },
+  "/admin/client-master": { section: "Operations", title: "Resource Allocation" },
+  "/staff-aug": { section: "Operations", title: "Resource Allocation" },
   "/hr/performance": { section: "Operations", title: "Appraisals & OKRs" },
   "/admin/dashboard": { section: "Admin", title: "Executive Command" },
   "/admin/accounts": { section: "Security", title: "User Accounts" },
@@ -461,7 +472,7 @@ function EmployeeHeader() {
         <HeaderEmployeeSearch />
       </div>
 
-      {/* Right: Utilities (Clock, Notifications, User Profile, Sign out) */}
+      {/* Right: Utilities (Clock, Theme toggle, Notifications, User Profile, Sign out) */}
       <div className="employee-header-actions">
         <button
           type="button"

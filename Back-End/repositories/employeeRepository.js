@@ -293,7 +293,15 @@ export const findAllEmployees = async (search = "") => {
         values.push(`%${search.trim()}%`);
     }
 
-    queryText += ` ORDER BY e.created_at DESC;`;
+    queryText += `
+        ORDER BY 
+            CASE 
+                WHEN e.email ILIKE '%@candidates.com%' THEN 2 
+                WHEN e.first_name ILIKE '%candidate%' OR e.last_name ILIKE '%candidate%' THEN 2 
+                ELSE 1 
+            END ASC,
+            e.id ASC;
+    `;
     const { rows } = await pool.query(queryText, values);
     return rows;
 };

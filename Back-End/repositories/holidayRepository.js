@@ -68,6 +68,33 @@ export const seedDefaultHolidays = async (holidayList) => {
     return inserted;
 };
 
+export const findHolidayById = async (id) => {
+    const queryText = `
+        SELECT * FROM holidays
+        WHERE id = $1
+        LIMIT 1;
+    `;
+    const { rows } = await pool.query(queryText, [id]);
+    return formatHoliday(rows[0]);
+};
+
+export const updateHolidayRecord = async (id, { title, date, type, description }) => {
+    const queryText = `
+        UPDATE holidays
+        SET 
+            title = COALESCE($1, title),
+            date = COALESCE($2, date),
+            type = COALESCE($3, type),
+            description = COALESCE($4, description),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $5
+        RETURNING *;
+    `;
+    const values = [title, date, type, description, id];
+    const { rows } = await pool.query(queryText, values);
+    return formatHoliday(rows[0]);
+};
+
 export const deleteHolidayRecord = async (id) => {
     const queryText = `
         DELETE FROM holidays

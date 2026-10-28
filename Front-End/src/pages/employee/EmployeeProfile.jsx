@@ -88,6 +88,18 @@ function EmployeeProfile() {
   const { employee, loading, error, reload } = useEmployee(queryId);
   const { user, updateProfilePhoto } = useAuth();
 
+  const isExplicitQuery = !!queryId;
+
+  const profile =
+    employee?.employee ||
+    employee?.data ||
+    (employee && (employee.firstName || employee.email || employee.employeeCode) ? employee : null) ||
+    user?.employee ||
+    user ||
+    null;
+
+  const storageKey = `hrms_profile_edits_${profile?.employeeCode || profile?._id || "default"}`;
+
   const [allEmployees, setAllEmployees] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -145,18 +157,6 @@ function EmployeeProfile() {
 
     return () => { isMounted = false; };
   }, [profile?.id, profile?.employeeCode, queryId]);
-
-  const isExplicitQuery = !!queryId;
-
-  const profile =
-    employee?.employee ||
-    employee?.data ||
-    (employee && (employee.firstName || employee.email || employee.employeeCode) ? employee : null) ||
-    user?.employee ||
-    user ||
-    null;
-
-  const storageKey = `hrms_profile_edits_${profile?.employeeCode || profile?._id || "default"}`;
 
   const [personalData, setPersonalData] = useState({
     personalEmail: "Not provided",
@@ -619,7 +619,7 @@ function EmployeeProfile() {
       <main className="employee-profile-hub">
         {loading ? (
           <Loader label="Loading profile dossier..." />
-        ) : error || !profile || (!profile.firstName && !profile.email && !profile.employeeCode) ? (
+        ) : (!profile || (!profile.firstName && !profile.email && !profile.employeeCode && !profile.name)) ? (
           <div className="employee-not-found-card" style={{ padding: "3rem", textAlign: "center", background: "#ffffff", borderRadius: "16px", border: "1px solid #e2e8f0", margin: "2rem auto", maxWidth: "600px" }}>
             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>👤❌</div>
             <h2 style={{ fontSize: "1.5rem", color: "#1e293b", marginBottom: "0.5rem" }}>Employee Record Not Found</h2>
@@ -627,8 +627,8 @@ function EmployeeProfile() {
               {error || `The requested employee record (${queryId || sessionStorage.getItem("hrms_selected_employee_id") || "selected"}) could not be loaded.`}
             </p>
             <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-              <Link to="/hr/employees" className="att-btn primary" style={{ textDecoration: "none" }}>
-                Back to Directory
+              <Link to={isExplicitQuery ? "/hr/employees" : "/employee/dashboard"} className="att-btn primary" style={{ textDecoration: "none" }}>
+                {isExplicitQuery ? "Back to Directory" : "Back to Dashboard"}
               </Link>
               <button type="button" onClick={() => reload && reload()} className="att-btn secondary">
                 Retry Sync

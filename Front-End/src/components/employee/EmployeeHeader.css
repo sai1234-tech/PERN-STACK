@@ -411,6 +411,92 @@ html[data-theme="light"] .header-signout-btn:hover {
   white-space: nowrap;
 }
 
+/* AI HR Assistant Header Button */
+.header-ai-assistant-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 36px;
+  padding: 0 0.8rem;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.12);
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+.header-ai-assistant-btn:hover {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border-color: #4338ca;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+}
+
+.header-ai-assistant-btn.active {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff;
+  border-color: #3730a3;
+  box-shadow: 0 3px 12px rgba(79, 70, 229, 0.35);
+}
+
+.header-ai-icon {
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-ai-text {
+  font-weight: 750;
+  line-height: 1;
+}
+
+.header-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 5px;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.header-ai-assistant-btn:hover .header-ai-badge,
+.header-ai-assistant-btn.active .header-ai-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .header-ai-assistant-btn,
+html[data-theme="dark"] .header-ai-assistant-btn {
+  background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%) !important;
+  border-color: #4338ca !important;
+  color: #c7d2fe !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .header-ai-assistant-btn:hover,
+[data-theme="dark"] .header-ai-assistant-btn.active,
+html[data-theme="dark"] .header-ai-assistant-btn:hover,
+html[data-theme="dark"] .header-ai-assistant-btn.active {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  border-color: #6366f1 !important;
+}
+
 .header-theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -797,6 +883,19 @@ html[data-theme="light"] .header-signout-btn:hover {
 
   .header-signout-btn {
     padding: 0.4rem 0.55rem;
+  }
+
+  .header-ai-text,
+  .header-ai-badge {
+    display: none;
+  }
+
+  .header-ai-assistant-btn {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    border-radius: 9px;
   }
 
   .notification-dropdown {

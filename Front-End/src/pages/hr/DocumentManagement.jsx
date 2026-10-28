@@ -9,6 +9,7 @@ import {
   requestDocument,
   updateDocumentStatus,
   deleteDocument,
+  bulkDeleteDocuments,
   downloadDocument,
 } from "../../services/documentService";
 import { formatDate } from "../../utils/date";
@@ -61,6 +62,37 @@ function isDocDeleted(doc, idList = []) {
     const s = String(deletedId);
     return (id1 && s === id1) || (id2 && s === id2);
   });
+}
+
+function findBestDefaultEmployee(empList = [], docList = []) {
+  if (!Array.isArray(empList) || empList.length === 0) return "";
+
+  // 1. First priority: Core regular employee who actually has documents in the vault
+  if (Array.isArray(docList) && docList.length > 0) {
+    for (const doc of docList) {
+      const empId = String(doc.employeeId || doc.employee?._id || doc.employee?.id || "");
+      if (!empId) continue;
+      const matched = empList.find((e) => {
+        const idMatch = String(e._id || e.id) === empId;
+        const email = String(e.email || "").toLowerCase();
+        const first = String(e.firstName || "").toLowerCase();
+        const isCand = email.includes("@candidates.com") || first.includes("candidate") || email.includes("cand_");
+        return idMatch && !isCand;
+      });
+      if (matched) return matched._id || matched.id;
+    }
+  }
+
+  // 2. Second priority: Core company staff members (e.g. Kushangala SaiKiran, Lakshmi Ragula, Vikas Guru, etc.)
+  const coreEmp = empList.find((e) => {
+    const email = String(e.email || "").toLowerCase();
+    const first = String(e.firstName || "").toLowerCase();
+    const isCand = email.includes("@candidates.com") || first.includes("candidate") || email.includes("cand_");
+    return !isCand;
+  });
+  if (coreEmp) return coreEmp._id || coreEmp.id;
+
+  return empList[0]._id || empList[0].id;
 }
 
 function getStoredDeletedIds() {
@@ -204,6 +236,11 @@ function DocumentManagement() {
   const [previewContentType, setPreviewContentType] = useState("");
   const [previewError, setPreviewError] = useState("");
 
+  // Multi-Select Checkbox & Bulk Delete States
+  const [selectedDocIds, setSelectedDocIds] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
+
   // Load initial employees and document types
   useEffect(() => {
     let mounted = true;
@@ -219,17 +256,28 @@ function DocumentManagement() {
 
         if (mounted) {
           const empList = empRes.data || empRes.employees || empRes || [];
-          setEmployees(Array.isArray(empList) ? empList : []);
+          const sortedEmpList = Array.isArray(empList)
+            ? [...empList].sort((a, b) => {
+                const aIsCand = String(a.email || "").toLowerCase().includes("@candidates.com") || String(a.firstName || "").toLowerCase().includes("candidate");
+                const bIsCand = String(b.email || "").toLowerCase().includes("@candidates.com") || String(b.firstName || "").toLowerCase().includes("candidate");
+                if (aIsCand && !bIsCand) return 1;
+                if (!aIsCand && bIsCand) return -1;
+                return Number(a.id || a._id || 0) - Number(b.id || b._id || 0);
+              })
+            : [];
+          setEmployees(sortedEmpList);
           setDocumentTypes(normalizeDocumentTypes(typeRes));
 
           const currentDeleted = getStoredDeletedIds();
           const backendDocs = allDocsRes.data || allDocsRes.documents || [];
-          if (Array.isArray(backendDocs) && backendDocs.length > 0) {
-            setAllDocuments(backendDocs.filter((d) => !isDocDeleted(d, currentDeleted)));
+          const activeDocs = Array.isArray(backendDocs) ? backendDocs.filter((d) => !isDocDeleted(d, currentDeleted)) : [];
+
+          if (activeDocs.length > 0) {
+            setAllDocuments(activeDocs);
             setUseSampleData(false);
-          } else if (Array.isArray(empList) && empList.length > 0) {
+          } else if (Array.isArray(sortedEmpList) && sortedEmpList.length > 0) {
             // Fallback load
-            const docPromises = empList.slice(0, 15).map((emp) =>
+            const docPromises = sortedEmpList.slice(0, 15).map((emp) =>
               getEmployeeDocuments(emp._id || emp.id)
                 .then((res) => {
                   const docs = res.data || res.documents || [];
@@ -247,11 +295,19 @@ function DocumentManagement() {
               setAllDocuments(combined);
               setUseSampleData(false);
             } else {
-              setAllDocuments(generateRealisticCorporateDocuments(empList).filter((d) => !isDocDeleted(d, currentDeleted)));
+              setAllDocuments(generateRealisticCorporateDocuments(sortedEmpList).filter((d) => !isDocDeleted(d, currentDeleted)));
               setUseSampleData(true);
             }
           } else {
             setUseSampleData(true);
+          }
+
+          // Initialize default selected employee to a core employee
+          if (sortedEmpList.length > 0) {
+            const bestDefaultId = findBestDefaultEmployee(sortedEmpList, activeDocs);
+            if (bestDefaultId) {
+              setSelectedEmployeeId(bestDefaultId);
+            }
           }
         }
       } catch (err) {
@@ -320,7 +376,7 @@ function DocumentManagement() {
 
   // Selected employee object
   const selectedEmployee = useMemo(() => {
-    return employees.find((e) => (e._id || e.id) === selectedEmployeeId);
+    return employees.find((e) => String(e._id || e.id) === String(selectedEmployeeId));
   }, [employees, selectedEmployeeId]);
 
   // Executive KPI Compliance Statistics
@@ -558,6 +614,9 @@ function DocumentManagement() {
       setActionNotice(`Document "${docName}" deleted successfully from Company Vault.`);
       setDeleteModal(null);
 
+      // Remove from selectedDocIds if present
+      setSelectedDocIds((prev) => prev.filter((id) => id !== docId));
+
       try {
         localStorage.setItem("hrms_data_updated", Date.now().toString());
         window.dispatchEvent(new CustomEvent("hrms:data_changed"));
@@ -566,6 +625,85 @@ function DocumentManagement() {
       setActionError(err.message || "Failed to delete document.");
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  // Toggle single document checkbox
+  const handleToggleSelectDoc = (docId) => {
+    const sId = String(docId);
+    setSelectedDocIds((prev) =>
+      prev.includes(sId) ? prev.filter((id) => id !== sId) : [...prev, sId]
+    );
+  };
+
+  // Toggle select all visible filtered documents
+  const handleToggleSelectAll = () => {
+    const currentFilteredIds = filteredDocuments.map((d) => String(getDocumentId(d)));
+    if (currentFilteredIds.length === 0) return;
+
+    const allSelected = currentFilteredIds.every((id) => selectedDocIds.includes(id));
+    if (allSelected) {
+      setSelectedDocIds((prev) => prev.filter((id) => !currentFilteredIds.includes(id)));
+    } else {
+      setSelectedDocIds((prev) => Array.from(new Set([...prev, ...currentFilteredIds])));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedDocIds([]);
+  };
+
+  // Execute bulk deletion of selected documents
+  const confirmBulkDelete = async () => {
+    if (selectedDocIds.length === 0) return;
+    setBulkDeleteBusy(true);
+    setActionNotice("");
+    setActionError("");
+
+    const idsToDelete = [...selectedDocIds];
+    const count = idsToDelete.length;
+
+    try {
+      // 1. Immediately record in deletedIds & persist across localStorage keys
+      const currentStored = getStoredDeletedIds();
+      const nextDeleted = Array.from(new Set([...currentStored, ...deletedIds.map(String), ...idsToDelete]));
+      setDeletedIds(nextDeleted);
+      try {
+        localStorage.setItem("hrms_deleted_hr_doc_ids", JSON.stringify(nextDeleted));
+        localStorage.setItem("hrms_deleted_employee_doc_ids", JSON.stringify(nextDeleted));
+      } catch {}
+
+      // 2. Remove immediately from local allDocuments state
+      setAllDocuments((prev) =>
+        prev.filter((item) => !isDocDeleted(item, idsToDelete))
+      );
+
+      // 3. Delete valid numeric IDs on backend
+      const numericIds = idsToDelete
+        .map(Number)
+        .filter((id) => !isNaN(id) && id > 0);
+
+      if (numericIds.length > 0) {
+        try {
+          await bulkDeleteDocuments(numericIds);
+        } catch (backendErr) {
+          console.warn("Bulk delete backend fallback:", backendErr.message);
+          await Promise.allSettled(numericIds.map((id) => deleteDocument(id)));
+        }
+      }
+
+      setActionNotice(`Successfully deleted ${count} document${count > 1 ? "s" : ""} from Company Vault.`);
+      setSelectedDocIds([]);
+      setShowBulkDeleteModal(false);
+
+      try {
+        localStorage.setItem("hrms_data_updated", Date.now().toString());
+        window.dispatchEvent(new CustomEvent("hrms:data_changed"));
+      } catch {}
+    } catch (err) {
+      setActionError(err.message || "Failed to delete selected documents.");
+    } finally {
+      setBulkDeleteBusy(false);
     }
   };
 
@@ -950,8 +1088,19 @@ function DocumentManagement() {
               className={`doc-nav-btn ${viewMode === "dossier" ? "active" : ""}`}
               onClick={() => {
                 setViewMode("dossier");
-                if (!selectedEmployeeId && employees.length > 0) {
-                  setSelectedEmployeeId(employees[0]._id || employees[0].id);
+                const currentEmp = employees.find(
+                  (e) => String(e._id || e.id) === String(selectedEmployeeId)
+                );
+                const isCurrentCand = String(currentEmp?.email || "")
+                  .toLowerCase()
+                  .includes("@candidates.com");
+
+                if (!selectedEmployeeId || !currentEmp || isCurrentCand) {
+                  const bestId = findBestDefaultEmployee(employees, documents);
+                  if (bestId) {
+                    setSelectedEmployeeId(bestId);
+                    reloadDossier(bestId);
+                  }
                 }
               }}
               title="Filter vault to inspect one specific employee's personal dossier folder"
@@ -991,9 +1140,10 @@ function DocumentManagement() {
                     emp.employee_code ||
                     emp.code ||
                     (emp.id ? `EMP-${String(emp.id).padStart(3, "0")}` : "");
+                  const isCand = String(emp.email || "").toLowerCase().includes("@candidates.com");
                   return (
                     <option key={id} value={id}>
-                      {name} {empCode ? `[${empCode}]` : ""} ({emp.employment?.department || emp.department || "Staff"})
+                      {name} {empCode ? `[${empCode}]` : ""} ({emp.employment?.department || emp.department || "Staff"}){isCand ? " [Candidate]" : ""}
                     </option>
                   );
                 })}
@@ -1003,34 +1153,45 @@ function DocumentManagement() {
         </section>
 
         {/* Selected Employee Dossier Banner (when in Dossier mode) */}
-        {viewMode === "dossier" && selectedEmployee && (
-          <section className="employee-dossier-banner">
-            <div className="dossier-left-profile">
-              <div
-                className="dossier-avatar"
-                style={{
-                  backgroundColor: getColorForString(selectedEmployee.firstName || "E").bg,
-                  color: getColorForString(selectedEmployee.firstName || "E").text,
-                }}
-              >
-                {getInitials(
-                  `${selectedEmployee.firstName || ""} ${selectedEmployee.lastName || ""}`
-                )}
+        {viewMode === "dossier" && selectedEmployee && (() => {
+          const empFullName =
+            selectedEmployee.name ||
+            `${selectedEmployee.firstName || ""} ${selectedEmployee.lastName || ""}`.trim() ||
+            selectedEmployee.email ||
+            "Employee";
+          const empDept =
+            selectedEmployee.employment?.department ||
+            selectedEmployee.department ||
+            "General";
+          const empCode =
+            selectedEmployee.employment?.employeeCode ||
+            selectedEmployee.employeeCode ||
+            selectedEmployee.employee_code ||
+            selectedEmployee.code ||
+            (selectedEmployee.id ? `EMP-${String(selectedEmployee.id).padStart(3, "0")}` : "N/A");
+          const empEmail = selectedEmployee.email || "No email registered";
+          const initials = getInitials(empFullName);
+          const colorObj = getColorForString(empFullName);
+
+          return (
+            <section className="employee-dossier-banner">
+              <div className="dossier-left-profile">
+                <div
+                  className="dossier-avatar"
+                  style={{
+                    backgroundColor: colorObj.bg,
+                    color: colorObj.text,
+                  }}
+                >
+                  {initials}
+                </div>
+                <div className="dossier-profile-details">
+                  <h3>{empFullName}</h3>
+                  <p>
+                    {empDept} &bull; Code: <strong>{empCode}</strong> &bull; {empEmail}
+                  </p>
+                </div>
               </div>
-              <div className="dossier-profile-details">
-                <h3>
-                  {selectedEmployee.firstName} {selectedEmployee.lastName}
-                </h3>
-                <p>
-                  {selectedEmployee.employment?.department || selectedEmployee.department || "General"}{" "}
-                  &bull; Code:{" "}
-                  <strong>
-                    {selectedEmployee.employment?.employeeCode || selectedEmployee.employeeCode || "N/A"}
-                  </strong>{" "}
-                  &bull; {selectedEmployee.email}
-                </p>
-              </div>
-            </div>
 
             <div className="dossier-right-stats">
               <div className="dossier-stat-pill">
@@ -1059,7 +1220,8 @@ function DocumentManagement() {
               </button>
             </div>
           </section>
-        )}
+          );
+        })()}
 
         {/* Main Document Table Section */}
         <section className="doc-panel-card">
@@ -1142,11 +1304,53 @@ function DocumentManagement() {
             </div>
           </div>
 
+          {/* Bulk Selection Action Bar */}
+          {selectedDocIds.length > 0 && (
+            <div className="doc-bulk-action-bar">
+              <div className="bulk-bar-info">
+                <span className="bulk-badge-count">{selectedDocIds.length}</span>
+                <span className="bulk-bar-text">
+                  document{selectedDocIds.length > 1 ? "s" : ""} selected for batch operations
+                </span>
+              </div>
+              <div className="bulk-bar-actions">
+                <button
+                  type="button"
+                  className="btn-bulk-delete"
+                  onClick={() => setShowBulkDeleteModal(true)}
+                  title="Delete all selected documents"
+                >
+                  <span>🗑️</span> Delete Selected ({selectedDocIds.length})
+                </button>
+                <button
+                  type="button"
+                  className="btn-bulk-clear"
+                  onClick={handleClearSelection}
+                  title="Clear all selections"
+                >
+                  ✕ Clear Selection
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <div className="doc-table-container">
             <table className="modern-doc-table">
               <thead>
                 <tr>
+                  <th className="th-doc-checkbox" style={{ width: "44px", textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      aria-label="Select all documents"
+                      className="doc-checkbox-input"
+                      checked={
+                        filteredDocuments.length > 0 &&
+                        filteredDocuments.every((d) => selectedDocIds.includes(String(getDocumentId(d))))
+                      }
+                      onChange={handleToggleSelectAll}
+                    />
+                  </th>
                   <th>Document Asset</th>
                   <th>Employee</th>
                   <th>Document Category</th>
@@ -1159,7 +1363,7 @@ function DocumentManagement() {
               <tbody>
                 {filteredDocuments.length === 0 ? (
                   <tr>
-                    <td colSpan="7">
+                    <td colSpan="8">
                       <div className="doc-empty-state">
                         <span className="doc-empty-icon">📁</span>
                         <h4>No Documents Found</h4>
@@ -1194,8 +1398,26 @@ function DocumentManagement() {
                       doc.employee?.code ||
                       (doc.employee?.id ? `EMP-${String(doc.employee.id).padStart(3, "0")}` : "");
 
+                    const docId = String(getDocumentId(doc));
+                    const isSelected = selectedDocIds.includes(docId);
+
                     return (
-                      <tr key={doc._id || doc.id || `${doc.documentName}-${doc.createdAt}`}>
+                      <tr
+                        key={doc._id || doc.id || `${doc.documentName}-${doc.createdAt}`}
+                        className={isSelected ? "doc-row-selected" : ""}
+                      >
+                        <td className="td-doc-checkbox" style={{ textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select document ${doc.documentName || doc.fileName}`}
+                            className="doc-checkbox-input"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleToggleSelectDoc(docId);
+                            }}
+                          />
+                        </td>
                         <td>
                           <div
                             className="doc-file-cell clickable-preview"
@@ -1947,6 +2169,89 @@ function DocumentManagement() {
             </div>
           </div>
         )}
+
+        {/* Modal 6: Bulk Delete Confirmation Modal */}
+        {showBulkDeleteModal && (
+          <div className="modal-backdrop-wrap" onClick={() => !bulkDeleteBusy && setShowBulkDeleteModal(false)}>
+            <div className="modal-box-card" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-head reject-head">
+                <h3>
+                  <span>🗑️</span> Confirm Batch Document Deletion
+                </h3>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  disabled={bulkDeleteBusy}
+                  onClick={() => setShowBulkDeleteModal(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <p style={{ margin: 0, fontSize: "0.95rem", color: "#1e293b", lineHeight: 1.5 }}>
+                  Are you sure you want to permanently delete{" "}
+                  <strong>{selectedDocIds.length}</strong> selected document{selectedDocIds.length > 1 ? "s" : ""} from the Company Vault?
+                </p>
+
+                <div className="bulk-delete-doc-list">
+                  {filteredDocuments
+                    .filter((d) => selectedDocIds.includes(String(getDocumentId(d))))
+                    .map((d) => (
+                      <div key={getDocumentId(d)} className="bulk-delete-item">
+                        <span className="bulk-item-icon">📄</span>
+                        <div className="bulk-item-info">
+                          <strong>{d.documentName || d.fileName || d.documentType}</strong>
+                          <span style={{ fontSize: "0.76rem", color: "#64748b" }}>
+                            {d.employee?.name || `${d.employee?.firstName || ""} ${d.employee?.lastName || ""}`.trim() || "Employee"} &bull; {d.documentType || "Compliance"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                <div
+                  style={{
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: "8px",
+                    padding: "0.75rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.6rem",
+                  }}
+                >
+                  <span style={{ fontSize: "1.1rem" }}>⚠️</span>
+                  <span style={{ fontSize: "0.82rem", color: "#991b1b", fontWeight: 500 }}>
+                    This action is permanent and will delete database records and physical file binaries from the server.
+                  </span>
+                </div>
+              </div>
+
+              <div className="modal-foot">
+                <button
+                  type="button"
+                  className="btn-modal-cancel"
+                  disabled={bulkDeleteBusy}
+                  onClick={() => setShowBulkDeleteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-modal-submit danger"
+                  disabled={bulkDeleteBusy}
+                  onClick={confirmBulkDelete}
+                >
+                  {bulkDeleteBusy
+                    ? `Deleting ${selectedDocIds.length} Documents...`
+                    : `Permanently Delete (${selectedDocIds.length})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
     </>
   );

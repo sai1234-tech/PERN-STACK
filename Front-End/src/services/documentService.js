@@ -117,3 +117,10 @@ export function deleteDocument(documentId) {
     method: "DELETE",
   });
 }
+
+export function bulkDeleteDocuments(documentIds) {
+  return apiRequest(`/documents/bulk-delete`, {
+    method: "POST",
+    body: JSON.stringify({ ids: documentIds }),
+  });
+}

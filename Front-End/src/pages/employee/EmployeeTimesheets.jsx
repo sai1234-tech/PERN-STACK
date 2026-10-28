@@ -6,6 +6,8 @@ import { useTimesheets } from "../../hooks/useTimesheets";
 import { useEmployee } from "../../hooks/useEmployee";
 import { useAttendance } from "../../hooks/useAttendance";
 import { clockOut } from "../../services/attendanceService";
+import { getAllAllocations } from "../../services/allocationService";
+import { getClientProjects } from "../../services/clientMasterService";
 import { formatDate, formatTime } from "../../utils/date";
 import WeekdayDatePicker from "../../components/common/WeekdayDatePicker";
 import { broadcastDataChange } from "../../utils/syncManager";
@@ -463,6 +465,66 @@ function EmployeeTimesheets() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [clockOutBusy, setClockOutBusy] = useState(false);
+  const [myAllocation, setMyAllocation] = useState(null);
+  const [liveClientProjects, setLiveClientProjects] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadMyProjectAllocation = async () => {
+      try {
+        const [allocsRes, projsRes] = await Promise.allSettled([
+          getAllAllocations(),
+          getClientProjects(),
+        ]);
+
+        if (!mounted) return;
+
+        if (projsRes.status === "fulfilled" && Array.isArray(projsRes.value?.data)) {
+          const defaultCodes = new Set(["PRJ-TITAN-01", "PRJ-PHOENIX-02", "PRJ-APOLLO-03"]);
+          setLiveClientProjects(
+            projsRes.value.data.filter((p) => !defaultCodes.has(p.project_code))
+          );
+        }
+
+        const allAllocs =
+          allocsRes.status === "fulfilled" && Array.isArray(allocsRes.value)
+            ? allocsRes.value
+            : [];
+
+        const myId = String(currentEmp?.id || currentEmp?._id || "");
+        const myCode = String(currentEmp?.employee_code || currentEmp?.employeeCode || "").toLowerCase();
+        const myName = `${currentEmp?.first_name || currentEmp?.firstName || ""} ${currentEmp?.last_name || currentEmp?.lastName || ""}`
+          .trim()
+          .toLowerCase();
+
+        const matched = allAllocs.find((a) => {
+          if (myId && String(a.empId || a.emp_id) === myId) return true;
+          if (myCode && String(a.employeeCode || a.employee_code || "").toLowerCase() === myCode) return true;
+          if (myName && String(a.employeeName || a.employee_name || "").toLowerCase() === myName) return true;
+          return false;
+        });
+
+        if (matched) {
+          setMyAllocation(matched);
+          const projName = matched.projectName || matched.project_name || "";
+          const sow = matched.sowNumber || matched.sow_number || "";
+          if (projName && matched.status !== "Bench") {
+            const label = sow ? `${projName} (${sow})` : projName;
+            setForm((prev) => (prev.project ? prev : { ...prev, project: label }));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load employee project allocation:", err);
+      }
+    };
+
+    if (currentEmp) {
+      loadMyProjectAllocation();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [currentEmp]);
   const [deletedIds, setDeletedIds] = useState(() => {
     try {
       const saved = localStorage.getItem("hrms_deleted_timesheet_ids");
@@ -1326,6 +1388,61 @@ function EmployeeTimesheets() {
           {/* Left: Task Entry Form */}
           <section className="timesheet-card-panel">
             <h2>{editingId ? "Edit Timesheet Task" : "Log Daily Work Entry"}</h2>
+            <div
+              style={{
+                padding: "0.85rem 1.1rem",
+                background:
+                  myAllocation && myAllocation.status === "Allocated"
+                    ? "linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%)"
+                    : "#f8fafc",
+                border:
+                  myAllocation && myAllocation.status === "Allocated"
+                    ? "1px solid #a5b4fc"
+                    : "1px solid #cbd5e1",
+                borderRadius: "12px",
+                marginBottom: "1rem",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "0.75rem",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  🎯 My Assigned Project (Resource Allocation)
+                </div>
+                {myAllocation && myAllocation.status === "Allocated" ? (
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#0f172a", marginTop: "2px" }}>
+                    {myAllocation.projectName || myAllocation.project_name}
+                    {(myAllocation.sowNumber || myAllocation.sow_number) && (
+                      <span style={{ fontSize: "0.76rem", fontWeight: 700, color: "#4338ca", marginLeft: "8px", background: "#e0e7ff", padding: "2px 8px", borderRadius: "6px" }}>
+                        SOW: {myAllocation.sowNumber || myAllocation.sow_number}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: "0.86rem", fontWeight: 700, color: "#475569", marginTop: "2px" }}>
+                    Internal Practice Pool / Bench (Not yet allocated to a Client SOW by Manager)
+                  </div>
+                )}
+              </div>
+              <span
+                style={{
+                  fontSize: "0.74rem",
+                  fontWeight: 800,
+                  padding: "4px 10px",
+                  borderRadius: "999px",
+                  background: myAllocation && myAllocation.status === "Allocated" ? "#dcfce7" : "#f1f5f9",
+                  color: myAllocation && myAllocation.status === "Allocated" ? "#166534" : "#64748b",
+                  border: myAllocation && myAllocation.status === "Allocated" ? "1px solid #86efac" : "1px solid #cbd5e1",
+                }}
+              >
+                {myAllocation && myAllocation.status === "Allocated"
+                  ? `● ${myAllocation.billability || "Billable"} (${myAllocation.allocationPercentage || 100}% FTE)`
+                  : "● Internal / Bench"}
+              </span>
+            </div>
             <p>
               {editingId
                 ? "Update your draft task details and click Save Changes."
@@ -1375,11 +1492,30 @@ function EmployeeTimesheets() {
                     required
                   >
                     <option value="" disabled>Select Project / WBS Code</option>
-                    <optgroup label="🏢 Client SOW Engagements">
-                      <option value="PRJ-TITAN-01: Project Titan (SOW-2026-ENG-001)">PRJ-TITAN-01: Project Titan (SOW-2026-ENG-001)</option>
-                      <option value="PRJ-PHOENIX-02: Project Phoenix (SOW-2026-FIN-002)">PRJ-PHOENIX-02: Project Phoenix (SOW-2026-FIN-002)</option>
-                      <option value="PRJ-APOLLO-03: Project Apollo (SOW-2026-AI-003)">PRJ-APOLLO-03: Project Apollo (SOW-2026-AI-003)</option>
-                    </optgroup>
+                    {myAllocation && myAllocation.status === "Allocated" && (myAllocation.projectName || myAllocation.project_name) && (
+                      <optgroup label="🎯 My Allocated Project (Assigned by Manager/HR)">
+                        {(() => {
+                          const pName = myAllocation.projectName || myAllocation.project_name;
+                          const sow = myAllocation.sowNumber || myAllocation.sow_number;
+                          const val = sow ? `${pName} (${sow})` : pName;
+                          return <option value={val}>{val} — Assigned to You</option>;
+                        })()}
+                      </optgroup>
+                    )}
+                    {liveClientProjects.length > 0 && (
+                      <optgroup label="🏢 Active Client SOW Projects (PostgreSQL)">
+                        {liveClientProjects.map((cp) => {
+                          const pVal = cp.sow_number
+                            ? `${cp.project_code ? `${cp.project_code}: ` : ""}${cp.project_name} (${cp.sow_number})`
+                            : cp.project_name;
+                          return (
+                            <option key={cp.id || pVal} value={pVal}>
+                              {pVal} {cp.client_name ? `• ${cp.client_name}` : ""}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    )}
                     <optgroup label="⚙️ Internal Engineering Delivery">
                       <option value="WBS-DEV-001: Backend Core">WBS-DEV-001: Backend Core</option>
                       <option value="WBS-FE-002: UI Components">WBS-FE-002: UI Components</option>

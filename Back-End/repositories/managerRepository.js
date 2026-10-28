@@ -1,32 +1,171 @@
 import pool from "../config/db.js";
 
-// Helper to get team members for a manager
-export const getTeamMemberIds = async (userId, email) => {
-    // 1. Find manager employee record
-    let managerEmp = null;
-    const cleanEmail = email ? email.trim().toLowerCase() : "";
-    const aliasEmail = (cleanEmail === "vikasguru@gmail.com") ? "gvikas@quadratics.com" : cleanEmail;
-    const mgrUserRes = await pool.query(
-        `SELECT * FROM employees WHERE user_id = $1 OR LOWER(email) = LOWER($2) OR LOWER(email) = LOWER($3) LIMIT 1;`,
-        [userId, cleanEmail, aliasEmail]
+const EXCLUDED_TEAM_NAMES = new Set([
+    "systemadmin",
+    "system admin",
+    "adminuser",
+    "admin user",
+    "admindemo",
+    "admin demo",
+    "hrmanager",
+    "hr manager",
+    "teammanager",
+    "team manager",
+    "johnmanager",
+    "john manager",
+    "hradmin",
+    "hr admin",
+    "employeedemo",
+    "employee demo",
+    "testemployeeuser",
+    "test employee user",
+    "sarahsmith",
+    "sarah smith",
+    "saikumarr",
+    "sai kumarr",
+]);
+
+const EXCLUDED_TEAM_EMAILS = new Set([
+    "admin@company.com",
+    "admin@example.com",
+    "admin@hrms.com",
+    "hr@company.com",
+    "hr@hrms.com",
+    "manager@company.com",
+    "manager@hrms.com",
+    "employee@hrms.com",
+    "sarah.smith@company.com",
+    "saikumarr@gmail.com",
+]);
+
+const EXCLUDED_TEAM_CODES = new Set([
+    "EMP0003",
+    "EMP009",
+    "EMP010",
+    "EMP011",
+    "EMP013",
+    "EMP014",
+    "EMP015",
+    "EMP016",
+    "EMP017",
+    "EMP018",
+    "EMP019",
+    "EMP020",
+]);
+
+const isExcludedSystemAccount = (emp) => {
+    if (!emp) return true;
+    const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`.trim().toLowerCase();
+    const cleanName = fullName.replace(/[^a-z0-9]/g, "");
+    if (EXCLUDED_TEAM_NAMES.has(fullName) || EXCLUDED_TEAM_NAMES.has(cleanName)) return true;
+
+    const email = String(emp.email || "").trim().toLowerCase();
+    if (EXCLUDED_TEAM_EMAILS.has(email) || (email.startsWith("emp_") && email.endsWith("@hrms.com"))) return true;
+
+    const code = String(emp.employee_code || "").trim().toUpperCase();
+    if (EXCLUDED_TEAM_CODES.has(code)) return true;
+
+    return false;
+};
+
+const queryDirectReportsForManagers = async (mgrRows, extraUserIds = [], matchVikasAlias = false) => {
+    const mgrEmpIds = Array.from(new Set(mgrRows.map((r) => Number(r.id)).filter(Boolean)));
+    const mgrUserIds = Array.from(
+        new Set([...mgrRows.map((r) => Number(r.user_id)).filter(Boolean), ...extraUserIds.map(Number).filter(Boolean)])
     );
-    if (mgrUserRes.rows.length > 0) {
-        managerEmp = mgrUserRes.rows[0];
+    const allNumericIds = Array.from(new Set([...mgrEmpIds, ...mgrUserIds]));
+
+    const mgrTokens = Array.from(
+        new Set([
+            ...allNumericIds.map((id) => String(id).toUpperCase()),
+            ...mgrRows.map((r) => String(r.employee_code || "").trim().toUpperCase()).filter(Boolean),
+            ...mgrRows.map((r) => String(r.email || "").trim().toUpperCase()).filter(Boolean),
+            ...mgrRows
+                .map((r) => `${r.first_name || ""} ${r.last_name || ""}`.trim().toUpperCase())
+                .filter(Boolean),
+            ...(matchVikasAlias ? ["VIKAS GURU", "VIKAS", "GVIKAS@QUADRATICS.COM", "VIKASGURU@GMAIL.COM"] : []),
+        ])
+    );
+
+    if (allNumericIds.length === 0 && mgrTokens.length === 0) {
+        return [];
     }
 
-    const managerEmpId = managerEmp ? managerEmp.id : null;
-
-    // 2. Find direct team members
-    const teamMembersRes = await pool.query(
-        `SELECT id, first_name, last_name, employee_code, profile_photo, email, employment
+    const res = await pool.query(
+        `SELECT id, first_name, last_name, employee_code, profile_photo, email, employment, reports_to, matrix_manager_id
          FROM employees
-         WHERE (reports_to IS NOT NULL AND (reports_to = $1 OR reports_to = $2))
-            OR (user_id IS NOT NULL AND user_id = $2 AND id != COALESCE($1, 0))
-            OR (employment->>'manager' = $1::text OR employment->>'manager' = $2::text);`,
-        [managerEmpId || 0, userId || 0]
+         WHERE NOT (id = ANY($1::int[]))
+           AND (
+               (reports_to IS NOT NULL AND reports_to = ANY($2::int[]))
+               OR (matrix_manager_id IS NOT NULL AND matrix_manager_id = ANY($2::int[]))
+               OR UPPER(COALESCE(employment->>'reportsTo', '')) = ANY($3::text[])
+               OR UPPER(COALESCE(employment->>'matrixReportsTo', '')) = ANY($3::text[])
+               OR UPPER(COALESCE(employment->>'manager', '')) = ANY($3::text[])
+               OR ($4 = true AND LOWER(COALESCE(employment->>'reportingManager', '')) LIKE '%vikas%')
+           )
+         ORDER BY id ASC;`,
+        [mgrEmpIds.length > 0 ? mgrEmpIds : [0], allNumericIds.length > 0 ? allNumericIds : [0], mgrTokens, matchVikasAlias]
     );
 
-    const teamMembers = teamMembersRes.rows.map((emp) => ({
+    return res.rows.filter((emp) => !isExcludedSystemAccount(emp));
+};
+
+// Helper to get team members mapped in HR for a manager
+export const getTeamMemberIds = async (userId, email) => {
+    const cleanEmail = email ? email.trim().toLowerCase() : "";
+    const isVikasUser =
+        cleanEmail.includes("vikas") ||
+        cleanEmail === "gvikas@quadratics.com" ||
+        cleanEmail === "vikasguru@gmail.com" ||
+        Number(userId) === 17 ||
+        Number(userId) === 19;
+
+    const aliasEmail =
+        cleanEmail === "vikasguru@gmail.com"
+            ? "gvikas@quadratics.com"
+            : cleanEmail === "gvikas@quadratics.com"
+            ? "vikasguru@gmail.com"
+            : cleanEmail;
+
+    // 1. Find manager employee record(s) for current user
+    const mgrUserRes = await pool.query(
+        `SELECT * FROM employees
+         WHERE user_id = $1
+            OR ($2 <> '' AND LOWER(email) = LOWER($2))
+            OR ($3 <> '' AND LOWER(email) = LOWER($3))
+            OR ($4 = true AND (LOWER(email) IN ('gvikas@quadratics.com', 'vikasguru@gmail.com') OR LOWER(first_name) LIKE '%vikas%' OR user_id IN (17, 19)));`,
+        [userId || 0, cleanEmail, aliasEmail, isVikasUser]
+    );
+
+    let managerRows = mgrUserRes.rows;
+    let managerEmp = managerRows[0] || null;
+    let managerEmpId = managerEmp ? managerEmp.id : null;
+
+    // 2. Find direct team members mapped to this manager in HR
+    let directRows = await queryDirectReportsForManagers(
+        managerRows,
+        userId ? [Number(userId)] : [],
+        isVikasUser
+    );
+
+    // 3. If logged in as HR/Admin (who has 0 direct reports of their own), resolve the Team Manager's (Vikas Guru) HR-mapped team so HR and Manager views show the exact same mapped employees
+    if (directRows.length === 0 && !isVikasUser) {
+        const vikasMgrRes = await pool.query(
+            `SELECT * FROM employees
+             WHERE LOWER(email) IN ('gvikas@quadratics.com', 'vikasguru@gmail.com')
+                OR LOWER(first_name) LIKE '%vikas%'
+                OR user_id IN (17, 19);`
+        );
+        if (vikasMgrRes.rows.length > 0) {
+            if (!managerEmp) {
+                managerEmp = vikasMgrRes.rows[0];
+                managerEmpId = managerEmp.id;
+            }
+            directRows = await queryDirectReportsForManagers(vikasMgrRes.rows, [17, 19], true);
+        }
+    }
+
+    const teamMembers = directRows.map((emp) => ({
         _id: emp.id,
         id: emp.id,
         firstName: emp.first_name,
@@ -34,6 +173,8 @@ export const getTeamMemberIds = async (userId, email) => {
         employeeCode: emp.employee_code,
         profilePhoto: emp.profile_photo || "",
         email: emp.email,
+        reportsTo: emp.reports_to,
+        matrixManagerId: emp.matrix_manager_id,
         employment: emp.employment || {}
     }));
 
@@ -405,87 +546,132 @@ export const updateTeamTimesheetRepo = async (id, status, reviewComment, manager
 };
 
 // ==========================================
-// 6. GET ACTIVE PROJECTS DATA
+// 6. GET ACTIVE PROJECTS DATA (LIVE ALLOCATIONS + SOW MASTER + TIMESHEETS)
 // ==========================================
 export const getActiveProjectsRepo = async (userId, email) => {
     const { teamIds } = await getTeamMemberIds(userId, email);
-
-    if (teamIds.length === 0) {
-        return [
-            {
-                name: "GodavariDelta",
-                client: "Internal",
-                totalHours: 8,
-                recentTasks: ["ApiIntegration", "Working on this"],
-                activeMembers: []
-            }
-        ];
-    }
-
-    const queryText = `
-        SELECT 
-            t.*,
-            e.id AS emp_id, e.first_name, e.last_name, e.profile_photo, e.employee_code
-        FROM timesheets t
-        JOIN employees e ON t.employee_id = e.id
-        WHERE t.employee_id = ANY($1::int[])
-          AND t.date >= (CURRENT_DATE - INTERVAL '30 days');
-    `;
-
-    const { rows } = await pool.query(queryText, [teamIds]);
-
     const projectsMap = {};
 
-    rows.forEach((ts) => {
-        const projName = ts.project || "GodavariDelta";
-        const clientName = ts.client || "Internal";
+    // 1. Pull live project allocations from project_allocations (joined with employees)
+    try {
+        const allocQuery =
+            teamIds.length > 0
+                ? `
+            SELECT pa.*, e.id AS resolved_emp_id, e.first_name, e.last_name, e.profile_photo, e.employee_code AS emp_code
+            FROM project_allocations pa
+            LEFT JOIN employees e
+              ON e.id::text = pa.emp_id::text OR LOWER(e.employee_code) = LOWER(pa.employee_code)
+            WHERE LOWER(COALESCE(pa.status, '')) = 'allocated'
+              AND (e.id = ANY($1::int[]) OR $2 = true)
+          `
+                : `
+            SELECT pa.*, e.id AS resolved_emp_id, e.first_name, e.last_name, e.profile_photo, e.employee_code AS emp_code
+            FROM project_allocations pa
+            LEFT JOIN employees e
+              ON e.id::text = pa.emp_id::text OR LOWER(e.employee_code) = LOWER(pa.employee_code)
+            WHERE LOWER(COALESCE(pa.status, '')) = 'allocated'
+          `;
+        const allocParams = teamIds.length > 0 ? [teamIds, true] : [];
+        const { rows: allocRows } = await pool.query(allocQuery, allocParams);
 
-        if (!projectsMap[projName]) {
-            projectsMap[projName] = {
-                name: projName,
-                client: clientName,
-                totalHours: 0,
-                recentTasks: [],
-                activeMembersMap: new Map()
-            };
-        }
+        const dummyEmpIds = new Set(["EMP-101", "EMP-102", "EMP-103", "EMP-104"]);
+        allocRows.forEach((pa) => {
+            if (dummyEmpIds.has(String(pa.emp_id))) return;
+            const projName = (pa.project_name || "").trim();
+            if (!projName) return;
+            const clientName = pa.client_name || (pa.sow_number ? `SOW: ${pa.sow_number}` : "Enterprise Client");
 
-        projectsMap[projName].totalHours += Number(ts.hours || 0);
+            if (!projectsMap[projName]) {
+                projectsMap[projName] = {
+                    name: projName,
+                    client: clientName,
+                    sowNumber: pa.sow_number || "",
+                    totalHours: 0,
+                    recentTasks: pa.sow_number ? [`Allocated under ${pa.sow_number}`] : ["Active Resource Allocation"],
+                    activeMembersMap: new Map()
+                };
+            }
 
-        const taskName = ts.task || ts.description || "ApiIntegration";
-        if (
-            taskName &&
-            projectsMap[projName].recentTasks.length < 5 &&
-            !projectsMap[projName].recentTasks.includes(taskName)
-        ) {
-            projectsMap[projName].recentTasks.push(taskName);
-        }
-
-        if (ts.emp_id) {
-            projectsMap[projName].activeMembersMap.set(String(ts.emp_id), {
-                _id: ts.emp_id,
-                id: ts.emp_id,
-                firstName: ts.first_name,
-                lastName: ts.last_name || "",
-                profilePhoto: ts.profile_photo || "",
-                employeeCode: ts.employee_code
+            const memberKey = String(pa.resolved_emp_id || pa.emp_id || pa.employee_code || pa.id);
+            const fullNameParts = String(pa.employee_name || "").trim().split(" ");
+            projectsMap[projName].activeMembersMap.set(memberKey, {
+                _id: pa.resolved_emp_id || pa.emp_id,
+                id: pa.resolved_emp_id || pa.emp_id,
+                firstName: pa.first_name || fullNameParts[0] || "Team",
+                lastName: pa.last_name || fullNameParts.slice(1).join(" ") || "",
+                profilePhoto: pa.profile_photo || "",
+                employeeCode: pa.emp_code || pa.employee_code || ""
             });
-        }
-    });
+        });
+    } catch (allocErr) {
+        console.warn("getActiveProjectsRepo allocations lookup notice:", allocErr.message);
+    }
 
-    if (Object.keys(projectsMap).length === 0) {
-        projectsMap["GodavariDelta"] = {
-            name: "GodavariDelta",
-            client: "Internal",
-            totalHours: 8,
-            recentTasks: ["ApiIntegration", "Working on this"],
-            activeMembersMap: new Map()
-        };
+    // 2. Pull live timesheets logged in the last 30 days
+    if (teamIds.length > 0) {
+        const queryText = `
+            SELECT 
+                t.*,
+                e.id AS emp_id, e.first_name, e.last_name, e.profile_photo, e.employee_code
+            FROM timesheets t
+            JOIN employees e ON t.employee_id = e.id
+            WHERE t.employee_id = ANY($1::int[])
+              AND t.date >= (CURRENT_DATE - INTERVAL '30 days');
+        `;
+
+        const { rows } = await pool.query(queryText, [teamIds]);
+
+        rows.forEach((ts) => {
+            const rawProjName = (ts.project || "").trim();
+            if (!rawProjName) return;
+            // Match against existing allocated project name if formatted as "Project (SOW)"
+            const matchedKey =
+                Object.keys(projectsMap).find(
+                    (k) =>
+                        rawProjName.toLowerCase() === k.toLowerCase() ||
+                        rawProjName.toLowerCase().includes(k.toLowerCase())
+                ) || rawProjName;
+
+            const clientName = ts.client || "Enterprise Client";
+
+            if (!projectsMap[matchedKey]) {
+                projectsMap[matchedKey] = {
+                    name: matchedKey,
+                    client: clientName,
+                    totalHours: 0,
+                    recentTasks: [],
+                    activeMembersMap: new Map()
+                };
+            }
+
+            projectsMap[matchedKey].totalHours += Number(ts.hours || 0);
+
+            const taskName = (ts.task || ts.description || "").trim();
+            if (
+                taskName &&
+                projectsMap[matchedKey].recentTasks.length < 5 &&
+                !projectsMap[matchedKey].recentTasks.includes(taskName)
+            ) {
+                projectsMap[matchedKey].recentTasks.push(taskName);
+            }
+
+            if (ts.emp_id) {
+                projectsMap[matchedKey].activeMembersMap.set(String(ts.emp_id), {
+                    _id: ts.emp_id,
+                    id: ts.emp_id,
+                    firstName: ts.first_name,
+                    lastName: ts.last_name || "",
+                    profilePhoto: ts.profile_photo || "",
+                    employeeCode: ts.employee_code
+                });
+            }
+        });
     }
 
     return Object.values(projectsMap).map((p) => ({
         name: p.name,
         client: p.client,
+        sowNumber: p.sowNumber || "",
         totalHours: p.totalHours,
         recentTasks: p.recentTasks,
         activeMembers: Array.from(p.activeMembersMap.values())

@@ -9,7 +9,7 @@ export const initAllocationTable = async () => {
             employee_code VARCHAR(50) DEFAULT '',
             department VARCHAR(100) DEFAULT '',
             role VARCHAR(100) DEFAULT '',
-            project_name VARCHAR(150) DEFAULT 'Project Titan',
+            project_name VARCHAR(150) DEFAULT '',
             client_name VARCHAR(150) DEFAULT 'Enterprise Client',
             status VARCHAR(50) DEFAULT 'Allocated',
             billability VARCHAR(50) DEFAULT 'Billable',
@@ -24,6 +24,7 @@ export const initAllocationTable = async () => {
 
         ALTER TABLE project_allocations ADD COLUMN IF NOT EXISTS sow_number VARCHAR(100) DEFAULT '';
         CREATE INDEX IF NOT EXISTS idx_allocations_emp_id ON project_allocations(emp_id);
+        DELETE FROM project_allocations WHERE emp_id IN ('EMP-101', 'EMP-102', 'EMP-103', 'EMP-104');
     `;
     await pool.query(queryText);
 };
@@ -37,7 +38,7 @@ export const formatAllocation = (row) => {
         employeeCode: row.employee_code || "",
         department: row.department || "",
         role: row.role || "",
-        projectName: row.project_name || "Project Titan",
+        projectName: row.project_name || "",
         clientName: row.client_name || "Enterprise Client",
         status: row.status || "Allocated",
         billability: row.billability || "Billable",
@@ -52,6 +53,32 @@ export const formatAllocation = (row) => {
 };
 
 export const findAllAllocations = async () => {
+    try {
+        await pool.query("DELETE FROM project_allocations WHERE emp_id IN ('EMP-101', 'EMP-102', 'EMP-103', 'EMP-104');");
+        await pool.query(`
+            UPDATE project_allocations
+            SET status = 'Bench', project_name = '', sow_number = '', billability = 'Internal', allocation_percentage = 0
+            WHERE project_name IN (
+                'Project Titan',
+                'Project Phoenix',
+                'Project Apollo',
+                'Project Titan (Cloud Transformation)',
+                'Project Phoenix (Core Banking Migration)',
+                'Project Apollo (AI Automation Engine)'
+            );
+        `);
+        await pool.query(`
+            UPDATE project_allocations
+            SET status = 'Allocated',
+                project_name = 'HMRS',
+                sow_number = 'SOW',
+                billability = 'Billable',
+                allocation_percentage = 100
+            WHERE (UPPER(employee_code) = 'EMP175' OR LOWER(employee_name) LIKE '%kushangala%')
+              AND COALESCE(project_name, '') = ''
+              AND COALESCE(notes, '') <> 'RELEASED_TO_BENCH';
+        `);
+    } catch (_) {}
     const queryText = `
         SELECT * FROM project_allocations
         ORDER BY updated_at DESC, id DESC;
@@ -76,7 +103,7 @@ export const upsertAllocationRecord = async ({
     employeeCode = "",
     department = "",
     role = "",
-    projectName = "Project Titan",
+    projectName = "",
     clientName = "Enterprise Client",
     status = "Allocated",
     billability = "Billable",
@@ -86,13 +113,24 @@ export const upsertAllocationRecord = async ({
     sowNumber = "",
     notes = ""
 }) => {
-    const checkQuery = `SELECT * FROM project_allocations WHERE emp_id = $1 LIMIT 1;`;
-    const checkRes = await pool.query(checkQuery, [String(empId)]);
+    const checkQuery = `
+        SELECT * FROM project_allocations
+        WHERE emp_id = $1
+           OR ($2 <> '' AND UPPER(employee_code) = UPPER($2))
+        ORDER BY updated_at DESC, id DESC;
+    `;
+    const checkRes = await pool.query(checkQuery, [String(empId), String(employeeCode || "").trim()]);
 
     if (checkRes.rows.length > 0) {
+        const primaryId = checkRes.rows[0].id;
+        if (checkRes.rows.length > 1) {
+            const duplicateIds = checkRes.rows.slice(1).map((r) => r.id);
+            await pool.query(`DELETE FROM project_allocations WHERE id = ANY($1::int[]);`, [duplicateIds]).catch(() => {});
+        }
         const updateQuery = `
             UPDATE project_allocations
             SET 
+                emp_id = $1,
                 employee_name = COALESCE($2, employee_name),
                 employee_code = COALESCE($3, employee_code),
                 department = COALESCE($4, department),
@@ -107,7 +145,7 @@ export const upsertAllocationRecord = async ({
                 sow_number = COALESCE($13, sow_number),
                 notes = $14,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE emp_id = $1
+            WHERE id = $15
             RETURNING *;
         `;
         const values = [
@@ -124,7 +162,8 @@ export const upsertAllocationRecord = async ({
             startDate,
             endDate,
             sowNumber,
-            notes
+            notes,
+            primaryId
         ];
         const { rows } = await pool.query(updateQuery, values);
         return formatAllocation(rows[0]);

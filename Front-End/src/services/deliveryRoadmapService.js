@@ -7,10 +7,18 @@ export const deliveryRoadmapService = {
       method: "POST",
       body: JSON.stringify(data)
     }),
+  deletePhase: (phaseNo) =>
+    apiRequest(`/delivery/roadmap/phases/${phaseNo}`, {
+      method: "DELETE"
+    }),
   createDeliverable: (data) =>
     apiRequest("/delivery/roadmap/deliverables", {
       method: "POST",
       body: JSON.stringify(data)
+    }),
+  deleteDeliverable: (id) =>
+    apiRequest(`/delivery/roadmap/deliverables/${id}`, {
+      method: "DELETE"
     }),
   signOff: (phaseNo, decision, comments) =>
     apiRequest(`/delivery/roadmap/phases/${phaseNo}/signoff`, {

@@ -191,6 +191,30 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
     }
   };
 
+  const handleDeletePhase = async (phaseNo, phaseName) => {
+    if (!window.confirm(`Are you sure you want to delete Phase ${phaseNo} ("${phaseName}") and all its deliverables?`)) return;
+    try {
+      await api.deletePhase(phaseNo);
+      setSignNotice(`Phase ${phaseNo} ("${phaseName}") deleted successfully.`);
+      await load();
+      setTimeout(() => setSignNotice(""), 4500);
+    } catch (err) {
+      window.alert(err.message || "Failed to delete phase");
+    }
+  };
+
+  const handleDeleteDeliverable = async (id, code) => {
+    if (!window.confirm(`Delete deliverable ${code}?`)) return;
+    try {
+      await api.deleteDeliverable(id);
+      setSignNotice(`Deliverable "${code}" deleted successfully.`);
+      await load();
+      setTimeout(() => setSignNotice(""), 4500);
+    } catch (err) {
+      window.alert(err.message || "Failed to delete deliverable");
+    }
+  };
+
   const tabs = [
     ...(isMgmt ? [{ k: "roadmap", l: "🗺️ Delivery Roadmap" }] : []),
     { k: "assistant", l: "💬 Policy Assistant" },
@@ -211,7 +235,7 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
             <div className="stack-header-title-block">
               <div className="stack-header-badge-row">
                 <span className="stack-live-dot" />
-                <span className="stack-header-badge">Phases 0 – 4</span>
+                <span className="stack-header-badge">{roadmap?.phases?.length ? `${roadmap.phases.length} Active Phase(s)` : "HR Configured"}</span>
                 <span>REAL-TIME EVIDENCE ENGINE & CONTROLLED AI</span>
               </div>
               <h1>Delivery Roadmap & AI Assistant</h1>
@@ -260,36 +284,36 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
               <div className="live-telemetry-pill">
                 <span className="live-telemetry-icon">🎯</span>
                 <div>
-                  <strong className="live-telemetry-val">{roadmap?.overall?.completion_pct || 100}%</strong>
-                  <span className="live-telemetry-lbl">Overall Delivery ({roadmap?.overall?.delivered || 29}/{roadmap?.overall?.total || 29} Live)</span>
+                  <strong className="live-telemetry-val">{roadmap?.overall?.completion_pct ?? 0}%</strong>
+                  <span className="live-telemetry-lbl">Overall Delivery ({roadmap?.overall?.delivered ?? 0}/{roadmap?.overall?.total ?? 0} Live)</span>
                 </div>
               </div>
               <div className="live-telemetry-pill">
                 <span className="live-telemetry-icon">📜</span>
                 <div>
-                  <strong className="live-telemetry-val">12 Approved Policies</strong>
-                  <span className="live-telemetry-lbl">POSH, WFH, Leave, DPDP Act</span>
+                  <strong className="live-telemetry-val">{roadmap?.telemetry?.policy_count ?? 0} Approved Policies</strong>
+                  <span className="live-telemetry-lbl">Verified Policy Repository</span>
                 </div>
               </div>
               <div className="live-telemetry-pill">
                 <span className="live-telemetry-icon">🛡️</span>
                 <div>
-                  <strong className="live-telemetry-val">{guard.length || 4} Guardrail Rules</strong>
-                  <span className="live-telemetry-lbl">Injection Defense & Escalation</span>
+                  <strong className="live-telemetry-val">{roadmap?.telemetry?.guardrail_count ?? guard.length} Guardrail Rules</strong>
+                  <span className="live-telemetry-lbl">Active Policy Enforcement</span>
                 </div>
               </div>
               <div className="live-telemetry-pill">
                 <span className="live-telemetry-icon">📊</span>
                 <div>
-                  <strong className="live-telemetry-val">{logs?.total || 45} Audited Queries</strong>
+                  <strong className="live-telemetry-val">{roadmap?.telemetry?.log_count ?? (logs?.total || 0)} Audited Queries</strong>
                   <span className="live-telemetry-lbl">Immutable AI Logs</span>
                 </div>
               </div>
               <div className="live-telemetry-pill">
                 <span className="live-telemetry-icon">🐘</span>
                 <div>
-                  <strong className="live-telemetry-val">PostgreSQL 16</strong>
-                  <span className="live-telemetry-lbl">Evidence Sourced Live</span>
+                  <strong className="live-telemetry-val">PostgreSQL</strong>
+                  <span className="live-telemetry-lbl">100% Dynamic HR Sourced</span>
                 </div>
               </div>
             </div>
@@ -328,7 +352,29 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
           </div>
 
           {/* ROADMAP */}
-          {tab === "roadmap" && roadmap && (
+          {tab === "roadmap" && roadmap && roadmap.phases.length === 0 && (
+            <div className="stack-card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+              <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem" }}>🗺️</div>
+              <h3 style={{ margin: "0 0 0.5rem" }}>No Delivery Roadmap Phases Configured</h3>
+              <p style={{ color: "#64748b", maxWidth: "480px", margin: "0 auto 1.5rem" }}>
+                All backend hardcoded phases and deliverables have been removed. HR and Leadership can now manually create customized enterprise phases and deliverables.
+              </p>
+              {canCreate && (
+                <button
+                  className="sandbox-btn-submit"
+                  style={{ padding: ".6rem 1.2rem", fontSize: ".9rem" }}
+                  onClick={() => {
+                    setPhaseForm({ phase_no: 1, name: "", scope: "", outcome: "" });
+                    setPhaseModal(true);
+                  }}
+                >
+                  + Create Your First Phase
+                </button>
+              )}
+            </div>
+          )}
+
+          {tab === "roadmap" && roadmap && roadmap.phases.length > 0 && (
             <div className="rm-phase-grid">
               {roadmap.phases.map((p) => (
                 <section key={p.phase_no} className={`rm-phase ${p.completion_pct === 100 ? "done" : ""}`}>
@@ -339,26 +385,36 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                       {canCreate && (
-                        <button
-                          className="stack-btn-refresh"
-                          style={{ padding: ".25rem .5rem", fontSize: ".72rem" }}
-                          onClick={() => {
-                            setDeliverableForm({
-                              phase_no: p.phase_no,
-                              deliverable_code: `P${p.phase_no}-`,
-                              title: "",
-                              description: "",
-                              evidence_type: "TABLE",
-                              evidence_ref: "",
-                              min_rows: 1,
-                              ui_route: "",
-                              api_route: ""
-                            });
-                            setDeliverableModal(true);
-                          }}
-                        >
-                          + Add Deliverable
-                        </button>
+                        <>
+                          <button
+                            className="stack-btn-refresh"
+                            style={{ padding: ".25rem .5rem", fontSize: ".72rem" }}
+                            onClick={() => {
+                              setDeliverableForm({
+                                phase_no: p.phase_no,
+                                deliverable_code: `P${p.phase_no}-`,
+                                title: "",
+                                description: "",
+                                evidence_type: "TABLE",
+                                evidence_ref: "",
+                                min_rows: 1,
+                                ui_route: "",
+                                api_route: ""
+                              });
+                              setDeliverableModal(true);
+                            }}
+                          >
+                            + Add Deliverable
+                          </button>
+                          <button
+                            className="stack-btn-refresh"
+                            style={{ padding: ".25rem .5rem", fontSize: ".72rem", color: "#dc2626", borderColor: "#fca5a5" }}
+                            title="Delete this phase"
+                            onClick={() => handleDeletePhase(p.phase_no, p.name)}
+                          >
+                            🗑
+                          </button>
+                        </>
                       )}
                       <span className={`rm-pill ${p.completion_pct === 100 ? "ok" : "pending"}`}>{p.delivered}/{p.total}</span>
                     </div>
@@ -371,7 +427,18 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                           {d.ui_route ? <Link to={d.ui_route}>{d.title}</Link> : <strong>{d.title}</strong>}
                           <small>{d.evidence}{d.api_route ? ` · ${d.api_route}` : ""}</small>
                         </div>
-                        <span className={`rm-pill ${d.live ? "ok" : "pending"}`}>{d.status}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span className={`rm-pill ${d.live ? "ok" : "pending"}`}>{d.status}</span>
+                          {canCreate && (
+                            <button
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "0.9rem", padding: "0 0.2rem" }}
+                              title="Delete deliverable"
+                              onClick={() => handleDeleteDeliverable(d.id, d.deliverable_code)}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>

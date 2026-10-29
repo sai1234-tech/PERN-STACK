@@ -58,10 +58,25 @@ export const getRoadmap = async (req, res, next) => {
     const phases = await buildRoadmap();
     const total = phases.reduce((a, p) => a + p.total, 0);
     const delivered = phases.reduce((a, p) => a + p.delivered, 0);
+    const [polRes, guardRes, logRes] = await Promise.all([
+      pool.query("SELECT count(*)::int AS n FROM ai_policy_documents WHERE is_active").catch(() => ({ rows: [{ n: 0 }] })),
+      pool.query("SELECT count(*)::int AS n FROM ai_guardrail_rules WHERE is_active").catch(() => ({ rows: [{ n: 0 }] })),
+      pool.query("SELECT count(*)::int AS n FROM ai_interaction_logs").catch(() => ({ rows: [{ n: 0 }] }))
+    ]);
     return res.json({
       success: true,
       generated_at: new Date().toISOString(),
-      overall: { delivered, total, completion_pct: total ? Math.round((delivered / total) * 100) : 0 },
+      overall: {
+        delivered,
+        total,
+        completion_pct: total ? Math.round((delivered / total) * 100) : 0
+      },
+      telemetry: {
+        total_phases: phases.length,
+        policy_count: polRes.rows[0]?.n || 0,
+        guardrail_count: guardRes.rows[0]?.n || 0,
+        log_count: logRes.rows[0]?.n || 0
+      },
       phases
     });
   } catch (e) {
@@ -166,6 +181,48 @@ export const createDeliverable = async (req, res, next) => {
       [deliverable_code.trim().toUpperCase(), `Created deliverable ${deliverable_code}: ${title} in Phase ${phaseNo}`, userName, req.user.role, req.ip]
     );
     return res.status(201).json({ success: true, deliverable: rows[0] });
+  } catch (e) {
+    return next(e);
+  }
+};
+
+export const deletePhase = async (req, res, next) => {
+  try {
+    const phaseNo = Number(req.params.phaseNo);
+    if (isNaN(phaseNo)) return res.status(400).json({ success: false, message: "Invalid phase number" });
+    await pool.query("DELETE FROM delivery_phase_signoffs WHERE phase_no = $1", [phaseNo]);
+    await pool.query("DELETE FROM delivery_deliverables WHERE phase_no = $1", [phaseNo]);
+    const { rowCount } = await pool.query("DELETE FROM delivery_phases WHERE phase_no = $1", [phaseNo]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: `Phase ${phaseNo} not found` });
+    const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
+    const userName = u.rows[0]?.name || "HR Admin";
+    await pool.query(
+      `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_name, user_role, ip_address)
+       VALUES ('DELETE_DELIVERY_PHASE', 'DELIVERY_PHASE', $1, $2, $3, $4, $5)`,
+      [String(phaseNo), `Deleted phase ${phaseNo} and its deliverables`, userName, req.user.role, req.ip]
+    );
+    return res.json({ success: true, message: `Phase ${phaseNo} removed successfully` });
+  } catch (e) {
+    return next(e);
+  }
+};
+
+export const deleteDeliverable = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid deliverable ID" });
+    const check = await pool.query("SELECT deliverable_code, phase_no, title FROM delivery_deliverables WHERE id = $1", [id]);
+    if (check.rows.length === 0) return res.status(404).json({ success: false, message: "Deliverable not found" });
+    const d = check.rows[0];
+    await pool.query("DELETE FROM delivery_deliverables WHERE id = $1", [id]);
+    const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
+    const userName = u.rows[0]?.name || "HR Admin";
+    await pool.query(
+      `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_name, user_role, ip_address)
+       VALUES ('DELETE_DELIVERY_DELIVERABLE', 'DELIVERY_DELIVERABLE', $1, $2, $3, $4, $5)`,
+      [d.deliverable_code, `Deleted deliverable ${d.deliverable_code} (${d.title}) from Phase ${d.phase_no}`, userName, req.user.role, req.ip]
+    );
+    return res.json({ success: true, message: `Deliverable ${d.deliverable_code} removed successfully` });
   } catch (e) {
     return next(e);
   }

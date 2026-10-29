@@ -7,8 +7,9 @@ import { deliveryRoadmapService as api } from "../../services/deliveryRoadmapSer
 import "./TechStackArchitectureCenter.css";
 import "./DeliveryRoadmapCenter.css";
 
-const MGMT = ["admin", "super_admin", "leadership", "auditor", "hr", "manager"];
-const SIGNERS = ["admin", "super_admin", "leadership"];
+const MGMT = ["admin", "super_admin", "leadership", "executive", "auditor", "hr", "hr_admin", "hr_manager", "hr_operations", "manager"];
+const SIGNERS = ["admin", "super_admin", "leadership", "executive"];
+const CREATORS = ["admin", "super_admin", "leadership", "executive", "hr", "hr_admin", "hr_manager", "hr_operations"];
 const SUGGESTIONS = [
   "How long is the notice period for resignation?",
   "How many casual and sick leave days do I get per year?",
@@ -24,7 +25,7 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
   const role = normalizeRole(user, employee);
   const isMgmt = MGMT.includes(role);
   const canSign = SIGNERS.includes(role);
-  const canCreate = ["admin", "super_admin", "leadership", "hr"].includes(role);
+  const canCreate = CREATORS.includes(role);
 
   const [tab, setTab] = useState(isMgmt ? defaultTab : "assistant");
   const [roadmap, setRoadmap] = useState(null);
@@ -249,8 +250,9 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
               <div className="stack-header-actions" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                 {canCreate && (
                   <button
+                    type="button"
                     className="sandbox-btn-submit"
-                    style={{ padding: ".45rem .9rem", fontSize: ".85rem" }}
+                    style={{ padding: ".45rem .9rem", fontSize: ".85rem", cursor: "pointer" }}
                     onClick={() => {
                       const nextNo = roadmap?.phases?.length ? Math.max(...roadmap.phases.map((p) => p.phase_no)) + 1 : 1;
                       setPhaseForm({ phase_no: nextNo, name: "", scope: "", outcome: "" });
@@ -362,8 +364,9 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
               </p>
               {canCreate && (
                 <button
+                  type="button"
                   className="sandbox-btn-submit"
-                  style={{ padding: ".6rem 1.2rem", fontSize: ".9rem" }}
+                  style={{ padding: ".6rem 1.2rem", fontSize: ".9rem", cursor: "pointer" }}
                   onClick={() => {
                     setPhaseForm({ phase_no: 1, name: "", scope: "", outcome: "" });
                     setPhaseModal(true);

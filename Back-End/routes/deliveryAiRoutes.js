@@ -21,17 +21,18 @@ import {
 const router = express.Router();
 router.use(verifyToken);
 
-const ALL = ["employee", "manager", "hr", "admin", "super_admin", "leadership", "auditor", "recruiter", "payroll", "it_admin"];
-const MGMT = ["admin", "super_admin", "leadership", "auditor", "hr", "manager"];
-const ADMINS = ["admin", "super_admin", "leadership", "auditor"];
+const ALL = ["employee", "manager", "hr", "hr_admin", "hr_manager", "hr_operations", "admin", "super_admin", "leadership", "executive", "auditor", "recruiter", "payroll", "it_admin"];
+const MGMT = ["admin", "super_admin", "leadership", "executive", "auditor", "hr", "hr_admin", "hr_manager", "hr_operations", "manager"];
+const ADMINS = ["admin", "super_admin", "leadership", "executive", "auditor"];
+const HR_CREATORS = ["admin", "super_admin", "leadership", "executive", "hr", "hr_admin", "hr_manager", "hr_operations"];
 
 // Delivery roadmap (Phases & Deliverables)
 router.get("/roadmap", authorizeRoles(...MGMT), getRoadmap);
-router.post("/roadmap/phases", authorizeRoles("admin", "super_admin", "leadership", "hr"), createPhase);
-router.delete("/roadmap/phases/:phaseNo", authorizeRoles("admin", "super_admin", "leadership", "hr"), deletePhase);
-router.post("/roadmap/deliverables", authorizeRoles("admin", "super_admin", "leadership", "hr"), createDeliverable);
-router.delete("/roadmap/deliverables/:id", authorizeRoles("admin", "super_admin", "leadership", "hr"), deleteDeliverable);
-router.post("/roadmap/phases/:phaseNo/signoff", authorizeRoles("admin", "super_admin", "leadership"), signOffPhase);
+router.post("/roadmap/phases", authorizeRoles(...HR_CREATORS), createPhase);
+router.delete("/roadmap/phases/:phaseNo", authorizeRoles(...HR_CREATORS), deletePhase);
+router.post("/roadmap/deliverables", authorizeRoles(...HR_CREATORS), createDeliverable);
+router.delete("/roadmap/deliverables/:id", authorizeRoles(...HR_CREATORS), deleteDeliverable);
+router.post("/roadmap/phases/:phaseNo/signoff", authorizeRoles("admin", "super_admin", "leadership", "executive"), signOffPhase);
 
 // Phase 4 – controlled AI layer
 router.post("/ai/policy-assistant", authorizeRoles(...ALL), policyAssistant);

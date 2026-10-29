@@ -687,18 +687,36 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                         No records found matching "{searchRes.query}". Try searching for keywords like "leave", "probation", "software", or employee names.
                       </div>
                     ) : (
-                      <ul className="rm-items" style={{ marginTop: ".6rem" }}>
-                        {searchRes.results.map((r, idx) => (
-                          <li className="rm-item" key={idx}>
-                            <div>
-                              <span className="ai-chip" style={{ marginRight: ".5rem" }}>{r.type}</span>
-                              <Link to={r.route}>{r.title}</Link>
-                              <small>{r.subtitle}</small>
-                            </div>
-                            <span className="rm-pill ok">Score: {r.score}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="rm-search-results-scrollable">
+                        <ul className="rm-items">
+                          {searchRes.results.map((r, idx) => (
+                            <li className="rm-item" key={idx}>
+                              <div>
+                                <span className="ai-chip" style={{ marginRight: ".5rem" }}>{r.type}</span>
+                                {r.type === "POLICY" ? (
+                                  <button
+                                    type="button"
+                                    className="rm-link-btn"
+                                    onClick={() => {
+                                      setTab("assistant");
+                                      ask(`What are the key terms, rules, and guidelines in the ${r.title}?`);
+                                    }}
+                                    title="Click to view and query this policy in Policy Assistant"
+                                  >
+                                    {r.title} <span style={{ fontSize: "0.75rem", opacity: 0.85 }}>↗ (Ask Assistant)</span>
+                                  </button>
+                                ) : (
+                                  <Link to={r.route} title={`Go to ${r.route}`}>
+                                    {r.title} ↗
+                                  </Link>
+                                )}
+                                <small>{r.subtitle}</small>
+                              </div>
+                              <span className="rm-pill ok">Score: {r.score}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 )}

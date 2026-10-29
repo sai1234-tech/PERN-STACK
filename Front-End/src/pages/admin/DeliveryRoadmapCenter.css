@@ -136,6 +136,80 @@
 .rm-pill.pending { background: #fee2e2; color: #991b1b; }
 .rm-signoff { font-size: .78rem; color: #475569; border-top: 1px dashed #e2e8f0; padding-top: .6rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
 
+/* Intelligent Search Scrollable Results (Shows exactly 5 records with smooth vertical scroll) */
+.rm-search-results-scrollable {
+  max-height: 285px; /* Sized to display 5 records simultaneously */
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 0.5rem;
+  background: #ffffff;
+  margin-top: 0.6rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.rm-search-results-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rm-search-results-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 99px;
+}
+
+.rm-search-results-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+  transition: background 0.2s ease;
+}
+
+.rm-search-results-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+[data-theme="dark"] .rm-search-results-scrollable {
+  background: #0f172a;
+  border-color: #334155;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .rm-search-results-scrollable::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+[data-theme="dark"] .rm-search-results-scrollable::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.rm-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0284c7;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  transition: color 0.15s ease;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.rm-link-btn:hover {
+  color: #0369a1;
+}
+
+[data-theme="dark"] .rm-link-btn {
+  color: #38bdf8;
+}
+
+[data-theme="dark"] .rm-link-btn:hover {
+  color: #7dd3fc;
+}
+
 /* Dedicated Phase Action Buttons (Crisp high-contrast in light & dark modes) */
 .rm-btn-add {
   background: #f0fdf4;

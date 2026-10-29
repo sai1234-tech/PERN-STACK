@@ -193,14 +193,15 @@ export const deletePhase = async (req, res, next) => {
     await pool.query("DELETE FROM delivery_phase_signoffs WHERE phase_no = $1", [phaseNo]);
     await pool.query("DELETE FROM delivery_deliverables WHERE phase_no = $1", [phaseNo]);
     const { rowCount } = await pool.query("DELETE FROM delivery_phases WHERE phase_no = $1", [phaseNo]);
-    if (rowCount === 0) return res.status(404).json({ success: false, message: `Phase ${phaseNo} not found` });
-    const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
-    const userName = u.rows[0]?.name || "HR Admin";
-    await pool.query(
-      `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_name, user_role, ip_address)
-       VALUES ('DELETE_DELIVERY_PHASE', 'DELIVERY_PHASE', $1, $2, $3, $4, $5)`,
-      [String(phaseNo), `Deleted phase ${phaseNo} and its deliverables`, userName, req.user.role, req.ip]
-    );
+    if (rowCount > 0) {
+      const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
+      const userName = u.rows[0]?.name || "HR Admin";
+      await pool.query(
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_name, user_role, ip_address)
+         VALUES ('DELETE_DELIVERY_PHASE', 'DELIVERY_PHASE', $1, $2, $3, $4, $5)`,
+        [String(phaseNo), `Deleted phase ${phaseNo} and its deliverables`, userName, req.user.role, req.ip]
+      );
+    }
     return res.json({ success: true, message: `Phase ${phaseNo} removed successfully` });
   } catch (e) {
     return next(e);
@@ -209,12 +210,22 @@ export const deletePhase = async (req, res, next) => {
 
 export const deleteDeliverable = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid deliverable ID" });
-    const check = await pool.query("SELECT deliverable_code, phase_no, title FROM delivery_deliverables WHERE id = $1", [id]);
-    if (check.rows.length === 0) return res.status(404).json({ success: false, message: "Deliverable not found" });
+    const rawParam = String(req.params.id || "").trim();
+    if (!rawParam) return res.status(400).json({ success: false, message: "Invalid deliverable identifier" });
+
+    // Check by numeric ID or by deliverable_code
+    const check = await pool.query(
+      "SELECT id, deliverable_code, phase_no, title FROM delivery_deliverables WHERE id::text = $1 OR deliverable_code = $1",
+      [rawParam]
+    );
+
+    if (check.rows.length === 0) {
+      // If already deleted from database, return success so UI refreshes without throwing error
+      return res.json({ success: true, message: "Deliverable already removed" });
+    }
+
     const d = check.rows[0];
-    await pool.query("DELETE FROM delivery_deliverables WHERE id = $1", [id]);
+    await pool.query("DELETE FROM delivery_deliverables WHERE id = $1", [d.id]);
     const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
     const userName = u.rows[0]?.name || "HR Admin";
     await pool.query(

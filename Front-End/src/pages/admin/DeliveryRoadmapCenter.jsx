@@ -206,11 +206,12 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
   const handleDeleteDeliverable = async (id, code) => {
     if (!window.confirm(`Delete deliverable ${code}?`)) return;
     try {
-      await api.deleteDeliverable(id);
+      await api.deleteDeliverable(id || code);
       setSignNotice(`Deliverable "${code}" deleted successfully.`);
       await load();
       setTimeout(() => setSignNotice(""), 4500);
     } catch (err) {
+      await load();
       window.alert(err.message || "Failed to delete deliverable");
     }
   };
@@ -430,13 +431,13 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                           <span className={`rm-pill ${d.live ? "ok" : "pending"}`}>{d.status}</span>
                           {canCreate && (
-                            <button
-                              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "0.9rem", padding: "0 0.2rem" }}
-                              title="Delete deliverable"
-                              onClick={() => handleDeleteDeliverable(d.id, d.deliverable_code)}
-                            >
-                              ✕
-                            </button>
+                              <button
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "0.9rem", padding: "0 0.2rem" }}
+                                title="Delete deliverable"
+                                onClick={() => handleDeleteDeliverable(d.id || d.deliverable_code, d.deliverable_code)}
+                              >
+                                ✕
+                              </button>
                           )}
                         </div>
                       </li>

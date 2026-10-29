@@ -38,3 +38,81 @@
 .ai-insight.ACTION { border-color: #0284c7; background: #f0f9ff; }
 .ai-insight small { display: block; color: #64748b; margin-top: .2rem; }
 .ai-note { font-size: .8rem; color: #64748b; background: #f1f5f9; padding: .6rem .8rem; border-radius: 8px; }
+
+/* Page Wrapper */
+.roadmap-page-main {
+  width: 100%;
+  min-height: calc(100vh - 73px);
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .roadmap-page-main {
+  background: #0b1120;
+}
+
+[data-theme="dark"] .rm-phase {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .rm-phase-head h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .rm-phase-head p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .rm-item {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .rm-item small {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .ai-chat {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .ai-msg.bot {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .ai-ask input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .ai-suggest button {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .ai-suggest button:hover {
+  background: #334155;
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+[data-theme="dark"] .ai-metric {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .ai-metric b {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .ai-insight {
+  background: #1e293b;
+  color: #f8fafc;
+}

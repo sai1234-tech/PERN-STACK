@@ -492,10 +492,24 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                         <button
                           type="button"
                           className="sandbox-btn-submit"
-                          style={{ padding: ".35rem .8rem", fontSize: ".78rem" }}
-                          disabled={p.delivered < p.total || p.total === 0}
+                          style={{
+                            padding: ".35rem .8rem",
+                            fontSize: ".78rem",
+                            cursor: "pointer",
+                            opacity: p.delivered < p.total || p.total === 0 ? 0.75 : 1
+                          }}
                           title={p.total === 0 ? "Add at least one deliverable before approving" : p.delivered < p.total ? "All deliverables must be live to approve" : "Approve this phase"}
-                          onClick={() => openSignoffModal(p, "APPROVED")}
+                          onClick={() => {
+                            if (p.total === 0) {
+                              window.alert("You must add at least 1 deliverable before approving Phase " + p.phase_no);
+                              return;
+                            }
+                            if (p.delivered < p.total) {
+                              window.alert(`Cannot approve Phase ${p.phase_no}: ${p.total - p.delivered} deliverable(s) are still PENDING. Deliverables must be verified live before approval.`);
+                              return;
+                            }
+                            openSignoffModal(p, "APPROVED");
+                          }}
                         >
                           ✓ Approve Phase
                         </button>

@@ -32,7 +32,7 @@ router.post("/roadmap/phases", authorizeRoles(...HR_CREATORS), createPhase);
 router.delete("/roadmap/phases/:phaseNo", authorizeRoles(...HR_CREATORS), deletePhase);
 router.post("/roadmap/deliverables", authorizeRoles(...HR_CREATORS), createDeliverable);
 router.delete("/roadmap/deliverables/:id", authorizeRoles(...HR_CREATORS), deleteDeliverable);
-router.post("/roadmap/phases/:phaseNo/signoff", authorizeRoles("admin", "super_admin", "leadership", "executive"), signOffPhase);
+router.post("/roadmap/phases/:phaseNo/signoff", authorizeRoles(...HR_CREATORS), signOffPhase);
 
 // Phase 4 – controlled AI layer
 router.post("/ai/policy-assistant", authorizeRoles(...ALL), policyAssistant);

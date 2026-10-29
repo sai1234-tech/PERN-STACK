@@ -8,7 +8,7 @@ import "./TechStackArchitectureCenter.css";
 import "./DeliveryRoadmapCenter.css";
 
 const MGMT = ["admin", "super_admin", "leadership", "executive", "auditor", "hr", "hr_admin", "hr_manager", "hr_operations", "manager"];
-const SIGNERS = ["admin", "super_admin", "leadership", "executive"];
+const SIGNERS = ["admin", "super_admin", "leadership", "executive", "hr", "hr_admin", "hr_manager", "hr_operations"];
 const CREATORS = ["admin", "super_admin", "leadership", "executive", "hr", "hr_admin", "hr_manager", "hr_operations"];
 const SUGGESTIONS = [
   "How long is the notice period for resignation?",
@@ -489,12 +489,22 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                     </div>
                     {canSign && (
                       <span style={{ display: "flex", gap: ".4rem", alignItems: "center" }}>
-                        <button className="sandbox-btn-submit" style={{ padding: ".35rem .8rem", fontSize: ".78rem" }}
-                          disabled={p.delivered < p.total} onClick={() => openSignoffModal(p, "APPROVED")}>
+                        <button
+                          type="button"
+                          className="sandbox-btn-submit"
+                          style={{ padding: ".35rem .8rem", fontSize: ".78rem" }}
+                          disabled={p.delivered < p.total || p.total === 0}
+                          title={p.total === 0 ? "Add at least one deliverable before approving" : p.delivered < p.total ? "All deliverables must be live to approve" : "Approve this phase"}
+                          onClick={() => openSignoffModal(p, "APPROVED")}
+                        >
                           ✓ Approve Phase
                         </button>
-                        <button className="stack-btn-refresh" style={{ color: "#991b1b", background: "#fff", borderColor: "#fca5a5", padding: ".35rem .8rem", fontSize: ".78rem" }}
-                          onClick={() => openSignoffModal(p, "REJECTED")}>
+                        <button
+                          type="button"
+                          className="stack-btn-refresh"
+                          style={{ color: "#991b1b", background: "#fff", borderColor: "#fca5a5", padding: ".35rem .8rem", fontSize: ".78rem" }}
+                          onClick={() => openSignoffModal(p, "REJECTED")}
+                        >
                           ✕ Reject
                         </button>
                       </span>

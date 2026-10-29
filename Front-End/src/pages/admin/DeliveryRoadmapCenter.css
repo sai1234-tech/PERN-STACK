@@ -136,16 +136,76 @@
 .rm-pill.pending { background: #fee2e2; color: #991b1b; }
 .rm-signoff { font-size: .78rem; color: #475569; border-top: 1px dashed #e2e8f0; padding-top: .6rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
 
-/* Intelligent Search Scrollable Results (Shows exactly 5 records with smooth vertical scroll) */
+/* Intelligent Search Component Styling */
+.rm-search-suggest-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.15rem;
+}
+
+.rm-search-suggest-title {
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .rm-search-suggest-title {
+  color: #94a3b8;
+}
+
+.rm-search-suggest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.rm-search-suggest-chip {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 99px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.rm-search-suggest-chip:hover {
+  background: #f0f9ff;
+  border-color: #38bdf8;
+  color: #0284c7;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(2, 132, 199, 0.12);
+}
+
+[data-theme="dark"] .rm-search-suggest-chip {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .rm-search-suggest-chip:hover {
+  background: #0f172a;
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+/* Sized to show exactly 5 records with clean scroll */
 .rm-search-results-scrollable {
-  max-height: 285px; /* Sized to display 5 records simultaneously */
+  max-height: 335px;
   overflow-y: auto;
   border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  padding: 0.5rem;
+  border-radius: 10px;
+  padding: 0.6rem;
   background: #ffffff;
-  margin-top: 0.6rem;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .rm-search-results-scrollable::-webkit-scrollbar {
@@ -170,7 +230,7 @@
 [data-theme="dark"] .rm-search-results-scrollable {
   background: #0f172a;
   border-color: #334155;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 [data-theme="dark"] .rm-search-results-scrollable::-webkit-scrollbar-track {
@@ -181,33 +241,198 @@
   background: #475569;
 }
 
-.rm-link-btn {
+.rm-search-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.rm-search-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+  transition: all 0.15s ease;
+}
+
+.rm-search-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .rm-search-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .rm-search-card:hover {
+  background: #334155;
+  border-color: #475569;
+}
+
+.rm-search-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.rm-search-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.rm-search-type-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rm-badge-policy {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.rm-badge-employee {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.rm-badge-candidate {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.rm-badge-ticket {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+[data-theme="dark"] .rm-badge-policy {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+[data-theme="dark"] .rm-badge-employee {
+  background: rgba(2, 132, 199, 0.2);
+  color: #38bdf8;
+  border-color: rgba(2, 132, 199, 0.35);
+}
+
+[data-theme="dark"] .rm-badge-candidate {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+[data-theme="dark"] .rm-badge-ticket {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.rm-search-link,
+.rm-search-link-btn {
   background: none;
   border: none;
   padding: 0;
-  color: #0284c7;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
   cursor: pointer;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  transition: color 0.15s ease;
-  font-family: inherit;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.4rem;
+  font-family: inherit;
   text-align: left;
+  transition: color 0.15s ease;
 }
 
-.rm-link-btn:hover {
-  color: #0369a1;
+.rm-search-link:hover,
+.rm-search-link-btn:hover {
+  color: #0284c7;
 }
 
-[data-theme="dark"] .rm-link-btn {
+[data-theme="dark"] .rm-search-link,
+[data-theme="dark"] .rm-search-link-btn {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .rm-search-link:hover,
+[data-theme="dark"] .rm-search-link-btn:hover {
   color: #38bdf8;
 }
 
-[data-theme="dark"] .rm-link-btn:hover {
-  color: #7dd3fc;
+.rm-search-action-hint {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .rm-search-action-hint {
+  background: rgba(2, 132, 199, 0.15);
+  border-color: rgba(2, 132, 199, 0.35);
+  color: #38bdf8;
+}
+
+.rm-search-card-meta {
+  font-size: 0.76rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .rm-search-card-meta {
+  color: #94a3b8;
+}
+
+.rm-search-card-aside {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.rm-search-score-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #065f46;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .rm-search-score-pill {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
 }
 
 /* Dedicated Phase Action Buttons (Crisp high-contrast in light & dark modes) */

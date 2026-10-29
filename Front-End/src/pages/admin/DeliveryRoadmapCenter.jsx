@@ -641,15 +641,22 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                 </div>
               </div>
               <div className="stack-card-body">
-                <div className="ai-suggest" style={{ marginBottom: "1rem" }}>
-                  <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>
-                    Quick Search Suggestions:
+                <div className="rm-search-suggest-box">
+                  <span className="rm-search-suggest-title">
+                    ⚡ Quick Search Suggestions:
                   </span>
-                  {SEARCH_SUGGESTIONS.map((s) => (
-                    <button key={s} type="button" onClick={() => runSearch(null, s)}>
-                      🔎 {s}
-                    </button>
-                  ))}
+                  <div className="rm-search-suggest-chips">
+                    {SEARCH_SUGGESTIONS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        className="rm-search-suggest-chip"
+                        onClick={() => runSearch(null, s)}
+                      >
+                        🔎 {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <form className="ai-ask" onSubmit={(e) => runSearch(e)}>
@@ -677,42 +684,54 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                 )}
 
                 {searchRes && !searchRes.error && searchRes.results && (
-                  <div style={{ marginTop: "1rem" }}>
-                    <div className="ai-meta">
+                  <div style={{ marginTop: "1.25rem" }}>
+                    <div className="ai-meta" style={{ marginBottom: "0.5rem" }}>
                       Searched scopes: <strong>{searchRes.scopes_searched?.join(", ")}</strong> · Found {searchRes.total} result(s) for "{searchRes.query}"
                     </div>
 
                     {searchRes.results.length === 0 ? (
-                      <div className="ai-note" style={{ marginTop: "0.75rem", background: "#f8fafc", color: "#64748b" }}>
+                      <div className="ai-note" style={{ background: "#f8fafc", color: "#64748b" }}>
                         No records found matching "{searchRes.query}". Try searching for keywords like "leave", "probation", "software", or employee names.
                       </div>
                     ) : (
                       <div className="rm-search-results-scrollable">
-                        <ul className="rm-items">
+                        <ul className="rm-search-list">
                           {searchRes.results.map((r, idx) => (
-                            <li className="rm-item" key={idx}>
-                              <div>
-                                <span className="ai-chip" style={{ marginRight: ".5rem" }}>{r.type}</span>
-                                {r.type === "POLICY" ? (
-                                  <button
-                                    type="button"
-                                    className="rm-link-btn"
-                                    onClick={() => {
-                                      setTab("assistant");
-                                      ask(`What are the key terms, rules, and guidelines in the ${r.title}?`);
-                                    }}
-                                    title="Click to view and query this policy in Policy Assistant"
-                                  >
-                                    {r.title} <span style={{ fontSize: "0.75rem", opacity: 0.85 }}>↗ (Ask Assistant)</span>
-                                  </button>
-                                ) : (
-                                  <Link to={r.route} title={`Go to ${r.route}`}>
-                                    {r.title} ↗
-                                  </Link>
-                                )}
-                                <small>{r.subtitle}</small>
+                            <li className="rm-search-card" key={idx}>
+                              <div className="rm-search-card-main">
+                                <div className="rm-search-card-header">
+                                  <span className={`rm-search-type-badge rm-badge-${r.type?.toLowerCase()}`}>
+                                    {r.type}
+                                  </span>
+                                  {r.type === "POLICY" ? (
+                                    <button
+                                      type="button"
+                                      className="rm-search-link-btn"
+                                      onClick={() => {
+                                        setTab("assistant");
+                                        ask(`What are the key terms, rules, and guidelines in the ${r.title}?`);
+                                      }}
+                                      title="Open and query in Policy Assistant"
+                                    >
+                                      {r.title}
+                                      <span className="rm-search-action-hint">↗ Ask Assistant</span>
+                                    </button>
+                                  ) : (
+                                    <Link to={r.route} className="rm-search-link" title={`Go to ${r.route}`}>
+                                      {r.title}
+                                      <span className="rm-search-action-hint">↗ View</span>
+                                    </Link>
+                                  )}
+                                </div>
+                                <div className="rm-search-card-meta">
+                                  <span>{r.subtitle}</span>
+                                </div>
                               </div>
-                              <span className="rm-pill ok">Score: {r.score}</span>
+                              <div className="rm-search-card-aside">
+                                <span className="rm-search-score-pill">
+                                  Score: <strong>{r.score}</strong>
+                                </span>
+                              </div>
                             </li>
                           ))}
                         </ul>

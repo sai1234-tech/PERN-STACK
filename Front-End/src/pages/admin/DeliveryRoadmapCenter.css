@@ -1,5 +1,125 @@
 /* Delivery Roadmap & AI Layer – extends the shared stack-* design tokens */
 .rm-phase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 1.25rem; }
+
+/* 2 Records Side-by-Side Horizontal Scroll */
+.rm-phase-scroll-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.rm-phase-scroll-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.rm-scroll-indicator-text {
+  font-size: 0.84rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .rm-scroll-indicator-text {
+  color: #94a3b8;
+}
+
+.rm-phase-scroll-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rm-scroll-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.rm-scroll-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+[data-theme="dark"] .rm-scroll-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .rm-scroll-btn:hover {
+  background: #334155;
+  border-color: #475569;
+}
+
+.rm-phase-grid.rm-phase-scrollable {
+  display: grid;
+  grid-auto-flow: column;
+  /* Exactly 2 records side by side: (100% - gap) / 2 */
+  grid-auto-columns: calc((100% - 1.25rem) / 2);
+  grid-template-columns: none;
+  gap: 1.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rm-phase-grid.rm-phase-scrollable > .rm-phase {
+  scroll-snap-align: start;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Custom styled horizontal scrollbar */
+.rm-phase-grid.rm-phase-scrollable::-webkit-scrollbar {
+  height: 8px;
+}
+
+.rm-phase-grid.rm-phase-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 99px;
+}
+
+.rm-phase-grid.rm-phase-scrollable::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 99px;
+  transition: background 0.2s ease;
+}
+
+.rm-phase-grid.rm-phase-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+[data-theme="dark"] .rm-phase-grid.rm-phase-scrollable::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+[data-theme="dark"] .rm-phase-grid.rm-phase-scrollable::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+@media (max-width: 820px) {
+  .rm-phase-grid.rm-phase-scrollable {
+    grid-auto-columns: 100%;
+  }
+}
 .rm-phase { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: .9rem; box-shadow: 0 4px 12px rgba(15,23,42,.05); }
 .rm-phase.done { border-color: #10b981; }
 .rm-phase-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }

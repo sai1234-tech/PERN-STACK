@@ -69,6 +69,17 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
   const [q, setQ] = useState("");
   const [searchRes, setSearchRes] = useState(null);
   const [searching, setSearching] = useState(false);
+  const phaseScrollRef = useRef(null);
+
+  const scrollPhases = (direction) => {
+    if (!phaseScrollRef.current) return;
+    const container = phaseScrollRef.current;
+    const scrollAmount = (container.clientWidth / 2) + 10;
+    container.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth"
+    });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -386,146 +397,174 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
           )}
 
           {tab === "roadmap" && roadmap && roadmap.phases.length > 0 && (
-            <div className="rm-phase-grid">
-              {roadmap.phases.map((p) => (
-                <section key={p.phase_no} className={`rm-phase ${p.completion_pct === 100 ? "done" : ""}`}>
-                  <div className="rm-phase-head">
-                    <div>
-                      <h3>Phase {p.phase_no} – {p.name}</h3>
-                      <p>{p.scope}</p>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      {canCreate && (
-                        <>
-                          <button
-                            type="button"
-                            className="rm-btn-add"
-                            title="Add a new deliverable to this phase"
-                            onClick={() => {
-                              setDeliverableForm({
-                                phase_no: p.phase_no,
-                                deliverable_code: `P${p.phase_no}-`,
-                                title: "",
-                                description: "",
-                                evidence_type: "TABLE",
-                                evidence_ref: "",
-                                min_rows: 1,
-                                ui_route: "",
-                                api_route: ""
-                              });
-                              setDeliverableModal(true);
-                            }}
-                          >
-                            + Add Deliverable
-                          </button>
-                          <button
-                            type="button"
-                            className="rm-btn-edit"
-                            title="Edit this phase details"
-                            onClick={() => {
-                              setPhaseForm({
-                                phase_no: p.phase_no,
-                                name: p.name,
-                                scope: p.scope,
-                                outcome: p.outcome
-                              });
-                              setPhaseModal(true);
-                            }}
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="rm-btn-delete"
-                            title="Delete this phase"
-                            onClick={() => handleDeletePhase(p.phase_no, p.name)}
-                          >
-                            🗑 Delete
-                          </button>
-                        </>
-                      )}
-                      <span className={`rm-pill ${p.completion_pct === 100 ? "ok" : "pending"}`}>{p.delivered}/{p.total}</span>
-                    </div>
-                  </div>
-                  <div className="rm-bar"><span style={{ width: `${p.completion_pct}%` }} /></div>
-                  <ul className="rm-items">
-                    {p.deliverables.map((d) => (
-                      <li className="rm-item" key={d.deliverable_code}>
-                        <div>
-                          {d.ui_route ? <Link to={d.ui_route}>{d.title}</Link> : <strong>{d.title}</strong>}
-                          <small>{d.evidence}{d.api_route ? ` · ${d.api_route}` : ""}</small>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                          <span className={`rm-pill ${d.live ? "ok" : "pending"}`}>{d.status}</span>
-                          {canCreate && (
+            <div className="rm-phase-scroll-container">
+              <div className="rm-phase-scroll-header">
+                <span className="rm-scroll-indicator-text">
+                  Viewing {roadmap.phases.length} Phases · Showing 2 side by side (scroll to view remaining)
+                </span>
+                <div className="rm-phase-scroll-controls">
+                  <button
+                    type="button"
+                    className="rm-scroll-btn"
+                    onClick={() => scrollPhases("left")}
+                    title="Scroll left"
+                    aria-label="Scroll left"
+                  >
+                    ◀ Prev
+                  </button>
+                  <button
+                    type="button"
+                    className="rm-scroll-btn"
+                    onClick={() => scrollPhases("right")}
+                    title="Scroll right"
+                    aria-label="Scroll right"
+                  >
+                    Next ▶
+                  </button>
+                </div>
+              </div>
+
+              <div className="rm-phase-grid rm-phase-scrollable" ref={phaseScrollRef}>
+                {roadmap.phases.map((p) => (
+                  <section key={p.phase_no} className={`rm-phase ${p.completion_pct === 100 ? "done" : ""}`}>
+                    <div className="rm-phase-head">
+                      <div>
+                        <h3>Phase {p.phase_no} – {p.name}</h3>
+                        <p>{p.scope}</p>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        {canCreate && (
+                          <>
                             <button
                               type="button"
-                              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "0.9rem", padding: "0 0.2rem" }}
-                              title={`Remove deliverable ${d.deliverable_code}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteDeliverable(d.id || d.deliverable_code, d.deliverable_code, d.title);
+                              className="rm-btn-add"
+                              title="Add a new deliverable to this phase"
+                              onClick={() => {
+                                setDeliverableForm({
+                                  phase_no: p.phase_no,
+                                  deliverable_code: `P${p.phase_no}-`,
+                                  title: "",
+                                  description: "",
+                                  evidence_type: "TABLE",
+                                  evidence_ref: "",
+                                  min_rows: 1,
+                                  ui_route: "",
+                                  api_route: ""
+                                });
+                                setDeliverableModal(true);
                               }}
                             >
-                              ✕
+                              + Add Deliverable
                             </button>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="rm-signoff">
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                      <span style={{ fontWeight: 700, color: p.latest_signoff ? "#059669" : "#64748b" }}>
-                        {p.latest_signoff
-                          ? `✓ ${p.latest_signoff.decision} by ${p.latest_signoff.signed_by_name}`
-                          : "⏳ Awaiting executive sign-off"}
-                      </span>
-                      {p.latest_signoff && (
-                        <small style={{ color: "#64748b", fontSize: "0.72rem" }}>
-                          Signed: {new Date(p.latest_signoff.signed_at).toLocaleDateString()} • "{p.latest_signoff.comments}"
-                        </small>
+                            <button
+                              type="button"
+                              className="rm-btn-edit"
+                              title="Edit this phase details"
+                              onClick={() => {
+                                setPhaseForm({
+                                  phase_no: p.phase_no,
+                                  name: p.name,
+                                  scope: p.scope,
+                                  outcome: p.outcome
+                                });
+                                setPhaseModal(true);
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="rm-btn-delete"
+                              title="Delete this phase"
+                              onClick={() => handleDeletePhase(p.phase_no, p.name)}
+                            >
+                              🗑 Delete
+                            </button>
+                          </>
+                        )}
+                        <span className={`rm-pill ${p.completion_pct === 100 ? "ok" : "pending"}`}>{p.delivered}/{p.total}</span>
+                      </div>
+                    </div>
+                    <div className="rm-bar"><span style={{ width: `${p.completion_pct}%` }} /></div>
+                    <ul className="rm-items">
+                      {p.deliverables.map((d) => (
+                        <li className="rm-item" key={d.deliverable_code}>
+                          <div>
+                            {d.ui_route ? <Link to={d.ui_route}>{d.title}</Link> : <strong>{d.title}</strong>}
+                            <small>{d.evidence}{d.api_route ? ` · ${d.api_route}` : ""}</small>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <span className={`rm-pill ${d.live ? "ok" : "pending"}`}>{d.status}</span>
+                            {canCreate && (
+                              <button
+                                type="button"
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "0.9rem", padding: "0 0.2rem" }}
+                                title={`Remove deliverable ${d.deliverable_code}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDeliverable(d.id || d.deliverable_code, d.deliverable_code, d.title);
+                                }}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="rm-signoff">
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                        <span style={{ fontWeight: 700, color: p.latest_signoff ? "#059669" : "#64748b" }}>
+                          {p.latest_signoff
+                            ? `✓ ${p.latest_signoff.decision} by ${p.latest_signoff.signed_by_name}`
+                            : "⏳ Awaiting executive sign-off"}
+                        </span>
+                        {p.latest_signoff && (
+                          <small style={{ color: "#64748b", fontSize: "0.72rem" }}>
+                            Signed: {new Date(p.latest_signoff.signed_at).toLocaleDateString()} • "{p.latest_signoff.comments}"
+                          </small>
+                        )}
+                      </div>
+                      {canSign && (
+                        <span style={{ display: "flex", gap: ".4rem", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            className="sandbox-btn-submit"
+                            style={{
+                              padding: ".35rem .8rem",
+                              fontSize: ".78rem",
+                              cursor: "pointer",
+                              opacity: p.delivered < p.total || p.total === 0 ? 0.75 : 1
+                            }}
+                            title={p.total === 0 ? "Add at least one deliverable before approving" : p.delivered < p.total ? "All deliverables must be live to approve" : "Approve this phase"}
+                            onClick={() => {
+                              if (p.total === 0) {
+                                window.alert("You must add at least 1 deliverable before approving Phase " + p.phase_no);
+                                return;
+                              }
+                              if (p.delivered < p.total) {
+                                window.alert(`Cannot approve Phase ${p.phase_no}: ${p.total - p.delivered} deliverable(s) are still PENDING. Deliverables must be verified live before approval.`);
+                                return;
+                              }
+                              openSignoffModal(p, "APPROVED");
+                            }}
+                          >
+                            ✓ Approve Phase
+                          </button>
+                          <button
+                            type="button"
+                            className="stack-btn-refresh"
+                            style={{ color: "#991b1b", background: "#fff", borderColor: "#fca5a5", padding: ".35rem .8rem", fontSize: ".78rem" }}
+                            onClick={() => openSignoffModal(p, "REJECTED")}
+                          >
+                            ✕ Reject
+                          </button>
+                        </span>
                       )}
                     </div>
-                    {canSign && (
-                      <span style={{ display: "flex", gap: ".4rem", alignItems: "center" }}>
-                        <button
-                          type="button"
-                          className="sandbox-btn-submit"
-                          style={{
-                            padding: ".35rem .8rem",
-                            fontSize: ".78rem",
-                            cursor: "pointer",
-                            opacity: p.delivered < p.total || p.total === 0 ? 0.75 : 1
-                          }}
-                          title={p.total === 0 ? "Add at least one deliverable before approving" : p.delivered < p.total ? "All deliverables must be live to approve" : "Approve this phase"}
-                          onClick={() => {
-                            if (p.total === 0) {
-                              window.alert("You must add at least 1 deliverable before approving Phase " + p.phase_no);
-                              return;
-                            }
-                            if (p.delivered < p.total) {
-                              window.alert(`Cannot approve Phase ${p.phase_no}: ${p.total - p.delivered} deliverable(s) are still PENDING. Deliverables must be verified live before approval.`);
-                              return;
-                            }
-                            openSignoffModal(p, "APPROVED");
-                          }}
-                        >
-                          ✓ Approve Phase
-                        </button>
-                        <button
-                          type="button"
-                          className="stack-btn-refresh"
-                          style={{ color: "#991b1b", background: "#fff", borderColor: "#fca5a5", padding: ".35rem .8rem", fontSize: ".78rem" }}
-                          onClick={() => openSignoffModal(p, "REJECTED")}
-                        >
-                          ✕ Reject
-                        </button>
-                      </span>
-                    )}
-                  </div>
-                </section>
-              ))}
+                  </section>
+                ))}
+              </div>
             </div>
           )}
 

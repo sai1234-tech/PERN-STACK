@@ -40,6 +40,38 @@
   box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
 
+.rm-btn-edit {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  padding: 0.35rem 0.65rem;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.rm-btn-edit:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+[data-theme="dark"] .rm-btn-edit {
+  background: rgba(2, 132, 199, 0.18);
+  color: #38bdf8;
+  border-color: rgba(2, 132, 199, 0.4);
+}
+
+[data-theme="dark"] .rm-btn-edit:hover {
+  background: rgba(2, 132, 199, 0.3);
+  border-color: #38bdf8;
+}
+
 .rm-btn-delete {
   background: #fef2f2;
   color: #b91c1c;

@@ -420,6 +420,22 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                           </button>
                           <button
                             type="button"
+                            className="rm-btn-edit"
+                            title="Edit this phase details"
+                            onClick={() => {
+                              setPhaseForm({
+                                phase_no: p.phase_no,
+                                name: p.name,
+                                scope: p.scope,
+                                outcome: p.outcome
+                              });
+                              setPhaseModal(true);
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            type="button"
                             className="rm-btn-delete"
                             title="Delete this phase"
                             onClick={() => handleDeletePhase(p.phase_no, p.name)}
@@ -728,6 +744,15 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                       required
                       placeholder="e.g. 5"
                     />
+                    {roadmap?.phases?.find((p) => p.phase_no === Number(phaseForm.phase_no)) ? (
+                      <small style={{ color: "#0284c7", fontWeight: 600, marginTop: "0.2rem" }}>
+                        ℹ️ Phase {phaseForm.phase_no} already exists ("{roadmap.phases.find((p) => p.phase_no === Number(phaseForm.phase_no)).name}"). Saving will update its name and scope.
+                      </small>
+                    ) : (
+                      <small style={{ color: "#64748b", marginTop: "0.2rem" }}>
+                        Unique phase number (e.g. {roadmap?.phases?.length ? Math.max(...roadmap.phases.map((p) => p.phase_no)) + 1 : 1} for next new phase).
+                      </small>
+                    )}
                   </label>
                   <label className="form-field">
                     <span>Phase Name *</span>
@@ -762,7 +787,11 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                 </div>
                 <div className="modal-footer">
                   <button type="submit" className="roster-btn primary" disabled={phaseSubmitting}>
-                    {phaseSubmitting ? "Creating Phase..." : "+ Create Phase"}
+                    {phaseSubmitting
+                      ? "Saving Phase..."
+                      : roadmap?.phases?.some((p) => p.phase_no === Number(phaseForm.phase_no))
+                      ? "Update Phase"
+                      : "+ Create Phase"}
                   </button>
                   <button type="button" className="roster-btn secondary" onClick={() => setPhaseModal(false)}>
                     Cancel

@@ -129,23 +129,25 @@ export const createPhase = async (req, res, next) => {
     if (isNaN(phaseNo) || phaseNo < 0 || !name || !scope || !outcome) {
       return res.status(400).json({ success: false, message: "Valid phase_no, name, scope, and outcome are required" });
     }
-    const existing = await pool.query("SELECT id FROM delivery_phases WHERE phase_no = $1", [phaseNo]);
-    if (existing.rows.length > 0) {
-      return res.status(409).json({ success: false, message: `Phase ${phaseNo} already exists` });
-    }
+    const existing = await pool.query("SELECT id, name FROM delivery_phases WHERE phase_no = $1", [phaseNo]);
+    const isUpdate = existing.rows.length > 0;
+
     const { rows } = await pool.query(
       `INSERT INTO delivery_phases (phase_no, name, scope, outcome)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (phase_no) DO UPDATE
+       SET name = EXCLUDED.name, scope = EXCLUDED.scope, outcome = EXCLUDED.outcome
+       RETURNING *`,
       [phaseNo, name.trim(), scope.trim(), outcome.trim()]
     );
     const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
     const userName = u.rows[0]?.name || "HR Admin";
     await pool.query(
       `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_name, user_role, ip_address)
-       VALUES ('CREATE_DELIVERY_PHASE', 'DELIVERY_PHASE', $1, $2, $3, $4, $5)`,
-      [String(phaseNo), `Created phase ${phaseNo}: ${name}`, userName, req.user.role, req.ip]
+       VALUES ($1, 'DELIVERY_PHASE', $2, $3, $4, $5, $6)`,
+      [isUpdate ? "UPDATE_DELIVERY_PHASE" : "CREATE_DELIVERY_PHASE", String(phaseNo), `${isUpdate ? "Updated" : "Created"} phase ${phaseNo}: ${name}`, userName, req.user.role, req.ip]
     );
-    return res.status(201).json({ success: true, phase: rows[0] });
+    return res.status(isUpdate ? 200 : 201).json({ success: true, phase: rows[0], updated: isUpdate });
   } catch (e) {
     return next(e);
   }

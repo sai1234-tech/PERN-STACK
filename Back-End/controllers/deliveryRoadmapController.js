@@ -9,18 +9,21 @@ const REPO_ROOT = path.resolve(__dirname, "../..");
 // Evaluate one deliverable against the running system (no stored status – always live).
 const evaluate = async (d) => {
   try {
-    if (d.evidence_type === "FILE") {
-      const p = path.resolve(REPO_ROOT, d.evidence_ref);
+    const ref = String(d.evidence_ref || "").trim();
+    const isFile = d.evidence_type === "FILE" || ref.includes("/") || ref.includes("\\") || ref.includes(".");
+    if (isFile) {
+      const p = path.resolve(REPO_ROOT, ref);
       if (!p.startsWith(REPO_ROOT)) return { live: false, evidence: "invalid path" };
       const ok = fs.existsSync(p);
-      return { live: ok, evidence: ok ? `file: ${d.evidence_ref}` : `missing file: ${d.evidence_ref}` };
+      return { live: ok, evidence: ok ? `file: ${ref}` : `missing file: ${ref}` };
     }
-    if (!/^[a-z_][a-z0-9_]*$/.test(d.evidence_ref)) return { live: false, evidence: "invalid table name" };
-    const reg = await pool.query("SELECT to_regclass($1) AS t", [`public.${d.evidence_ref}`]);
-    if (!reg.rows[0].t) return { live: false, evidence: `table ${d.evidence_ref} not found` };
-    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM ${d.evidence_ref}`);
+    const tableName = ref.toLowerCase();
+    if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) return { live: false, evidence: "invalid table name" };
+    const reg = await pool.query("SELECT to_regclass($1) AS t", [`public.${tableName}`]);
+    if (!reg.rows[0].t) return { live: false, evidence: `table ${tableName} not found` };
+    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM ${tableName}`);
     const n = rows[0].n;
-    return { live: n >= d.min_rows, rows: n, evidence: `${d.evidence_ref}: ${n} rows` };
+    return { live: n >= d.min_rows, rows: n, evidence: `${tableName}: ${n} rows` };
   } catch (e) {
     return { live: false, evidence: `error: ${e.message}` };
   }

@@ -603,24 +603,27 @@ export async function handleHrAnalyticsQuery(role, rawQuery) {
       ORDER BY count DESC
     `),
     safeQuery(`
+      WITH dept_leaves AS (
+        SELECT
+          COALESCE(NULLIF(to_jsonb(e2)->>'department', ''), NULLIF(e2.employment->>'department', ''), NULLIF(to_jsonb(e2)->>'function', ''), 'Unassigned') as d,
+          COALESCE(sum(l.number_of_days), 0)::int as leave_days
+        FROM leaves l
+        JOIN employees e2 ON e2.id = l.employee_id
+        WHERE l.start_date >= CURRENT_DATE - INTERVAL '60 days'
+        GROUP BY 1
+      )
       SELECT
         COALESCE(NULLIF(to_jsonb(e)->>'department', ''), NULLIF(e.employment->>'department', ''), NULLIF(to_jsonb(e)->>'function', ''), 'Unassigned') as dept,
         count(DISTINCT e.id)::int as headcount,
         count(a.id)::int as total_punches,
         COALESCE(sum(CASE WHEN LOWER(COALESCE(a.status, '')) IN ('absent', 'half-day') THEN 1 ELSE 0 END), 0)::int as direct_absences,
         COALESCE(sum(CASE WHEN a.is_late = true OR LOWER(COALESCE(a.status, '')) = 'late' OR COALESCE(a.late_minutes, 0) > 0 THEN 1 ELSE 0 END), 0)::int as late_punches,
-        COALESCE((
-          SELECT sum(l.number_of_days)::int
-          FROM leaves l
-          JOIN employees e2 ON e2.id = l.employee_id
-          WHERE COALESCE(NULLIF(to_jsonb(e2)->>'department', ''), NULLIF(e2.employment->>'department', ''), NULLIF(to_jsonb(e2)->>'function', ''), 'Unassigned') =
-                COALESCE(NULLIF(to_jsonb(e)->>'department', ''), NULLIF(e.employment->>'department', ''), NULLIF(to_jsonb(e)->>'function', ''), 'Unassigned')
-            AND l.start_date >= CURRENT_DATE - INTERVAL '60 days'
-        ), 0)::int as leave_days
+        COALESCE(MAX(dl.leave_days), 0)::int as leave_days
       FROM employees e
       LEFT JOIN users u ON (u.id = e.user_id OR LOWER(u.email) = LOWER(e.email))
       LEFT JOIN attendance a ON (a.employee_id = u.id OR a.employee_id = e.user_id OR a.employee_id = e.id)
                             AND a.date >= CURRENT_DATE - INTERVAL '30 days'
+      LEFT JOIN dept_leaves dl ON dl.d = COALESCE(NULLIF(to_jsonb(e)->>'department', ''), NULLIF(e.employment->>'department', ''), NULLIF(to_jsonb(e)->>'function', ''), 'Unassigned')
       WHERE COALESCE(NULLIF(to_jsonb(e)->>'status', ''), NULLIF(e.employment->>'status', ''), 'Active') ILIKE 'active%'
       GROUP BY 1
       ORDER BY headcount DESC

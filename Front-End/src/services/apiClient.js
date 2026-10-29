@@ -113,8 +113,14 @@ export async function apiRequest(endpoint, options = {}) {
     let response;
 
     try {
+      let body = options.body;
+      if (body && typeof body === "object" && !(body instanceof FormData) && !(body instanceof Blob)) {
+        body = JSON.stringify(body);
+      }
+
       const fetchOptions = {
         ...options,
+        body,
         headers,
       };
       

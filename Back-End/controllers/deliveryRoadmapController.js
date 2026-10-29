@@ -122,9 +122,12 @@ export const signOffPhase = async (req, res, next) => {
 export const createPhase = async (req, res, next) => {
   try {
     const { phase_no, name, scope, outcome } = req.body || {};
+    if (phase_no === undefined || phase_no === null || String(phase_no).trim() === "") {
+      return res.status(400).json({ success: false, message: "Phase number is required" });
+    }
     const phaseNo = Number(phase_no);
-    if (isNaN(phaseNo) || !name || !scope || !outcome) {
-      return res.status(400).json({ success: false, message: "phase_no, name, scope, and outcome are required" });
+    if (isNaN(phaseNo) || phaseNo < 0 || !name || !scope || !outcome) {
+      return res.status(400).json({ success: false, message: "Valid phase_no, name, scope, and outcome are required" });
     }
     const existing = await pool.query("SELECT id FROM delivery_phases WHERE phase_no = $1", [phaseNo]);
     if (existing.rows.length > 0) {

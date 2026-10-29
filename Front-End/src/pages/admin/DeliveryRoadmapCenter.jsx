@@ -150,10 +150,17 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
 
   const handleCreatePhase = async (e) => {
     e.preventDefault();
+    if (phaseForm.phase_no === "" || isNaN(Number(phaseForm.phase_no))) {
+      window.alert("Please provide a valid phase number.");
+      return;
+    }
     setPhaseSubmitting(true);
     try {
-      await api.createPhase(phaseForm);
-      setSignNotice(`Phase ${phaseForm.phase_no} ("${phaseForm.name}") created successfully by HR.`);
+      await api.createPhase({
+        ...phaseForm,
+        phase_no: Number(phaseForm.phase_no)
+      });
+      setSignNotice(`Phase ${phaseForm.phase_no} ("${phaseForm.name}") created successfully.`);
       setPhaseModal(false);
       setPhaseForm({ phase_no: "", name: "", scope: "", outcome: "" });
       await load();

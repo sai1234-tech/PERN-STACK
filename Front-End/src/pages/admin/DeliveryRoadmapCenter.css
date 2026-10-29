@@ -16,6 +16,73 @@
 .rm-pill.pending { background: #fee2e2; color: #991b1b; }
 .rm-signoff { font-size: .78rem; color: #475569; border-top: 1px dashed #e2e8f0; padding-top: .6rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
 
+/* Dedicated Phase Action Buttons (Crisp high-contrast in light & dark modes) */
+.rm-btn-add {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+  padding: 0.35rem 0.75rem;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(16, 185, 129, 0.1);
+}
+
+.rm-btn-add:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+  color: #14532d;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.rm-btn-delete {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 0.35rem 0.6rem;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.rm-btn-delete:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+[data-theme="dark"] .rm-btn-add {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+[data-theme="dark"] .rm-btn-add:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #34d399;
+}
+
+[data-theme="dark"] .rm-btn-delete {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+[data-theme="dark"] .rm-btn-delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #f87171;
+}
+
 .ai-chat { display: flex; flex-direction: column; gap: .75rem; max-height: 460px; overflow-y: auto; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
 .ai-msg { max-width: 82%; padding: .7rem .95rem; border-radius: 12px; font-size: .9rem; line-height: 1.45; }
 .ai-msg.user { align-self: flex-end; background: #0284c7; color: #fff; }

@@ -398,8 +398,9 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                       {canCreate && (
                         <>
                           <button
-                            className="stack-btn-refresh"
-                            style={{ padding: ".25rem .5rem", fontSize: ".72rem" }}
+                            type="button"
+                            className="rm-btn-add"
+                            title="Add a new deliverable to this phase"
                             onClick={() => {
                               setDeliverableForm({
                                 phase_no: p.phase_no,
@@ -418,12 +419,12 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                             + Add Deliverable
                           </button>
                           <button
-                            className="stack-btn-refresh"
-                            style={{ padding: ".25rem .5rem", fontSize: ".72rem", color: "#dc2626", borderColor: "#fca5a5" }}
+                            type="button"
+                            className="rm-btn-delete"
                             title="Delete this phase"
                             onClick={() => handleDeletePhase(p.phase_no, p.name)}
                           >
-                            🗑
+                            🗑 Delete
                           </button>
                         </>
                       )}

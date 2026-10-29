@@ -204,11 +204,11 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
     }
   };
 
-  const handleDeleteDeliverable = async (id, code) => {
-    if (!window.confirm(`Delete deliverable ${code}?`)) return;
+  const handleDeleteDeliverable = async (id, code, title) => {
+    if (!window.confirm(`Remove only deliverable "${code}" (${title || ""})?`)) return;
     try {
       await api.deleteDeliverable(id || code);
-      setSignNotice(`Deliverable "${code}" deleted successfully.`);
+      setSignNotice(`Deliverable "${code}" removed successfully.`);
       await load();
       setTimeout(() => setSignNotice(""), 4500);
     } catch (err) {
@@ -434,13 +434,17 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                           <span className={`rm-pill ${d.live ? "ok" : "pending"}`}>{d.status}</span>
                           {canCreate && (
-                              <button
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "0.9rem", padding: "0 0.2rem" }}
-                                title="Delete deliverable"
-                                onClick={() => handleDeleteDeliverable(d.id || d.deliverable_code, d.deliverable_code)}
-                              >
-                                ✕
-                              </button>
+                            <button
+                              type="button"
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "0.9rem", padding: "0 0.2rem" }}
+                              title={`Remove deliverable ${d.deliverable_code}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteDeliverable(d.id || d.deliverable_code, d.deliverable_code, d.title);
+                              }}
+                            >
+                              ✕
+                            </button>
                           )}
                         </div>
                       </li>

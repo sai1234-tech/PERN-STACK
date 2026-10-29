@@ -20,6 +20,15 @@ const SUGGESTIONS = [
   "When and how are official travel expenses reimbursed?"
 ];
 
+const SEARCH_SUGGESTIONS = [
+  "Leave Policy",
+  "Probation Period",
+  "Working Hours",
+  "Software Engineer",
+  "Candidates",
+  "Helpdesk Tickets"
+];
+
 const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
   const { user, employee } = useAuth();
   const role = normalizeRole(user, employee);
@@ -121,13 +130,26 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
     } finally { setAsking(false); }
   };
 
-  const runSearch = async (e) => {
-    e.preventDefault();
-    if (q.trim().length < 2) return;
+  const runSearch = async (e, customQuery) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const queryTerm = (customQuery !== undefined ? customQuery : q).trim();
+    if (queryTerm.length < 2) {
+      setSearchRes({ results: [], error: "Please enter at least 2 characters to search across policies, employees, candidates, and tickets." });
+      return;
+    }
+    if (customQuery !== undefined) {
+      setQ(customQuery);
+    }
     setSearching(true);
-    try { setSearchRes(await api.search(q.trim())); }
-    catch (err) { setSearchRes({ results: [], error: err.message }); }
-    finally { setSearching(false); }
+    setSearchRes(null);
+    try {
+      const res = await api.search(queryTerm);
+      setSearchRes(res);
+    } catch (err) {
+      setSearchRes({ results: [], error: err.message || "Failed to complete semantic search" });
+    } finally {
+      setSearching(false);
+    }
   };
 
   const openSignoffModal = (phase, decision) => {
@@ -613,28 +635,71 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
           {tab === "search" && (
             <div className="stack-card">
               <div className="stack-card-header">
-                <div className="stack-card-title-group"><h3>Intelligent Semantic Search</h3><p>Role-scoped retrieval across policies, real employees, candidates, and helpdesk tickets.</p></div>
+                <div className="stack-card-title-group">
+                  <h3>Intelligent Semantic Search</h3>
+                  <p>Role-scoped retrieval across policies, real employees, candidates, and helpdesk tickets.</p>
+                </div>
               </div>
               <div className="stack-card-body">
-                <form className="ai-ask" onSubmit={runSearch}>
-                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people, policies, tickets, candidates…" aria-label="Search term" />
-                  <button className="sandbox-btn-submit" type="submit" disabled={searching || q.trim().length < 2}>Search</button>
+                <div className="ai-suggest" style={{ marginBottom: "1rem" }}>
+                  <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>
+                    Quick Search Suggestions:
+                  </span>
+                  {SEARCH_SUGGESTIONS.map((s) => (
+                    <button key={s} type="button" onClick={() => runSearch(null, s)}>
+                      🔎 {s}
+                    </button>
+                  ))}
+                </div>
+
+                <form className="ai-ask" onSubmit={(e) => runSearch(e)}>
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Search people, policies, tickets, candidates (min 2 characters)…"
+                    aria-label="Search term"
+                  />
+                  <button className="sandbox-btn-submit" type="submit" disabled={searching}>
+                    {searching ? "Searching…" : "Search"}
+                  </button>
                 </form>
-                {searchRes && (
+
+                {searching && (
+                  <div className="ai-note" style={{ marginTop: "1rem", background: "#f0f9ff", color: "#0369a1", border: "1px solid #bae6fd" }}>
+                    🔍 Searching across approved policies, workforce directory, candidates, and helpdesk tickets…
+                  </div>
+                )}
+
+                {searchRes?.error && (
+                  <div className="ai-note" style={{ marginTop: "1rem", background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca" }}>
+                    ⚠️ {searchRes.error}
+                  </div>
+                )}
+
+                {searchRes && !searchRes.error && searchRes.results && (
                   <div style={{ marginTop: "1rem" }}>
-                    <div className="ai-meta">Searched {searchRes.scopes_searched?.join(", ")} · {searchRes.total} result(s)</div>
-                    <ul className="rm-items" style={{ marginTop: ".6rem" }}>
-                      {searchRes.results.map((r, idx) => (
-                        <li className="rm-item" key={idx}>
-                          <div>
-                            <span className="ai-chip" style={{ marginRight: ".5rem" }}>{r.type}</span>
-                            <Link to={r.route}>{r.title}</Link>
-                            <small>{r.subtitle}</small>
-                          </div>
-                          <span className="rm-pill ok">Score: {r.score}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="ai-meta">
+                      Searched scopes: <strong>{searchRes.scopes_searched?.join(", ")}</strong> · Found {searchRes.total} result(s) for "{searchRes.query}"
+                    </div>
+
+                    {searchRes.results.length === 0 ? (
+                      <div className="ai-note" style={{ marginTop: "0.75rem", background: "#f8fafc", color: "#64748b" }}>
+                        No records found matching "{searchRes.query}". Try searching for keywords like "leave", "probation", "software", or employee names.
+                      </div>
+                    ) : (
+                      <ul className="rm-items" style={{ marginTop: ".6rem" }}>
+                        {searchRes.results.map((r, idx) => (
+                          <li className="rm-item" key={idx}>
+                            <div>
+                              <span className="ai-chip" style={{ marginRight: ".5rem" }}>{r.type}</span>
+                              <Link to={r.route}>{r.title}</Link>
+                              <small>{r.subtitle}</small>
+                            </div>
+                            <span className="rm-pill ok">Score: {r.score}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>

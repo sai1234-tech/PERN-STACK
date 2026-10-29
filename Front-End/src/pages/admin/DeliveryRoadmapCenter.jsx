@@ -24,6 +24,7 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
   const role = normalizeRole(user, employee);
   const isMgmt = MGMT.includes(role);
   const canSign = SIGNERS.includes(role);
+  const canCreate = ["admin", "super_admin", "leadership", "hr"].includes(role);
 
   const [tab, setTab] = useState(isMgmt ? defaultTab : "assistant");
   const [roadmap, setRoadmap] = useState(null);
@@ -38,6 +39,26 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
   // Enterprise Phase Sign-Off Modal State
   const [signoffModal, setSignoffModal] = useState(null);
   const [signingSubmitting, setSigningSubmitting] = useState(false);
+
+  // HR Phase Creation Modal State
+  const [phaseModal, setPhaseModal] = useState(false);
+  const [phaseForm, setPhaseForm] = useState({ phase_no: "", name: "", scope: "", outcome: "" });
+  const [phaseSubmitting, setPhaseSubmitting] = useState(false);
+
+  // HR Deliverable Creation Modal State
+  const [deliverableModal, setDeliverableModal] = useState(false);
+  const [deliverableForm, setDeliverableForm] = useState({
+    phase_no: "",
+    deliverable_code: "",
+    title: "",
+    description: "",
+    evidence_type: "TABLE",
+    evidence_ref: "",
+    min_rows: 1,
+    ui_route: "",
+    api_route: ""
+  });
+  const [deliverableSubmitting, setDeliverableSubmitting] = useState(false);
 
   const [chat, setChat] = useState([]);
   const [question, setQuestion] = useState("");
@@ -126,6 +147,50 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
     }
   };
 
+  const handleCreatePhase = async (e) => {
+    e.preventDefault();
+    setPhaseSubmitting(true);
+    try {
+      await api.createPhase(phaseForm);
+      setSignNotice(`Phase ${phaseForm.phase_no} ("${phaseForm.name}") created successfully by HR.`);
+      setPhaseModal(false);
+      setPhaseForm({ phase_no: "", name: "", scope: "", outcome: "" });
+      await load();
+      setTimeout(() => setSignNotice(""), 4500);
+    } catch (err) {
+      window.alert(err.message || "Failed to create phase");
+    } finally {
+      setPhaseSubmitting(false);
+    }
+  };
+
+  const handleCreateDeliverable = async (e) => {
+    e.preventDefault();
+    setDeliverableSubmitting(true);
+    try {
+      await api.createDeliverable(deliverableForm);
+      setSignNotice(`Deliverable "${deliverableForm.deliverable_code}" added to Phase ${deliverableForm.phase_no} successfully.`);
+      setDeliverableModal(false);
+      setDeliverableForm({
+        phase_no: "",
+        deliverable_code: "",
+        title: "",
+        description: "",
+        evidence_type: "TABLE",
+        evidence_ref: "",
+        min_rows: 1,
+        ui_route: "",
+        api_route: ""
+      });
+      await load();
+      setTimeout(() => setSignNotice(""), 4500);
+    } catch (err) {
+      window.alert(err.message || "Failed to add deliverable");
+    } finally {
+      setDeliverableSubmitting(false);
+    }
+  };
+
   const tabs = [
     ...(isMgmt ? [{ k: "roadmap", l: "🗺️ Delivery Roadmap" }] : []),
     { k: "assistant", l: "💬 Policy Assistant" },
@@ -156,7 +221,20 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
               </p>
             </div>
             {isMgmt && (
-              <div className="stack-header-actions">
+              <div className="stack-header-actions" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                {canCreate && (
+                  <button
+                    className="sandbox-btn-submit"
+                    style={{ padding: ".45rem .9rem", fontSize: ".85rem" }}
+                    onClick={() => {
+                      const nextNo = roadmap?.phases?.length ? Math.max(...roadmap.phases.map((p) => p.phase_no)) + 1 : 1;
+                      setPhaseForm({ phase_no: nextNo, name: "", scope: "", outcome: "" });
+                      setPhaseModal(true);
+                    }}
+                  >
+                    + Add New Phase
+                  </button>
+                )}
                 <button className="stack-btn-refresh" onClick={load} disabled={loading}>
                   {loading ? "Refreshing..." : "↻ Refresh Verification"}
                 </button>
@@ -259,7 +337,31 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                       <h3>Phase {p.phase_no} – {p.name}</h3>
                       <p>{p.scope}</p>
                     </div>
-                    <span className={`rm-pill ${p.completion_pct === 100 ? "ok" : "pending"}`}>{p.delivered}/{p.total}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {canCreate && (
+                        <button
+                          className="stack-btn-refresh"
+                          style={{ padding: ".25rem .5rem", fontSize: ".72rem" }}
+                          onClick={() => {
+                            setDeliverableForm({
+                              phase_no: p.phase_no,
+                              deliverable_code: `P${p.phase_no}-`,
+                              title: "",
+                              description: "",
+                              evidence_type: "TABLE",
+                              evidence_ref: "",
+                              min_rows: 1,
+                              ui_route: "",
+                              api_route: ""
+                            });
+                            setDeliverableModal(true);
+                          }}
+                        >
+                          + Add Deliverable
+                        </button>
+                      )}
+                      <span className={`rm-pill ${p.completion_pct === 100 ? "ok" : "pending"}`}>{p.delivered}/{p.total}</span>
+                    </div>
                   </div>
                   <div className="rm-bar"><span style={{ width: `${p.completion_pct}%` }} /></div>
                   <ul className="rm-items">
@@ -511,6 +613,186 @@ const DeliveryRoadmapCenter = ({ defaultTab = "roadmap" }) => {
                     {signingSubmitting ? "Recording..." : `Confirm ${signoffModal.decision}`}
                   </button>
                   <button type="button" className="roster-btn secondary" onClick={() => setSignoffModal(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* HR Phase Creation Modal */}
+          {phaseModal && (
+            <div className="roster-modal-backdrop" onClick={() => setPhaseModal(false)}>
+              <form className="roster-modal" onSubmit={handleCreatePhase} onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <div>
+                    <span className="roster-kicker">HR Delivery Roadmap Governance</span>
+                    <h2>Create New Roadmap Phase</h2>
+                  </div>
+                  <button type="button" className="close-btn" onClick={() => setPhaseModal(false)}>✕</button>
+                </div>
+                <div className="modal-body">
+                  <p style={{ color: "#64748b", fontSize: "0.85rem", marginTop: 0 }}>
+                    Define an enterprise milestone phase directly from HR. Once added, deliverables can be linked and verified.
+                  </p>
+                  <label className="form-field">
+                    <span>Phase Number *</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={phaseForm.phase_no}
+                      onChange={(e) => setPhaseForm({ ...phaseForm, phase_no: e.target.value })}
+                      required
+                      placeholder="e.g. 5"
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span>Phase Name *</span>
+                    <input
+                      type="text"
+                      value={phaseForm.name}
+                      onChange={(e) => setPhaseForm({ ...phaseForm, name: e.target.value })}
+                      required
+                      placeholder="e.g. Talent & Learning, Global Expansion"
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span>Business Scope *</span>
+                    <textarea
+                      rows={2}
+                      value={phaseForm.scope}
+                      onChange={(e) => setPhaseForm({ ...phaseForm, scope: e.target.value })}
+                      required
+                      placeholder="e.g. Skill matrices, course catalog, compliance training, global mobility"
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span>Target Outcome *</span>
+                    <input
+                      type="text"
+                      value={phaseForm.outcome}
+                      onChange={(e) => setPhaseForm({ ...phaseForm, outcome: e.target.value })}
+                      required
+                      placeholder="e.g. Continuous Learning & Workforce Development"
+                    />
+                  </label>
+                </div>
+                <div className="modal-footer">
+                  <button type="submit" className="roster-btn primary" disabled={phaseSubmitting}>
+                    {phaseSubmitting ? "Creating Phase..." : "+ Create Phase"}
+                  </button>
+                  <button type="button" className="roster-btn secondary" onClick={() => setPhaseModal(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* HR Deliverable Creation Modal */}
+          {deliverableModal && (
+            <div className="roster-modal-backdrop" onClick={() => setDeliverableModal(false)}>
+              <form className="roster-modal" onSubmit={handleCreateDeliverable} onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <div>
+                    <span className="roster-kicker">HR Deliverable Acceptance Criteria</span>
+                    <h2>Add Deliverable to Phase {deliverableForm.phase_no}</h2>
+                  </div>
+                  <button type="button" className="close-btn" onClick={() => setDeliverableModal(false)}>✕</button>
+                </div>
+                <div className="modal-body">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem" }}>
+                    <label className="form-field">
+                      <span>Deliverable Code *</span>
+                      <input
+                        type="text"
+                        value={deliverableForm.deliverable_code}
+                        onChange={(e) => setDeliverableForm({ ...deliverableForm, deliverable_code: e.target.value.toUpperCase() })}
+                        required
+                        placeholder="e.g. P5-COURSES"
+                      />
+                    </label>
+                    <label className="form-field">
+                      <span>Deliverable Title *</span>
+                      <input
+                        type="text"
+                        value={deliverableForm.title}
+                        onChange={(e) => setDeliverableForm({ ...deliverableForm, title: e.target.value })}
+                        required
+                        placeholder="e.g. L&D Course Catalog"
+                      />
+                    </label>
+                  </div>
+                  <label className="form-field">
+                    <span>Description</span>
+                    <textarea
+                      rows={2}
+                      value={deliverableForm.description}
+                      onChange={(e) => setDeliverableForm({ ...deliverableForm, description: e.target.value })}
+                      placeholder="e.g. Real-time verification of courses available in database"
+                    />
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem" }}>
+                    <label className="form-field">
+                      <span>Evidence Type *</span>
+                      <select
+                        value={deliverableForm.evidence_type}
+                        onChange={(e) => setDeliverableForm({ ...deliverableForm, evidence_type: e.target.value })}
+                        required
+                      >
+                        <option value="TABLE">TABLE (PostgreSQL live rows)</option>
+                        <option value="FILE">FILE (Repository source file exists)</option>
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>{deliverableForm.evidence_type === "TABLE" ? "Table Name *" : "File Path *"}</span>
+                      <input
+                        type="text"
+                        value={deliverableForm.evidence_ref}
+                        onChange={(e) => setDeliverableForm({ ...deliverableForm, evidence_ref: e.target.value })}
+                        required
+                        placeholder={deliverableForm.evidence_type === "TABLE" ? "e.g. learning_courses" : "e.g. Front-End/src/pages/hr/Skill.jsx"}
+                      />
+                    </label>
+                  </div>
+                  {deliverableForm.evidence_type === "TABLE" && (
+                    <label className="form-field">
+                      <span>Minimum Rows to Count Live *</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={deliverableForm.min_rows}
+                        onChange={(e) => setDeliverableForm({ ...deliverableForm, min_rows: e.target.value })}
+                        required
+                      />
+                    </label>
+                  )}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem" }}>
+                    <label className="form-field">
+                      <span>UI Screen Route (Optional)</span>
+                      <input
+                        type="text"
+                        value={deliverableForm.ui_route}
+                        onChange={(e) => setDeliverableForm({ ...deliverableForm, ui_route: e.target.value })}
+                        placeholder="e.g. /hr/learning"
+                      />
+                    </label>
+                    <label className="form-field">
+                      <span>API Route (Optional)</span>
+                      <input
+                        type="text"
+                        value={deliverableForm.api_route}
+                        onChange={(e) => setDeliverableForm({ ...deliverableForm, api_route: e.target.value })}
+                        placeholder="e.g. /api/learning"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="submit" className="roster-btn primary" disabled={deliverableSubmitting}>
+                    {deliverableSubmitting ? "Adding Deliverable..." : "+ Add Deliverable"}
+                  </button>
+                  <button type="button" className="roster-btn secondary" onClick={() => setDeliverableModal(false)}>
                     Cancel
                   </button>
                 </div>

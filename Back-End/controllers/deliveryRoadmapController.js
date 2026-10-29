@@ -103,3 +103,70 @@ export const signOffPhase = async (req, res, next) => {
     return next(e);
   }
 };
+
+export const createPhase = async (req, res, next) => {
+  try {
+    const { phase_no, name, scope, outcome } = req.body || {};
+    const phaseNo = Number(phase_no);
+    if (isNaN(phaseNo) || !name || !scope || !outcome) {
+      return res.status(400).json({ success: false, message: "phase_no, name, scope, and outcome are required" });
+    }
+    const existing = await pool.query("SELECT id FROM delivery_phases WHERE phase_no = $1", [phaseNo]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ success: false, message: `Phase ${phaseNo} already exists` });
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO delivery_phases (phase_no, name, scope, outcome)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [phaseNo, name.trim(), scope.trim(), outcome.trim()]
+    );
+    const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
+    const userName = u.rows[0]?.name || "HR Admin";
+    await pool.query(
+      `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_name, user_role, ip_address)
+       VALUES ('CREATE_DELIVERY_PHASE', 'DELIVERY_PHASE', $1, $2, $3, $4, $5)`,
+      [String(phaseNo), `Created phase ${phaseNo}: ${name}`, userName, req.user.role, req.ip]
+    );
+    return res.status(201).json({ success: true, phase: rows[0] });
+  } catch (e) {
+    return next(e);
+  }
+};
+
+export const createDeliverable = async (req, res, next) => {
+  try {
+    const { phase_no, deliverable_code, title, description, evidence_type, evidence_ref, min_rows = 1, ui_route, api_route } = req.body || {};
+    const phaseNo = Number(phase_no);
+    if (isNaN(phaseNo) || !deliverable_code || !title || !evidence_type || !evidence_ref) {
+      return res.status(400).json({ success: false, message: "phase_no, deliverable_code, title, evidence_type, and evidence_ref are required" });
+    }
+    if (!["TABLE", "FILE"].includes(evidence_type)) {
+      return res.status(400).json({ success: false, message: "evidence_type must be TABLE or FILE" });
+    }
+    const phaseCheck = await pool.query("SELECT id FROM delivery_phases WHERE phase_no = $1", [phaseNo]);
+    if (phaseCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: `Phase ${phaseNo} not found` });
+    }
+    const codeCheck = await pool.query("SELECT id FROM delivery_deliverables WHERE deliverable_code = $1", [deliverable_code.trim().toUpperCase()]);
+    if (codeCheck.rows.length > 0) {
+      return res.status(409).json({ success: false, message: `Deliverable code ${deliverable_code} already exists` });
+    }
+    const sortRes = await pool.query("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort FROM delivery_deliverables WHERE phase_no = $1", [phaseNo]);
+    const sortOrder = sortRes.rows[0]?.next_sort || 1;
+    const { rows } = await pool.query(
+      `INSERT INTO delivery_deliverables (phase_no, deliverable_code, title, description, evidence_type, evidence_ref, min_rows, ui_route, api_route, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [phaseNo, deliverable_code.trim().toUpperCase(), title.trim(), description || "", evidence_type, evidence_ref.trim(), Number(min_rows) || 1, ui_route || null, api_route || null, sortOrder]
+    );
+    const u = await pool.query("SELECT name FROM users WHERE id = $1", [req.user.userId]);
+    const userName = u.rows[0]?.name || "HR Admin";
+    await pool.query(
+      `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_name, user_role, ip_address)
+       VALUES ('CREATE_DELIVERY_DELIVERABLE', 'DELIVERY_DELIVERABLE', $1, $2, $3, $4, $5)`,
+      [deliverable_code.trim().toUpperCase(), `Created deliverable ${deliverable_code}: ${title} in Phase ${phaseNo}`, userName, req.user.role, req.ip]
+    );
+    return res.status(201).json({ success: true, deliverable: rows[0] });
+  } catch (e) {
+    return next(e);
+  }
+};

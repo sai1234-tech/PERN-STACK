@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
-import { getRoadmap, signOffPhase } from "../controllers/deliveryRoadmapController.js";
+import { getRoadmap, signOffPhase, createPhase, createDeliverable } from "../controllers/deliveryRoadmapController.js";
 import {
   policyAssistant,
   intelligentSearch,
@@ -20,6 +20,8 @@ const ADMINS = ["admin", "super_admin", "leadership", "auditor"];
 
 // Delivery roadmap (Phases 0-4)
 router.get("/roadmap", authorizeRoles(...MGMT), getRoadmap);
+router.post("/roadmap/phases", authorizeRoles("admin", "super_admin", "leadership", "hr"), createPhase);
+router.post("/roadmap/deliverables", authorizeRoles("admin", "super_admin", "leadership", "hr"), createDeliverable);
 router.post("/roadmap/phases/:phaseNo/signoff", authorizeRoles("admin", "super_admin", "leadership"), signOffPhase);
 
 // Phase 4 – controlled AI layer

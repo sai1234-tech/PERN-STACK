@@ -2,6 +2,16 @@ import { apiRequest } from "./apiClient";
 
 export const deliveryRoadmapService = {
   getRoadmap: () => apiRequest("/delivery/roadmap"),
+  createPhase: (data) =>
+    apiRequest("/delivery/roadmap/phases", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+  createDeliverable: (data) =>
+    apiRequest("/delivery/roadmap/deliverables", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
   signOff: (phaseNo, decision, comments) =>
     apiRequest(`/delivery/roadmap/phases/${phaseNo}/signoff`, {
       method: "POST",

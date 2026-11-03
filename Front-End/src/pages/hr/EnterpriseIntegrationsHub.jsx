@@ -908,22 +908,23 @@ export default function EnterpriseIntegrationsHub() {
 
       {/* ── 4. Add New Integration Channel Specification Modal ── */}
       {isAddModalOpen && (
-        <div className="connector-modal-backdrop" onClick={() => setIsAddModalOpen(false)}>
+        <div className="hub-modal-backdrop" onClick={() => setIsAddModalOpen(false)}>
           <div
-            className="connector-drawer-card add-connector-modal"
+            className="hub-modal-panel add-channel-modal-panel"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "620px", maxHeight: "90vh", overflowY: "auto" }}
           >
-            <div className="drawer-header">
-              <div className="drawer-title-block">
-                <span className="drawer-icon">➕</span>
+            <div className="modal-header-row">
+              <div className="modal-title-group">
+                <span className="modal-title-emoji">➕</span>
                 <div>
-                  <h2 className="drawer-title">Register Integration Specification</h2>
-                  <span className="drawer-key">Add a new external enterprise communication channel to the Matrix</span>
+                  <h2 className="modal-connector-title">Register Integration Specification</h2>
+                  <span className="modal-provider-tag">
+                    Add a new external enterprise communication channel to the Matrix
+                  </span>
                 </div>
               </div>
               <button
-                className="drawer-close-btn"
+                className="modal-close-icon-btn"
                 onClick={() => setIsAddModalOpen(false)}
                 title="Close"
               >
@@ -931,7 +932,7 @@ export default function EnterpriseIntegrationsHub() {
               </button>
             </div>
 
-            <div className="drawer-body">
+            <div className="modal-body-scroll">
               <form onSubmit={handleCreateNewConnector} className="config-edit-form">
                 <div className="form-fields-grid">
                   <div className="form-input-group">
@@ -992,7 +993,7 @@ export default function EnterpriseIntegrationsHub() {
                     <select
                       value={newConnectorForm.auth_type}
                       onChange={(e) => setNewConnectorForm({ ...newConnectorForm, auth_type: e.target.value })}
-                      style={{ padding: "0.65rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                      className="modal-select-input"
                     >
                       <option value="Bearer Token">Bearer Token</option>
                       <option value="OAuth2 / OIDC">OAuth2 / OIDC</option>
@@ -1022,11 +1023,11 @@ export default function EnterpriseIntegrationsHub() {
                   </div>
                 </div>
 
-                <div className="form-actions-row" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1.25rem" }}>
+                <div className="form-actions-row add-channel-actions">
                   <button
                     type="button"
+                    className="modal-cancel-btn"
                     onClick={() => setIsAddModalOpen(false)}
-                    style={{ padding: "0.65rem 1.25rem", background: "transparent", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}
                   >
                     Cancel
                   </button>

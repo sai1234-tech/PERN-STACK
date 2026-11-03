@@ -36,12 +36,7 @@ export function useAttendance() {
           parsed.forEach((reg) => {
             if (
               String(reg.status || "").toLowerCase() === "approved" ||
-              reg.reconciled === true ||
-              reg.date === "2026-10-27" ||
-              reg.date === "2026-10-24" ||
-              reg.id === "REG-2026-0929" ||
-              reg.id === "REG-2026-081" ||
-              reg.altId === "EG-2026-0929"
+              reg.reconciled === true
             ) {
               const regDateStr = String(reg.date || "").slice(0, 10);
               const existingIdx = baseList.findIndex(

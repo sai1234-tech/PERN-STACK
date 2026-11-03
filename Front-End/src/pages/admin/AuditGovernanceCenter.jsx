@@ -2,12 +2,71 @@ import React, { useState, useEffect, useMemo } from "react";
 import { auditEffectiveDatingService } from "../../services/auditEffectiveDatingService";
 import "./AuditGovernanceCenter.css";
 
+// Reusable Table Pagination Component
+const TablePagination = ({ currentPage, totalRecords, pageSize = 5, onPageChange }) => {
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+  if (totalRecords === 0) return null;
+
+  const startRecord = (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalRecords);
+
+  return (
+    <div className="table-pagination-bar">
+      <div className="pagination-info">
+        Showing <strong>{startRecord}</strong> to <strong>{endRecord}</strong> of{" "}
+        <strong>{totalRecords}</strong> records (Page {currentPage} of {totalPages})
+      </div>
+      <div className="pagination-controls">
+        <button
+          className="page-btn"
+          disabled={currentPage <= 1}
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        >
+          Previous
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+          .map((pageNum, idx, arr) => (
+            <React.Fragment key={pageNum}>
+              {idx > 0 && arr[idx - 1] !== pageNum - 1 && (
+                <span className="pagination-ellipsis">...</span>
+              )}
+              <button
+                className={`page-num-btn ${currentPage === pageNum ? "active" : ""}`}
+                onClick={() => onPageChange(pageNum)}
+              >
+                {pageNum}
+              </button>
+            </React.Fragment>
+          ))}
+        <button
+          className="page-btn"
+          disabled={currentPage >= totalPages}
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const AuditGovernanceCenter = () => {
   const [activeTab, setActiveTab] = useState("critical_changes");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Pagination states (Show 5 records per page, remaining scrollable with pagination)
+  const PAGE_SIZE = 5;
+  const [changesPage, setChangesPage] = useState(1);
+  const [approvalsPage, setApprovalsPage] = useState(1);
+  const [effectivePage, setEffectivePage] = useState(1);
+  const [exportsPage, setExportsPage] = useState(1);
+  const [adminPage, setAdminPage] = useState(1);
+  const [policiesPage, setPoliciesPage] = useState(1);
+  const [docAuditsPage, setDocAuditsPage] = useState(1);
 
   // Data states across all 5 pillars
   const [overview, setOverview] = useState(null);
@@ -244,7 +303,18 @@ const AuditGovernanceCenter = () => {
     }
   };
 
-  // Filtered lists
+  // Reset pagination on search term change
+  useEffect(() => {
+    setChangesPage(1);
+    setApprovalsPage(1);
+    setEffectivePage(1);
+    setExportsPage(1);
+    setAdminPage(1);
+    setPoliciesPage(1);
+    setDocAuditsPage(1);
+  }, [searchTerm]);
+
+  // Filtered lists across all 5 pillars
   const filteredChanges = useMemo(() => {
     if (!searchTerm) return criticalChanges;
     const term = searchTerm.toLowerCase();
@@ -266,6 +336,96 @@ const AuditGovernanceCenter = () => {
       (a.comments || "").toLowerCase().includes(term)
     );
   }, [approvalDecisions, searchTerm]);
+
+  const filteredEffective = useMemo(() => {
+    if (!searchTerm) return effectiveHistory;
+    const term = searchTerm.toLowerCase();
+    return effectiveHistory.filter(h =>
+      (h.entity_name || "").toLowerCase().includes(term) ||
+      (h.entity_id || "").toLowerCase().includes(term) ||
+      (h.change_reason || "").toLowerCase().includes(term) ||
+      (h.created_by_name || "").toLowerCase().includes(term)
+    );
+  }, [effectiveHistory, searchTerm]);
+
+  const filteredExports = useMemo(() => {
+    if (!searchTerm) return sensitiveExports;
+    const term = searchTerm.toLowerCase();
+    return sensitiveExports.filter(e =>
+      (e.export_code || "").toLowerCase().includes(term) ||
+      (e.export_type || "").toLowerCase().includes(term) ||
+      (e.user_name || "").toLowerCase().includes(term) ||
+      (e.export_purpose || "").toLowerCase().includes(term)
+    );
+  }, [sensitiveExports, searchTerm]);
+
+  const filteredAdminActions = useMemo(() => {
+    if (!searchTerm) return adminActions;
+    const term = searchTerm.toLowerCase();
+    return adminActions.filter(a =>
+      (a.action_code || "").toLowerCase().includes(term) ||
+      (a.action_category || "").toLowerCase().includes(term) ||
+      (a.admin_name || "").toLowerCase().includes(term) ||
+      (a.action_details || "").toLowerCase().includes(term)
+    );
+  }, [adminActions, searchTerm]);
+
+  const filteredPolicies = useMemo(() => {
+    if (!searchTerm) return documentPolicies;
+    const term = searchTerm.toLowerCase();
+    return documentPolicies.filter(p =>
+      (p.category_code || "").toLowerCase().includes(term) ||
+      (p.category_label || "").toLowerCase().includes(term) ||
+      (p.description || "").toLowerCase().includes(term)
+    );
+  }, [documentPolicies, searchTerm]);
+
+  const filteredDocAudits = useMemo(() => {
+    if (!searchTerm) return documentAudits;
+    const term = searchTerm.toLowerCase();
+    return documentAudits.filter(d =>
+      (d.document_name || "").toLowerCase().includes(term) ||
+      (d.document_category || "").toLowerCase().includes(term) ||
+      (d.user_name || "").toLowerCase().includes(term) ||
+      (d.denial_reason || "").toLowerCase().includes(term)
+    );
+  }, [documentAudits, searchTerm]);
+
+  // Paginated slices (exactly 5 records per page, remaining scrollable with pagination)
+  const paginatedChanges = useMemo(() => {
+    const start = (changesPage - 1) * PAGE_SIZE;
+    return filteredChanges.slice(start, start + PAGE_SIZE);
+  }, [filteredChanges, changesPage]);
+
+  const paginatedApprovals = useMemo(() => {
+    const start = (approvalsPage - 1) * PAGE_SIZE;
+    return filteredApprovals.slice(start, start + PAGE_SIZE);
+  }, [filteredApprovals, approvalsPage]);
+
+  const paginatedEffective = useMemo(() => {
+    const start = (effectivePage - 1) * PAGE_SIZE;
+    return filteredEffective.slice(start, start + PAGE_SIZE);
+  }, [filteredEffective, effectivePage]);
+
+  const paginatedExports = useMemo(() => {
+    const start = (exportsPage - 1) * PAGE_SIZE;
+    return filteredExports.slice(start, start + PAGE_SIZE);
+  }, [filteredExports, exportsPage]);
+
+  const paginatedAdminActions = useMemo(() => {
+    const start = (adminPage - 1) * PAGE_SIZE;
+    return filteredAdminActions.slice(start, start + PAGE_SIZE);
+  }, [filteredAdminActions, adminPage]);
+
+  const paginatedPolicies = useMemo(() => {
+    const start = (policiesPage - 1) * PAGE_SIZE;
+    return filteredPolicies.slice(start, start + PAGE_SIZE);
+  }, [filteredPolicies, policiesPage]);
+
+  const paginatedDocAudits = useMemo(() => {
+    const start = (docAuditsPage - 1) * PAGE_SIZE;
+    return filteredDocAudits.slice(start, start + PAGE_SIZE);
+  }, [filteredDocAudits, docAuditsPage]);
 
   return (
     <div className="audit-gov-container">
@@ -481,12 +641,12 @@ const AuditGovernanceCenter = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredChanges.length === 0 ? (
+                {paginatedChanges.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="empty-cell">No critical changes found matching query.</td>
                   </tr>
                 ) : (
-                  filteredChanges.map((c) => (
+                  paginatedChanges.map((c) => (
                     <tr key={c.id}>
                       <td>
                         <span className="code-pill">{c.change_code}</span>
@@ -530,6 +690,13 @@ const AuditGovernanceCenter = () => {
               </tbody>
             </table>
           </div>
+
+          <TablePagination
+            currentPage={changesPage}
+            totalRecords={filteredChanges.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setChangesPage}
+          />
         </div>
       )}
 
@@ -557,12 +724,12 @@ const AuditGovernanceCenter = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredApprovals.length === 0 ? (
+                {paginatedApprovals.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="empty-cell">No approval decision records found.</td>
                   </tr>
                 ) : (
-                  filteredApprovals.map((a) => (
+                  paginatedApprovals.map((a) => (
                     <tr key={a.id}>
                       <td>
                         <span className="code-pill">{a.decision_code}</span>
@@ -605,6 +772,13 @@ const AuditGovernanceCenter = () => {
               </tbody>
             </table>
           </div>
+
+          <TablePagination
+            currentPage={approvalsPage}
+            totalRecords={filteredApprovals.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setApprovalsPage}
+          />
         </div>
       )}
 
@@ -684,12 +858,12 @@ const AuditGovernanceCenter = () => {
                 </tr>
               </thead>
               <tbody>
-                {effectiveHistory.length === 0 ? (
+                {paginatedEffective.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="empty-cell">No effective-dated revisions recorded.</td>
                   </tr>
                 ) : (
-                  effectiveHistory.map((h) => (
+                  paginatedEffective.map((h) => (
                     <tr key={h.id} className={h.is_current ? "current-version-row" : "historical-row"}>
                       <td>
                         <span className={`version-pill ${h.is_current ? "active-v" : "past-v"}`}>
@@ -731,6 +905,13 @@ const AuditGovernanceCenter = () => {
               </tbody>
             </table>
           </div>
+
+          <TablePagination
+            currentPage={effectivePage}
+            totalRecords={filteredEffective.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setEffectivePage}
+          />
         </div>
       )}
 
@@ -762,10 +943,10 @@ const AuditGovernanceCenter = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {sensitiveExports.length === 0 ? (
+                    {paginatedExports.length === 0 ? (
                       <tr><td colSpan="5" className="empty-cell">No sensitive exports logged.</td></tr>
                     ) : (
-                      sensitiveExports.map((e) => (
+                      paginatedExports.map((e) => (
                         <tr key={e.id}>
                           <td><span className="code-pill">{e.export_code}</span></td>
                           <td>
@@ -791,12 +972,18 @@ const AuditGovernanceCenter = () => {
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                currentPage={exportsPage}
+                totalRecords={filteredExports.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setExportsPage}
+              />
             </div>
 
             {/* Right Column: Administrative Actions */}
             <div className="grid-section">
               <div className="section-header-row">
-                <h4>Administrative Privilege & Policy Actions ({adminActions.length})</h4>
+                <h4>Administrative Privilege & Policy Actions ({filteredAdminActions.length})</h4>
               </div>
               <div className="table-responsive">
                 <table className="enterprise-table mini">
@@ -810,10 +997,10 @@ const AuditGovernanceCenter = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {adminActions.length === 0 ? (
+                    {paginatedAdminActions.length === 0 ? (
                       <tr><td colSpan="5" className="empty-cell">No administrative actions logged.</td></tr>
                     ) : (
-                      adminActions.map((a) => (
+                      paginatedAdminActions.map((a) => (
                         <tr key={a.id}>
                           <td><span className="code-pill">{a.action_code}</span></td>
                           <td>
@@ -838,6 +1025,12 @@ const AuditGovernanceCenter = () => {
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                currentPage={adminPage}
+                totalRecords={filteredAdminActions.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setAdminPage}
+              />
             </div>
           </div>
         </div>
@@ -867,58 +1060,69 @@ const AuditGovernanceCenter = () => {
                 </tr>
               </thead>
               <tbody>
-                {documentPolicies.map((p) => {
-                  const previewRoles = typeof p.can_preview_roles === 'string' ? JSON.parse(p.can_preview_roles) : p.can_preview_roles;
-                  const downloadRoles = typeof p.can_download_roles === 'string' ? JSON.parse(p.can_download_roles) : p.can_download_roles;
-                  return (
-                    <tr key={p.id}>
-                      <td><span className="code-pill">{p.category_code}</span></td>
-                      <td>
-                        <strong>{p.category_label}</strong>
-                        <div className="meta-subtext">{p.description}</div>
-                      </td>
-                      <td>
-                        <div className="role-chips">
-                          {previewRoles.map((r, i) => (
-                            <span key={i} className="chip chip-preview">{r}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="role-chips">
-                          {downloadRoles.map((r, i) => (
-                            <span key={i} className="chip chip-download">{r}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        {p.requires_watermark ? (
-                          <span className="badge-watermark">✔ Watermark Enforced</span>
-                        ) : (
-                          <span className="badge-off">None</span>
-                        )}
-                      </td>
-                      <td>
-                        {p.requires_mfa_stepup_download ? (
-                          <span className="badge-mfa">🔐 Step-Up MFA</span>
-                        ) : (
-                          <span className="badge-off">Standard</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className="quota-tag">{p.max_downloads_per_day} files/day</span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {paginatedPolicies.length === 0 ? (
+                  <tr><td colSpan="7" className="empty-cell">No document policies found matching query.</td></tr>
+                ) : (
+                  paginatedPolicies.map((p) => {
+                    const previewRoles = typeof p.can_preview_roles === 'string' ? JSON.parse(p.can_preview_roles) : p.can_preview_roles;
+                    const downloadRoles = typeof p.can_download_roles === 'string' ? JSON.parse(p.can_download_roles) : p.can_download_roles;
+                    return (
+                      <tr key={p.id}>
+                        <td><span className="code-pill">{p.category_code}</span></td>
+                        <td>
+                          <strong>{p.category_label}</strong>
+                          <div className="meta-subtext">{p.description}</div>
+                        </td>
+                        <td>
+                          <div className="role-chips">
+                            {previewRoles.map((r, i) => (
+                              <span key={i} className="chip chip-preview">{r}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="role-chips">
+                            {downloadRoles.map((r, i) => (
+                              <span key={i} className="chip chip-download">{r}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          {p.requires_watermark ? (
+                            <span className="badge-watermark">✔ Watermark Enforced</span>
+                          ) : (
+                            <span className="badge-off">None</span>
+                          )}
+                        </td>
+                        <td>
+                          {p.requires_mfa_stepup_download ? (
+                            <span className="badge-mfa">🔐 Step-Up MFA</span>
+                          ) : (
+                            <span className="badge-off">Standard</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="quota-tag">{p.max_downloads_per_day} files/day</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
 
+          <TablePagination
+            currentPage={policiesPage}
+            totalRecords={filteredPolicies.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPoliciesPage}
+          />
+
           {/* Document Access Logs Section */}
           <div className="doc-audit-section">
             <div className="section-header-row">
-              <h4>Recent Document Access & Permission Verification Audit ({documentAudits.length})</h4>
+              <h4>Recent Document Access & Permission Verification Audit ({filteredDocAudits.length})</h4>
             </div>
             <div className="table-responsive">
               <table className="enterprise-table mini">
@@ -934,35 +1138,46 @@ const AuditGovernanceCenter = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {documentAudits.map((d) => (
-                    <tr key={d.id}>
-                      <td><strong>{d.document_name}</strong></td>
-                      <td><span className="meta-subtext">{d.document_category}</span></td>
-                      <td>
-                        <strong>{d.user_name}</strong>
-                        <div className="meta-subtext">{d.user_role} • {d.ip_address}</div>
-                      </td>
-                      <td><span className="action-pill">{d.action_type}</span></td>
-                      <td>
-                        {d.access_granted ? (
-                          <span className="decision-badge approved">✔ GRANTED</span>
-                        ) : (
-                          <span className="decision-badge rejected" title={d.denial_reason}>✖ DENIED</span>
-                        )}
-                      </td>
-                      <td>
-                        {d.watermark_applied ? (
-                          <code className="watermark-preview-code">{d.watermark_applied}</code>
-                        ) : (
-                          <span className="meta-subtext">—</span>
-                        )}
-                      </td>
-                      <td><div className="time-subtext">{new Date(d.created_at).toLocaleString()}</div></td>
-                    </tr>
-                  ))}
+                  {paginatedDocAudits.length === 0 ? (
+                    <tr><td colSpan="7" className="empty-cell">No document access audit records found matching query.</td></tr>
+                  ) : (
+                    paginatedDocAudits.map((d) => (
+                      <tr key={d.id}>
+                        <td><strong>{d.document_name}</strong></td>
+                        <td><span className="meta-subtext">{d.document_category}</span></td>
+                        <td>
+                          <strong>{d.user_name}</strong>
+                          <div className="meta-subtext">{d.user_role} • {d.ip_address}</div>
+                        </td>
+                        <td><span className="action-pill">{d.action_type}</span></td>
+                        <td>
+                          {d.access_granted ? (
+                            <span className="decision-badge approved">✔ GRANTED</span>
+                          ) : (
+                            <span className="decision-badge rejected" title={d.denial_reason}>✖ DENIED</span>
+                          )}
+                        </td>
+                        <td>
+                          {d.watermark_applied ? (
+                            <code className="watermark-preview-code">{d.watermark_applied}</code>
+                          ) : (
+                            <span className="meta-subtext">—</span>
+                          )}
+                        </td>
+                        <td><div className="time-subtext">{new Date(d.created_at).toLocaleString()}</div></td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            <TablePagination
+              currentPage={docAuditsPage}
+              totalRecords={filteredDocAudits.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setDocAuditsPage}
+            />
           </div>
         </div>
       )}

@@ -368,6 +368,10 @@ function AppSidebar() {
                   <span className="nav-item-icon">🌐</span>
                   {!isCollapsed && <span className="nav-item-label">Database Entities</span>}
                 </NavLink>
+                <NavLink to="/hr/integrations" end className="sidebar-nav-link" title="Enterprise 8-Channel Integration Hub">
+                  <span className="nav-item-icon">🔌</span>
+                  {!isCollapsed && <span className="nav-item-label">Integrations Hub</span>}
+                </NavLink>
                 <NavLink to="/admin/governance" end className="sidebar-nav-link" title="Enterprise Security, Governance & DPDP Compliance">
                   <span className="nav-item-icon">🔐</span>
                   {!isCollapsed && <span className="nav-item-label">Security & Compliance</span>}
@@ -541,6 +545,10 @@ function AppSidebar() {
                 <NavLink to="/admin/entities" end className="sidebar-nav-link" title="Core Database Entities (41 Master Entities)">
                   <span className="nav-item-icon">🌐</span>
                   {!isCollapsed && <span className="nav-item-label">Database Entities</span>}
+                </NavLink>
+                <NavLink to="/admin/integrations" end className="sidebar-nav-link" title="Enterprise 8-Channel Integration Hub">
+                  <span className="nav-item-icon">🔌</span>
+                  {!isCollapsed && <span className="nav-item-label">Integrations Hub</span>}
                 </NavLink>
                 <NavLink to="/admin/governance" end className="sidebar-nav-link" title="Enterprise Security, Governance & DPDP Compliance">
                   <span className="nav-item-icon">🔐</span>

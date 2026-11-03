@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
+import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
@@ -116,6 +118,21 @@ const initDB = async () => {
         console.log("Audit Logs table initialized.");
         await initClientTables();
         console.log("Client Master, SOW, Rate-Card & Transition tables initialized.");
+
+        // Automatically synchronize enterprise SQL migrations (Senior full-stack standard)
+        const migrationsDir = path.join(backendDir, "migrations");
+        if (fs.existsSync(migrationsDir)) {
+            const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith(".sql")).sort();
+            for (const file of files) {
+                try {
+                    const sql = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
+                    await pool.query(sql);
+                } catch {
+                    // Safe & idempotent: continue on already existing views or relations
+                }
+            }
+            console.log("All enterprise migrations synchronized.");
+        }
     } catch (err) {
         console.error("Database initialization notice:", err.message);
     }

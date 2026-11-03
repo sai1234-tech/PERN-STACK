@@ -46,6 +46,7 @@ const AdminDashboard       = lazy(() => import("../pages/admin/AdminDashboard"))
 const OrganizationHierarchy = lazy(() => import("../pages/organization/OrganizationHierarchy"));
 const EmployeeLifecycle    = lazy(() => import("../pages/hr/EmployeeLifecycle"));
 const EnterpriseEntityExplorer = lazy(() => import("../pages/hr/EnterpriseEntityExplorer"));
+const EnterpriseIntegrationsHub = lazy(() => import("../pages/hr/EnterpriseIntegrationsHub"));
 const SecurityGovernanceCenter = lazy(() => import("../pages/admin/SecurityGovernanceCenter"));
 const EnterpriseAutomationsHub = lazy(() => import("../pages/hr/EnterpriseAutomationsHub"));
 const AuditGovernanceCenter = lazy(() => import("../pages/admin/AuditGovernanceCenter"));
@@ -181,6 +182,7 @@ function AppRoutes() {
           <Route path="/admin/accounts"  element={<ProtectedRoute roles={["admin", "it_admin"]}><AccountManagement /></ProtectedRoute>} />
 
           {/* ── HR / Admin / Specialized Functional Governance ── */}
+          <Route path="/hr"              element={<Navigate to="/hr/dashboard" replace />} />
           <Route path="/hr/dashboard"    element={<ProtectedRoute roles={["hr", "admin", "manager", "super_admin"]}><HRDashboard /></ProtectedRoute>} />
           <Route path="/hr/kpis"         element={<ProtectedRoute roles={["hr", "admin"]}><HRDashboard defaultTab="kpis" /></ProtectedRoute>} />
           <Route path="/hr/executive-kpis" element={<ProtectedRoute roles={["hr", "admin"]}><HRDashboard defaultTab="kpis" /></ProtectedRoute>} />
@@ -209,6 +211,9 @@ function AppRoutes() {
           <Route path="/hr/entities"           element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseEntityExplorer /></ProtectedRoute>} />
           <Route path="/entities"              element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseEntityExplorer /></ProtectedRoute>} />
           <Route path="/admin/entities"        element={<ProtectedRoute roles={["admin", "leadership"]}><EnterpriseEntityExplorer /></ProtectedRoute>} />
+          <Route path="/hr/integrations"       element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseIntegrationsHub /></ProtectedRoute>} />
+          <Route path="/integrations"          element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseIntegrationsHub /></ProtectedRoute>} />
+          <Route path="/admin/integrations"    element={<ProtectedRoute roles={["admin", "leadership"]}><EnterpriseIntegrationsHub /></ProtectedRoute>} />
           <Route path="/admin/governance"      element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><SecurityGovernanceCenter /></ProtectedRoute>} />
           <Route path="/admin/security"        element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><SecurityGovernanceCenter /></ProtectedRoute>} />
           <Route path="/governance"            element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><SecurityGovernanceCenter /></ProtectedRoute>} />

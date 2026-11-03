@@ -10,7 +10,7 @@
   box-sizing: border-box;
 }
 
-.entity-explorer-container > * {
+.entity-explorer-container>* {
   max-width: 1440px;
   margin-left: auto;
   margin-right: auto;
@@ -92,10 +92,12 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   }
+
   70% {
     transform: scale(1);
     box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
@@ -550,6 +552,124 @@
   transform: translateY(-1px);
 }
 
+/* ── Entity Quick Switcher Bar (Same Category) ── */
+.entity-quick-switcher-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.75rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.switcher-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.switcher-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.switcher-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.switcher-pill-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.switcher-pill-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.switcher-pill-btn.active .switcher-pill-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.switcher-pill-count {
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  background: #e2e8f0;
+  color: #475569;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+/* ── Entity Grid Empty Search State ── */
+.entity-empty-search-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.entity-empty-search-state .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.entity-empty-search-state h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.4rem;
+}
+
+.entity-empty-search-state p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0 0 1.25rem;
+}
+
+.clear-filter-btn {
+  padding: 0.6rem 1.25rem;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.clear-filter-btn:hover {
+  background: #1d4ed8;
+}
+
 .records-filter-bar {
   display: flex;
   align-items: center;
@@ -615,15 +735,190 @@
   white-space: nowrap;
 }
 
+.enterprise-records-table th.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.enterprise-records-table th.sortable-th:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.enterprise-records-table th.sortable-th.sorted-active {
+  background: #eff6ff;
+  color: #2563eb;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.th-sort-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.th-sort-arrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.th-sort-arrow.active {
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.th-sort-arrow.neutral {
+  color: #94a3b8;
+  opacity: 0.65;
+}
+
+.enterprise-records-table th.sortable-th:hover .th-sort-arrow.neutral {
+  opacity: 1;
+  color: #475569;
+}
+
 .enterprise-records-table td {
   padding: 0.85rem 1.15rem;
   border-bottom: 1px solid #f1f5f9;
   color: #1e293b;
   vertical-align: middle;
+  transition: background-color 0.15s ease;
 }
 
-.enterprise-records-table tr:hover {
-  background: #f8fafc;
+/* =====================================================
+   REALISTIC ENTERPRISE ROW STYLES FOR CORE DATABASE ENTITIES
+   ===================================================== */
+.enterprise-records-table tr.record-row {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Alternating realistic enterprise rows */
+.enterprise-records-table tr.record-row.row-even td {
+  background: #ffffff;
+}
+
+.enterprise-records-table tr.record-row.row-odd td {
+  background: #fcfdfd;
+}
+
+/* Status-based left accents */
+.enterprise-records-table tr.record-row.row-status-active td:first-child {
+  border-left: 4px solid #10b981;
+}
+
+.enterprise-records-table tr.record-row.row-status-pending td:first-child {
+  border-left: 4px solid #f59e0b;
+}
+
+.enterprise-records-table tr.record-row.row-status-inactive td:first-child {
+  border-left: 4px solid #ef4444;
+}
+
+.enterprise-records-table tr.record-row.row-status-neutral td:first-child {
+  border-left: 4px solid #cbd5e1;
+}
+
+/* Soft ambient status row tints */
+.enterprise-records-table tr.record-row.row-status-active td {
+  background: rgba(240, 253, 244, 0.35);
+}
+
+.enterprise-records-table tr.record-row.row-status-pending td {
+  background: rgba(254, 252, 232, 0.4);
+}
+
+.enterprise-records-table tr.record-row.row-status-inactive td {
+  background: rgba(254, 242, 242, 0.35);
+}
+
+/* Unified realistic row hover */
+.enterprise-records-table tr.record-row:hover td {
+  background: #eff6ff !important;
+}
+
+.enterprise-records-table tr.record-row:hover td:first-child {
+  border-left-color: #2563eb !important;
+}
+
+/* Cells inherit row background smoothly */
+.cell-colored-status,
+.cell-colored-dept,
+.cell-colored-designation,
+.cell-colored-code,
+.cell-colored-currency,
+.cell-colored-email,
+.cell-colored-date,
+.cell-colored-default {
+  background: transparent;
+}
+
+.pill-entity-dept {
+  display: inline-block;
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pill-entity-designation {
+  display: inline-block;
+  background: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pill-entity-code {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pill-entity-currency {
+  display: inline-block;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.775rem;
+}
+
+.pill-entity-email {
+  display: inline-block;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #e0f2fe;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.pill-entity-date {
+  display: inline-block;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 500;
 }
 
 .pill-status {
@@ -741,6 +1036,43 @@
   cursor: not-allowed;
 }
 
+.page-num-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.page-num-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.page-num-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.25rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
 /* Loading & Empty States */
 .entity-loading-state,
 .records-table-loading,
@@ -806,6 +1138,7 @@
     opacity: 0;
     transform: scale(0.96) translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -1043,12 +1376,15 @@
   .entity-explorer-container {
     padding: 1.25rem 1rem 3rem;
   }
+
   .entity-hero-header {
     padding: 1.25rem;
   }
+
   .entity-hero-title {
     font-size: 1.45rem;
   }
+
   .entities-cards-grid {
     grid-template-columns: 1fr;
   }

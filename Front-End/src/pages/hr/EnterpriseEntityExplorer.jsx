@@ -58,15 +58,37 @@ const CATEGORIES = [
   "Compensation, Performance & Operations"
 ];
 
+// Helper to normalize category comparison across ampersand / 'and' / case variants
+const normalizeCategory = (cat) =>
+  (cat || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+
 export default function EnterpriseEntityExplorer() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   // Selected entity key from URL query (e.g. ?entity=designation)
   const activeEntityKey = searchParams.get("entity") || null;
-  const initialTab = searchParams.get("category") || "All Entities";
+  const initialCategoryParam = searchParams.get("category");
+  const matchedInitial = initialCategoryParam
+    ? CATEGORIES.find((c) => normalizeCategory(c) === normalizeCategory(initialCategoryParam)) || initialCategoryParam
+    : "All Entities";
 
-  const [activeCategory, setActiveCategory] = useState(initialTab);
+  const [activeCategory, setActiveCategory] = useState(matchedInitial);
+
+  // Keep activeCategory in sync whenever URL searchParams change
+  useEffect(() => {
+    const catFromUrl = searchParams.get("category");
+    if (catFromUrl) {
+      const matched = CATEGORIES.find(
+        (c) => normalizeCategory(c) === normalizeCategory(catFromUrl)
+      );
+      if (matched && matched !== activeCategory) {
+        setActiveCategory(matched);
+      }
+    } else if (!catFromUrl && activeCategory !== "All Entities" && !activeEntityKey) {
+      setActiveCategory("All Entities");
+    }
+  }, [searchParams]);
   const [entitySearch, setEntitySearch] = useState("");
   const [overview, setOverview] = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
@@ -76,8 +98,60 @@ export default function EnterpriseEntityExplorer() {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordSearch, setRecordSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState({ page: 1, limit: 25, totalRecords: 0, totalPages: 1 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 5, totalRecords: 0, totalPages: 1 });
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sorting State
+  const [sortField, setSortField] = useState(null);
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedRecords = useMemo(() => {
+    if (!sortField) return records;
+    return [...records].sort((a, b) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+
+      if (valA === null || valA === undefined) valA = "";
+      if (valB === null || valB === undefined) valB = "";
+
+      // Date comparison
+      if (
+        (sortField.includes("date") || sortField.includes("at") || sortField.includes("dob") || sortField.includes("doj")) &&
+        valA &&
+        valB &&
+        !isNaN(Date.parse(valA)) &&
+        !isNaN(Date.parse(valB))
+      ) {
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+        return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
+      }
+
+      // Numeric comparison
+      if (typeof valA === "number" && typeof valB === "number") {
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      }
+      if (!isNaN(Number(valA)) && !isNaN(Number(valB)) && valA !== "" && valB !== "") {
+        return sortOrder === "asc" ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      }
+
+      // String comparison
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+      if (strA < strB) return sortOrder === "asc" ? -1 : 1;
+      if (strA > strB) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [records, sortField, sortOrder]);
 
   // Modal State for New/Edit Record
   const [modalOpen, setModalOpen] = useState(false);
@@ -137,7 +211,7 @@ export default function EnterpriseEntityExplorer() {
     try {
       const res = await enterpriseEntityService.getEntityRecords(entityKey, {
         page,
-        limit: 25,
+        limit: 5,
         search
       });
       if (res && res.success) {
@@ -163,24 +237,48 @@ export default function EnterpriseEntityExplorer() {
     }
   }, [activeEntityKey, currentPage, recordSearch, fetchRecords]);
 
+  // Handle category tab change: ALWAYS clear activeEntityKey so user sees the entities for that category
+  const handleCategoryChange = (cat) => {
+    setActiveCategory(cat);
+    setEntitySearch("");
+    setRecordSearch("");
+    setRecords([]);
+    setSortField(null);
+    setCurrentPage(1);
+    if (cat === "All Entities") {
+      setSearchParams({});
+    } else {
+      setSearchParams({ category: cat });
+    }
+  };
+
   // Handle entity selection
   const handleSelectEntity = (key) => {
-    setSearchParams({ entity: key, category: activeCategory });
+    // If the entity belongs to a specific category, preserve or update activeCategory
+    const entityItem = overview?.entities?.find((e) => e.key === key);
+    const catToUse = entityItem?.category || activeCategory;
+    setActiveCategory(catToUse);
+    setSearchParams({ entity: key, category: catToUse });
     setRecordSearch("");
+    setSortField(null);
     setCurrentPage(1);
   };
 
   const handleClearSelection = () => {
-    setSearchParams({ category: activeCategory });
+    setSearchParams(activeCategory === "All Entities" ? {} : { category: activeCategory });
     setRecords([]);
+    setRecordSearch("");
+    setSortField(null);
   };
 
-  // Filtered entity cards
+  // Filtered entity cards (robust matching with normalizeCategory)
   const filteredEntities = useMemo(() => {
     if (!overview || !overview.entities) return [];
     return overview.entities.filter((item) => {
       const matchesCategory =
-        activeCategory === "All Entities" || item.category === activeCategory;
+        activeCategory === "All Entities" ||
+        normalizeCategory(item.category) === normalizeCategory(activeCategory) ||
+        item.category === activeCategory;
       const matchesSearch =
         !entitySearch ||
         item.label.toLowerCase().includes(entitySearch.toLowerCase()) ||
@@ -272,14 +370,14 @@ export default function EnterpriseEntityExplorer() {
 
   // Export CSV
   const handleExportCSV = () => {
-    if (!records || records.length === 0) {
+    if (!sortedRecords || sortedRecords.length === 0) {
       toast.info("No records to export");
       return;
     }
-    const headers = Object.keys(records[0]);
+    const headers = Object.keys(sortedRecords[0]);
     const csvRows = [
       headers.join(","),
-      ...records.map((r) =>
+      ...sortedRecords.map((r) =>
         headers
           .map((h) => {
             const val = r[h] !== null && r[h] !== undefined ? String(r[h]).replace(/"/g, '""') : "";
@@ -296,7 +394,7 @@ export default function EnterpriseEntityExplorer() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Exported ${records.length} real-time records to CSV`);
+    toast.success(`Exported ${sortedRecords.length} real-time records to CSV`);
   };
 
   // Auto-detect dynamic form fields from existing records or defaults
@@ -362,17 +460,17 @@ export default function EnterpriseEntityExplorer() {
             const count =
               cat === "All Entities"
                 ? overview?.entities?.length || 41
-                : overview?.categories?.[cat]?.length || 0;
+                : (overview?.entities || []).filter(
+                    (e) => normalizeCategory(e.category) === normalizeCategory(cat)
+                  ).length || overview?.categories?.[cat]?.length || 0;
+            const isTabActive = normalizeCategory(activeCategory) === normalizeCategory(cat);
+
             return (
               <button
                 key={cat}
-                className={`category-tab-btn ${activeCategory === cat ? "active" : ""}`}
-                onClick={() => {
-                  setActiveCategory(cat);
-                  setSearchParams(
-                    activeEntityKey ? { entity: activeEntityKey, category: cat } : { category: cat }
-                  );
-                }}
+                className={`category-tab-btn ${isTabActive ? "active" : ""}`}
+                onClick={() => handleCategoryChange(cat)}
+                title={`Filter by ${cat}`}
               >
                 <span>{cat}</span>
                 <span className="tab-count-badge">{count}</span>
@@ -412,6 +510,21 @@ export default function EnterpriseEntityExplorer() {
               <div className="entity-loading-state">
                 <div className="quantum-spinner"></div>
                 <p>Establishing live telemetry connection to PostgreSQL database...</p>
+              </div>
+            ) : filteredEntities.length === 0 ? (
+              <div className="entity-empty-search-state">
+                <div className="empty-icon">📂</div>
+                <h3>No Entities Found in {activeCategory}</h3>
+                <p>No entity matched your filter. Clear the search input or view all 41 entities.</p>
+                <button
+                  className="clear-filter-btn"
+                  onClick={() => {
+                    setEntitySearch("");
+                    handleCategoryChange("All Entities");
+                  }}
+                >
+                  View All 41 Entities
+                </button>
               </div>
             ) : (
               <div className="entities-cards-grid">
@@ -461,7 +574,7 @@ export default function EnterpriseEntityExplorer() {
             <div className="records-header-bar">
               <div className="records-breadcrumbs">
                 <button className="back-to-entities-btn" onClick={handleClearSelection}>
-                  ← Back to All 41 Entities
+                  ← Back to Entities ({activeCategory})
                 </button>
                 <span className="breadcrumb-separator">/</span>
                 <span className="current-entity-tag">
@@ -481,6 +594,27 @@ export default function EnterpriseEntityExplorer() {
                 <button className="create-record-btn" onClick={handleOpenCreateModal}>
                   + New {activeEntityDef?.label || "Record"}
                 </button>
+              </div>
+            </div>
+
+            {/* Quick Entity Switcher Bar for current category */}
+            <div className="entity-quick-switcher-bar">
+              <span className="switcher-label">Related Entities in {activeEntityDef?.category || activeCategory}:</span>
+              <div className="switcher-pills">
+                {(overview?.entities || [])
+                  .filter((e) => normalizeCategory(e.category) === normalizeCategory(activeEntityDef?.category || activeCategory))
+                  .map((e) => (
+                    <button
+                      key={e.key}
+                      className={`switcher-pill-btn ${e.key === activeEntityKey ? "active" : ""}`}
+                      onClick={() => handleSelectEntity(e.key)}
+                      title={`Open ${e.label} table`}
+                    >
+                      <span className="switcher-pill-icon">{ENTITY_ICONS[e.key] || "📦"}</span>
+                      <span className="switcher-pill-name">{e.label}</span>
+                      <span className="switcher-pill-count">{e.count}</span>
+                    </button>
+                  ))}
               </div>
             </div>
 
@@ -531,17 +665,40 @@ export default function EnterpriseEntityExplorer() {
                   <table className="enterprise-records-table">
                     <thead>
                       <tr>
-                        {Object.keys(records[0]).map((col) => (
-                          <th key={col} className={`th-${col}`}>
-                            {col.replace(/_/g, " ").toUpperCase()}
-                          </th>
-                        ))}
+                        {Object.keys(records[0]).map((col) => {
+                          const isActive = sortField === col;
+                          return (
+                            <th
+                              key={col}
+                              className={`th-${col} sortable-th ${isActive ? "sorted-active" : ""}`}
+                              onClick={() => handleSort(col)}
+                              title={`Sort by ${col.replace(/_/g, " ")} (${isActive && sortOrder === "asc" ? "Descending" : "Ascending"})`}
+                            >
+                              <div className="th-sort-wrapper">
+                                <span className="th-label">{col.replace(/_/g, " ").toUpperCase()}</span>
+                                <span className={`th-sort-arrow ${isActive ? "active" : "neutral"}`}>
+                                  {isActive ? (sortOrder === "asc" ? "▲" : "▼") : "⇅"}
+                                </span>
+                              </div>
+                            </th>
+                          );
+                        })}
                         <th className="th-actions text-right">ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {records.map((row, idx) => (
-                        <tr key={row.id || row.code || idx} className="record-row">
+                      {sortedRecords.map((row, idx) => {
+                        const statusVal = String(row.status || "").toLowerCase();
+                        const isGreen = ["active", "approved", "completed", "resolved", "achieved", "settled", "true"].includes(statusVal);
+                        const isYellow = ["pending", "in progress", "scheduled", "on track"].includes(statusVal);
+                        const isRed = ["rejected", "cancelled", "inactive", "false"].includes(statusVal);
+                        const rowStatusClass = isGreen ? "row-status-active" : isYellow ? "row-status-pending" : isRed ? "row-status-inactive" : "row-status-neutral";
+
+                        return (
+                          <tr
+                            key={row.id || row.code || idx}
+                            className={`record-row ${rowStatusClass} ${idx % 2 === 0 ? "row-even" : "row-odd"}`}
+                          >
                           {Object.keys(row).map((col) => {
                             const val = row[col];
                             // Format status pills
@@ -551,7 +708,7 @@ export default function EnterpriseEntityExplorer() {
                               const isYellow = ["pending", "in progress", "scheduled", "on track"].includes(s);
                               const isRed = ["rejected", "cancelled", "inactive"].includes(s);
                               return (
-                                <td key={col}>
+                                <td key={col} className={`cell-colored-status ${isGreen ? "cell-status-green" : isYellow ? "cell-status-yellow" : isRed ? "cell-status-red" : "cell-status-blue"}`}>
                                   <span
                                     className={`pill-status ${
                                       isGreen ? "pill-green" : isYellow ? "pill-yellow" : isRed ? "pill-red" : "pill-blue"
@@ -566,7 +723,7 @@ export default function EnterpriseEntityExplorer() {
                             // Format boolean
                             if (typeof val === "boolean") {
                               return (
-                                <td key={col}>
+                                <td key={col} className={`cell-colored-status ${val ? "cell-status-green" : "cell-status-red"}`}>
                                   <span className={`pill-status ${val ? "pill-green" : "pill-red"}`}>
                                     {val ? "True" : "False"}
                                   </span>
@@ -574,17 +731,53 @@ export default function EnterpriseEntityExplorer() {
                               );
                             }
 
+                            // Format Department
+                            if (col === "department" && val) {
+                              return (
+                                <td key={col} className="cell-colored-dept">
+                                  <span className="pill-entity-dept">{val}</span>
+                                </td>
+                              );
+                            }
+
+                            // Format Designation / Role
+                            if ((col === "designation" || col === "role" || col === "title") && val) {
+                              return (
+                                <td key={col} className="cell-colored-designation">
+                                  <span className="pill-entity-designation">{val}</span>
+                                </td>
+                              );
+                            }
+
+                            // Format Email
+                            if (col === "email" && val) {
+                              return (
+                                <td key={col} className="cell-colored-email">
+                                  <span className="pill-entity-email">✉️ {val}</span>
+                                </td>
+                              );
+                            }
+
+                            // Format Codes / Identifiers (PAN, Aadhaar, UAN, Code)
+                            if ((col === "code" || col.endsWith("_code") || col === "pan" || col === "aadhaar" || col === "uan") && val) {
+                              return (
+                                <td key={col} className="cell-colored-code">
+                                  <span className="pill-entity-code">{val}</span>
+                                </td>
+                              );
+                            }
+
                             // Format dates
                             if (
-                              (col.includes("date") || col.includes("at")) &&
+                              (col.includes("date") || col.includes("at") || col.includes("dob") || col.includes("doj")) &&
                               val &&
                               typeof val === "string" &&
                               val.includes("-")
                             ) {
                               const formatted = val.split("T")[0];
                               return (
-                                <td key={col} className="cell-date">
-                                  {formatted}
+                                <td key={col} className="cell-colored-date">
+                                  <span className="pill-entity-date">📅 {formatted}</span>
                                 </td>
                               );
                             }
@@ -596,14 +789,14 @@ export default function EnterpriseEntityExplorer() {
                               Number(val) > 0
                             ) {
                               return (
-                                <td key={col} className="cell-currency">
-                                  ₹{Number(val).toLocaleString("en-IN")}
+                                <td key={col} className="cell-colored-currency">
+                                  <span className="pill-entity-currency">₹{Number(val).toLocaleString("en-IN")}</span>
                                 </td>
                               );
                             }
 
                             return (
-                              <td key={col} className={`cell-${col}`}>
+                              <td key={col} className={`cell-colored-default cell-${col}`}>
                                 {val !== null && val !== undefined ? String(val) : "—"}
                               </td>
                             );
@@ -627,19 +820,21 @@ export default function EnterpriseEntityExplorer() {
                             )}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
+                      );
+                    })}
+                  </tbody>
                   </table>
                 </div>
               )}
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls (5 records per page) */}
             {pagination.totalPages > 1 && (
               <div className="records-pagination-bar">
                 <div className="pagination-info">
-                  Page <strong>{currentPage}</strong> of <strong>{pagination.totalPages}</strong> (Total:{" "}
-                  {pagination.totalRecords} records)
+                  Showing <strong>{(currentPage - 1) * 5 + 1}</strong> to{" "}
+                  <strong>{Math.min(currentPage * 5, pagination.totalRecords)}</strong> of{" "}
+                  <strong>{pagination.totalRecords}</strong> records (Page {currentPage} of {pagination.totalPages})
                 </div>
                 <div className="pagination-controls">
                   <button
@@ -649,6 +844,26 @@ export default function EnterpriseEntityExplorer() {
                   >
                     ← Previous
                   </button>
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter(
+                      (p) =>
+                        p === 1 ||
+                        p === pagination.totalPages ||
+                        Math.abs(p - currentPage) <= 1
+                    )
+                    .map((pageNum, idx, arr) => (
+                      <React.Fragment key={pageNum}>
+                        {idx > 0 && arr[idx - 1] !== pageNum - 1 && (
+                          <span className="pagination-ellipsis">...</span>
+                        )}
+                        <button
+                          className={`page-num-btn ${currentPage === pageNum ? "active" : ""}`}
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </button>
+                      </React.Fragment>
+                    ))}
                   <button
                     className="page-btn"
                     disabled={currentPage >= pagination.totalPages}

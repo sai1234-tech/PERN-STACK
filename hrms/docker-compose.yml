@@ -1,0 +1,99 @@
+# =============================================================================
+# HRMS - Unified Docker Stack (One Folder Runner)
+# =============================================================================
+# Run with: docker-compose up -d --build
+# In Docker Desktop, this groups all containers under a single folder: "hrms"
+# =============================================================================
+
+name: hrms
+
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: hrms-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-199898}
+      POSTGRES_DB: ${DB_NAME:-hrms_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-hrms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hrms_network
+
+  backend:
+    build:
+      context: ../Back-End
+      dockerfile: Dockerfile
+      target: production
+    container_name: hrms-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5005
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-199898}
+      DB_NAME: ${DB_NAME:-hrms_db}
+      JWT_SECRET: ${JWT_SECRET:-pern_hrms_secret_jwt_key_2026!@#}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+    ports:
+      - "5005:5005"
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hrms_network
+
+  frontend:
+    build:
+      context: ../Front-End
+      dockerfile: Dockerfile
+      target: production
+    container_name: hrms-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+      - "80:80"
+    depends_on:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hrms_network
+
+volumes:
+  postgres_data:
+    name: hrms_postgres_data
+  backend_uploads:
+    name: hrms_backend_uploads
+
+networks:
+  hrms_network:
+    name: hrms_network
+    driver: bridge
+

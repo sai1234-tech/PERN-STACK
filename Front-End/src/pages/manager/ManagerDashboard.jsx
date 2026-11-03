@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import EmployeeHeader from "../../components/employee/EmployeeHeader";
 import { useManager } from "../../hooks/useManager";
@@ -7,7 +7,8 @@ import { usePerformance } from "../../hooks/usePerformance";
 import { formatDate, formatTime } from "../../utils/date";
 import Loader from "../../components/common/Loader";
 import { formatPhotoUrl } from "../../utils/photo";
-import { broadcastDataChange } from "../../utils/syncManager";
+import { broadcastDataChange, useSyncRefresh } from "../../utils/syncManager";
+import { apiRequest } from "../../services/apiClient";
 import "./ManagerDashboard.css";
 import "../hr/ResourceAllocation.css";
 
@@ -58,106 +59,35 @@ function ManagerDashboard({ defaultSection }) {
   const [resourceDeptFilter, setResourceDeptFilter] = useState("ALL");
   const [resourceStatusFilter, setResourceStatusFilter] = useState("ALL");
   const [clockActionSubmitting, setClockActionSubmitting] = useState(false);
-  const [regularizations, setRegularizations] = useState(() => {
-    const defaultList = [
-      {
-        id: "REG-2026-0929",
-        altId: "EG-2026-0929",
-        employeeId: 18,
-        employeeName: "Kushangala SaiKiran",
-        employeeCode: "EMP175",
-        employeeEmail: "skushangala@quadratics.com",
-        date: "2026-10-27",
-        requestedIn: "10:58",
-        requestedOut: "18:58",
-        reasonCategory: "Official Travel / Outdoor Duty",
-        remarks: "Travelling to outstations",
-        status: "approved",
-        managerApprovedAt: "2026-10-27",
-        managerName: "Aditya Narayan (Reporting Manager)",
-        hrApprovedAt: "2026-10-27",
-        hrApprovedBy: "HR Operations",
-        reconciled: true,
-        submittedAt: "2026-10-27",
-      },
-      {
-        id: "REG-2026-081",
-        employeeId: 18,
-        employeeName: "Kushangala SaiKiran",
-        employeeCode: "EMP175",
-        employeeEmail: "skushangala@quadratics.com",
-        date: "2026-10-24",
-        requestedIn: "09:30",
-        requestedOut: "18:45",
-        reasonCategory: "Biometric Miss / Device Failure",
-        remarks:
-          "Biometric thumb scanner at Main Gate timed out during morning punch. Badge ID verified by reception.",
-        status: "approved",
-        managerApprovedAt: "2026-10-25",
-        managerName: "Aditya Narayan (Reporting Manager)",
-        hrApprovedAt: "2026-10-25",
-        hrApprovedBy: "HR Operations",
-        reconciled: true,
-        submittedAt: "2026-10-25",
-      },
-    ];
+  const [regularizations, setRegularizations] = useState([]);
 
+  const loadRegularizations = useCallback(async () => {
     try {
-      const saved = localStorage.getItem("hrms_attendance_regularizations");
-      if (saved) {
-        let parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Normalize existing items to EMP175 and mark approved
-          parsed = parsed.map((item) => {
-            if (
-              item.employeeName?.includes("Kushangala") ||
-              item.employeeEmail?.includes("skushangala") ||
-              item.employeeCode === "EMP-001" ||
-              item.id === "REG-2026-0929" ||
-              item.id === "REG-2026-081" ||
-              item.id === "EG-2026-0929" ||
-              item.altId === "EG-2026-0929" ||
-              item.date === "2026-10-27" ||
-              item.date === "2026-10-24"
-            ) {
-              const is27Oct = item.date === "2026-10-27" || item.id === "REG-2026-0929" || item.altId === "EG-2026-0929" || item.id === "EG-2026-0929";
-              return {
-                ...item,
-                employeeId: item.employeeId || 18,
-                employeeCode: "EMP175",
-                employeeEmail: "skushangala@quadratics.com",
-                employeeName: "Kushangala SaiKiran",
-                status: "approved",
-                hrApprovedAt: is27Oct ? "2026-10-27" : item.hrApprovedAt || "2026-10-25",
-                hrApprovedBy: "HR Operations",
-                reconciled: true,
-              };
-            }
-            return item;
-          });
-
-          defaultList.forEach((def) => {
-            const exists = parsed.some(
-              (p) =>
-                p.id === def.id ||
-                p.altId === def.id ||
-                p.id === def.altId ||
-                (p.date === def.date && String(p.remarks || "").slice(0, 10) === def.remarks.slice(0, 10))
-            );
-            if (!exists) {
-              parsed = [def, ...parsed];
-            }
-          });
-          localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(parsed));
-          return parsed;
-        }
+      const res = await apiRequest("/lifecycle-ops/regularizations");
+      if (res?.success && Array.isArray(res.data)) {
+        const mapped = res.data.map((r) => ({
+          id: r.id || r.reg_code,
+          numericId: r.id,
+          regCode: r.reg_code,
+          employeeId: r.employee_id,
+          employeeName: `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.employee_name || "Employee",
+          employeeCode: r.employee_code || (r.employee_id ? `EMP-${String(r.employee_id).padStart(3, "0")}` : "EMP"),
+          date: String(r.attendance_date || "").slice(0, 10),
+          requestedIn: r.requested_check_in ? (String(r.requested_check_in).includes("T") ? String(r.requested_check_in).slice(11, 16) : String(r.requested_check_in)) : "--:--",
+          requestedOut: r.requested_check_out ? (String(r.requested_check_out).includes("T") ? String(r.requested_check_out).slice(11, 16) : String(r.requested_check_out)) : "--:--",
+          reasonCategory: r.reason || "Attendance Regularization",
+          remarks: r.decision_comments || r.reason || "",
+          status: String(r.status || "pending").toLowerCase(),
+          managerApprovedAt: r.decided_at ? String(r.decided_at).slice(0, 10) : null,
+          managerName: r.decided_by_name || null,
+          submittedAt: r.created_at ? String(r.created_at).slice(0, 10) : "",
+        }));
+        setRegularizations(mapped);
       }
-      localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(defaultList));
-      return defaultList;
-    } catch {
-      return defaultList;
+    } catch (err) {
+      console.warn("Notice loading regularizations from server:", err);
     }
-  });
+  }, []);
 
   const { okrs, rateOkr } = usePerformance(true);
   const [dashboardFeedbacks, setDashboardFeedbacks] = useState({});
@@ -173,15 +103,18 @@ function ManagerDashboard({ defaultSection }) {
   });
 
   useEffect(() => {
+    loadRegularizations();
+  }, [loadRegularizations]);
+
+  useSyncRefresh(loadRegularizations, { interval: 5000, silent: true });
+
+  useEffect(() => {
     const handleUpdate = () => {
       try {
         const saved = localStorage.getItem("hrms_submitted_feedback_ids");
         if (saved) setSubmittedOkrIds(JSON.parse(saved));
       } catch {}
-      try {
-        const savedRegs = localStorage.getItem("hrms_attendance_regularizations");
-        if (savedRegs) setRegularizations(JSON.parse(savedRegs));
-      } catch {}
+      loadRegularizations();
     };
     window.addEventListener("hrms_data_updated", handleUpdate);
     window.addEventListener("storage", handleUpdate);
@@ -189,7 +122,7 @@ function ManagerDashboard({ defaultSection }) {
       window.removeEventListener("hrms_data_updated", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, []);
+  }, [loadRegularizations]);
 
   const handleSubmitDashboardFeedback = async (okrId, score) => {
     const feedback = dashboardFeedbacks[okrId] !== undefined
@@ -227,35 +160,58 @@ function ManagerDashboard({ defaultSection }) {
     }
   };
 
-  const handleApproveRegularization = (regId) => {
-    const updated = regularizations.map((r) =>
-      r.id === regId || r.altId === regId
-        ? {
-            ...r,
-            status: "pending_hr",
-            managerApprovedAt: new Date().toISOString().slice(0, 10),
-            managerName: "Aditya Narayan (Reporting Manager)",
-          }
-        : r
-    );
-    setRegularizations(updated);
+  const handleApproveRegularization = async (regId) => {
+    const target = regularizations.find((r) => r.id === regId || r.numericId === regId);
+    const dbId = target?.numericId || regId;
     try {
-      localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(updated));
-    } catch {}
+      await apiRequest(`/lifecycle-ops/regularizations/${dbId}/decision`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          decision: "APPROVED",
+          comments: "Approved by reporting manager",
+        }),
+      });
+      await loadRegularizations();
+    } catch (err) {
+      console.warn("API approve failed, applying local update:", err);
+      setRegularizations((prev) =>
+        prev.map((r) =>
+          r.id === regId || r.numericId === regId
+            ? {
+                ...r,
+                status: "approved",
+                managerApprovedAt: new Date().toISOString().slice(0, 10),
+              }
+            : r
+        )
+      );
+    }
     window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "attendance_regularization" } }));
     broadcastDataChange("attendance_regularization");
   };
 
-  const handleRejectRegularization = (regId) => {
-    const updated = regularizations.map((r) =>
-      r.id === regId || r.altId === regId
-        ? { ...r, status: "rejected", managerRejectedAt: new Date().toISOString().slice(0, 10) }
-        : r
-    );
-    setRegularizations(updated);
+  const handleRejectRegularization = async (regId) => {
+    const target = regularizations.find((r) => r.id === regId || r.numericId === regId);
+    const dbId = target?.numericId || regId;
     try {
-      localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(updated));
-    } catch {}
+      await apiRequest(`/lifecycle-ops/regularizations/${dbId}/decision`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          decision: "REJECTED",
+          comments: "Rejected by reporting manager",
+        }),
+      });
+      await loadRegularizations();
+    } catch (err) {
+      console.warn("API reject failed, applying local update:", err);
+      setRegularizations((prev) =>
+        prev.map((r) =>
+          r.id === regId || r.numericId === regId
+            ? { ...r, status: "rejected", managerRejectedAt: new Date().toISOString().slice(0, 10) }
+            : r
+        )
+      );
+    }
     window.dispatchEvent(new CustomEvent("hrms_data_updated", { detail: { category: "attendance_regularization" } }));
     broadcastDataChange("attendance_regularization");
   };
@@ -298,6 +254,63 @@ function ManagerDashboard({ defaultSection }) {
     pendingRegularizationsCount +
     pendingOkrsCount;
   const teamMembers = Array.isArray(overview?.teamMembers) ? overview.teamMembers : [];
+
+  // Direct Reports Roster Sorting State
+  const [rosterSortField, setRosterSortField] = useState("name");
+  const [rosterSortOrder, setRosterSortOrder] = useState("asc");
+
+  // Direct Reports Roster Pagination State (5 records per view)
+  const [rosterPage, setRosterPage] = useState(1);
+  const ROSTER_PAGE_SIZE = 5;
+
+  const handleRosterSort = (field) => {
+    if (rosterSortField === field) {
+      setRosterSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setRosterSortField(field);
+      setRosterSortOrder("asc");
+    }
+    setRosterPage(1);
+  };
+
+  const sortedTeamMembers = useMemo(() => {
+    if (!rosterSortField) return teamMembers;
+    return [...teamMembers].sort((a, b) => {
+      let valA = "";
+      let valB = "";
+      if (rosterSortField === "name") {
+        valA = a.firstName ? `${a.firstName} ${a.lastName || ""}`.trim() : (a.name || "");
+        valB = b.firstName ? `${b.firstName} ${b.lastName || ""}`.trim() : (b.name || "");
+      } else if (rosterSortField === "code") {
+        valA = a.employeeCode || a.code || "";
+        valB = b.employeeCode || b.code || "";
+      } else if (rosterSortField === "designation") {
+        valA = a.employment?.designation || a.role || "";
+        valB = b.employment?.designation || b.role || "";
+      } else if (rosterSortField === "department") {
+        valA = a.employment?.department || a.department || "";
+        valB = b.employment?.department || b.department || "";
+      } else if (rosterSortField === "allocation") {
+        valA = a.status === "Allocated" ? (a.project || "Allocated") : "Bench";
+        valB = b.status === "Allocated" ? (b.project || "Allocated") : "Bench";
+      } else if (rosterSortField === "status") {
+        valA = a.status || "";
+        valB = b.status || "";
+      }
+
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+      if (strA < strB) return rosterSortOrder === "asc" ? -1 : 1;
+      if (strA > strB) return rosterSortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [teamMembers, rosterSortField, rosterSortOrder]);
+
+  const totalRosterPages = Math.max(1, Math.ceil(sortedTeamMembers.length / ROSTER_PAGE_SIZE));
+  const paginatedTeamMembers = useMemo(() => {
+    const startIndex = (rosterPage - 1) * ROSTER_PAGE_SIZE;
+    return sortedTeamMembers.slice(startIndex, startIndex + ROSTER_PAGE_SIZE);
+  }, [sortedTeamMembers, rosterPage]);
 
   const leavesToDisplay = activeTab === "all" ? pendingLeavesList : safeLeaves;
   const resignationsToDisplay = activeTab === "all" ? pendingResignationsList : safeResignations;
@@ -376,10 +389,10 @@ function ManagerDashboard({ defaultSection }) {
       selectedResourceEmp,
       "Allocated",
       allocProjectInput.trim(),
-      allocSowInput.trim() || "SOW-2026-AI-003"
+      allocSowInput.trim() || null
     );
     setAllocNotice(
-      `✓ Allocated ${selectedResourceEmp.name} to ${allocProjectInput.trim()} (${allocSowInput.trim() || "SOW-2026-AI-003"}).`
+      `✓ Allocated ${selectedResourceEmp.name} to ${allocProjectInput.trim()}${allocSowInput.trim() ? ` (${allocSowInput.trim()})` : ""}.`
     );
     setSelectedResourceEmp(null);
     setAllocProjectInput("");
@@ -535,8 +548,8 @@ function ManagerDashboard({ defaultSection }) {
                         className="action-link-btn allocate"
                         onClick={() => {
                           setSelectedResourceEmp({ ...emp, name: fullName });
-                          setAllocProjectInput("HMRS");
-                          setAllocSowInput("SOW-2026-AI-003");
+                          setAllocProjectInput("");
+                          setAllocSowInput("");
                         }}
                       >
                         ⚡ Allocate to Client Project
@@ -621,8 +634,8 @@ function ManagerDashboard({ defaultSection }) {
                         className="action-link-btn reassign"
                         onClick={() => {
                           setSelectedResourceEmp({ ...emp, name: fullName });
-                          setAllocProjectInput(emp.project || "HMRS");
-                          setAllocSowInput(emp.sowNumber || "SOW-2026-AI-003");
+                          setAllocProjectInput(emp.project || "");
+                          setAllocSowInput(emp.sowNumber || "");
                         }}
                       >
                         ✏️ Reassign
@@ -1089,13 +1102,11 @@ function ManagerDashboard({ defaultSection }) {
                         req.employeeName ||
                         (req.employee?.firstName
                           ? `${req.employee.firstName} ${req.employee.lastName || ""}`.trim()
-                          : "Employee Request");
+                          : req.employee?.name || "Employee Request");
                       const empCode =
-                        (req.employeeCode && req.employeeCode !== "EMP-001")
-                          ? req.employeeCode
-                          : (req.employeeName?.includes("Kushangala") || req.employeeEmail?.includes("skushangala") || String(req.id).includes("0929") || String(req.id).includes("081") || String(req.altId).includes("0929"))
-                          ? "EMP175"
-                          : req.employee?.employeeCode || (req.employeeId ? `EMP-${String(req.employeeId).padStart(3, "0")}` : "EMP175");
+                        req.employeeCode ||
+                        req.employee?.employeeCode ||
+                        (req.employeeId ? `EMP-${String(req.employeeId).padStart(3, "0")}` : "EMP");
                       const initial = (empName[0] || "E").toUpperCase();
                       const isPending = req.status === "pending_manager" || req.status === "pending";
 
@@ -1310,7 +1321,7 @@ function ManagerDashboard({ defaultSection }) {
             <div className="manager-filter-bar">
               <div className="filter-bar-info">
                 <h3>Direct Reports & Team Attendance</h3>
-                <p>Employees reporting directly to your team organization unit with live shift status.</p>
+                <p>Employees reporting directly to your team organization unit with live shift status (5 records in view, scrollable).</p>
               </div>
             </div>
 
@@ -1321,97 +1332,196 @@ function ManagerDashboard({ defaultSection }) {
                 <p>Employees assigned to report to your profile will appear here.</p>
               </div>
             ) : (
-              <div className="roster-table-container">
+              <>
+                <div className="roster-table-container">
                 <table className="roster-table">
                   <thead>
                     <tr>
-                      <th>Employee Name</th>
-                      <th>Employee Code</th>
-                      <th>Designation</th>
-                      <th>Department</th>
-                      <th>Resource Allocation</th>
+                      <th
+                        onClick={() => handleRosterSort("name")}
+                        className={`sortable-th ${rosterSortField === "name" ? "active-sort" : ""}`}
+                        title="Sort by Employee Name (Ascending / Descending)"
+                      >
+                        Employee Name
+                        <span className={`roster-sort-icon ${rosterSortField === "name" ? "active" : ""}`}>
+                          {rosterSortField === "name" ? (rosterSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                        </span>
+                      </th>
+                      <th
+                        onClick={() => handleRosterSort("code")}
+                        className={`sortable-th ${rosterSortField === "code" ? "active-sort" : ""}`}
+                        title="Sort by Employee Code"
+                      >
+                        Employee Code
+                        <span className={`roster-sort-icon ${rosterSortField === "code" ? "active" : ""}`}>
+                          {rosterSortField === "code" ? (rosterSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                        </span>
+                      </th>
+                      <th
+                        onClick={() => handleRosterSort("designation")}
+                        className={`sortable-th ${rosterSortField === "designation" ? "active-sort" : ""}`}
+                        title="Sort by Designation"
+                      >
+                        Designation
+                        <span className={`roster-sort-icon ${rosterSortField === "designation" ? "active" : ""}`}>
+                          {rosterSortField === "designation" ? (rosterSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                        </span>
+                      </th>
+                      <th
+                        onClick={() => handleRosterSort("department")}
+                        className={`sortable-th ${rosterSortField === "department" ? "active-sort" : ""}`}
+                        title="Sort by Department"
+                      >
+                        Department
+                        <span className={`roster-sort-icon ${rosterSortField === "department" ? "active" : ""}`}>
+                          {rosterSortField === "department" ? (rosterSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                        </span>
+                      </th>
+                      <th
+                        onClick={() => handleRosterSort("allocation")}
+                        className={`sortable-th ${rosterSortField === "allocation" ? "active-sort" : ""}`}
+                        title="Sort by Resource Allocation"
+                      >
+                        Resource Allocation
+                        <span className={`roster-sort-icon ${rosterSortField === "allocation" ? "active" : ""}`}>
+                          {rosterSortField === "allocation" ? (rosterSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                        </span>
+                      </th>
                       <th>Today's Attendance</th>
-                      <th>Status</th>
+                      <th
+                        onClick={() => handleRosterSort("status")}
+                        className={`sortable-th ${rosterSortField === "status" ? "active-sort" : ""}`}
+                        title="Sort by Status"
+                      >
+                        Status
+                        <span className={`roster-sort-icon ${rosterSortField === "status" ? "active" : ""}`}>
+                          {rosterSortField === "status" ? (rosterSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {teamMembers.map((emp) => (
-                      <tr key={emp._id || emp.id}>
-                        <td>
-                          <div className="roster-user-cell">
-                            <div className="roster-avatar-initial">
-                              {(emp.firstName || emp.name || "E").slice(0, 2).toUpperCase()}
-                            </div>
-                            {emp.firstName ? `${emp.firstName} ${emp.lastName || ""}`.trim() : emp.name}
-                          </div>
-                        </td>
-                        <td style={{ fontFamily: "monospace", color: "#64748b" }}>{emp.employeeCode || emp.code}</td>
-                        <td>{emp.employment?.designation || emp.role || "Team Member"}</td>
-                        <td>{emp.employment?.department || emp.department || "Engineering"}</td>
-                        <td>
-                          {emp.status === "Allocated" && emp.project ? (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                              <span style={{
-                                background: "rgba(16, 185, 129, 0.14)",
-                                color: "#059669",
-                                padding: "3px 8px",
-                                borderRadius: "8px",
-                                fontSize: "0.75rem",
-                                fontWeight: 700,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                width: "fit-content"
-                              }}>
-                                🚀 {emp.project}
+                    {paginatedTeamMembers.map((emp, idx) => {
+                      const dept = emp.employment?.department || emp.department || "Engineering";
+                      const deptKey = dept.toLowerCase().replace(/[^a-z0-9]/g, "-");
+                      const isAllocated = emp.status === "Allocated" && emp.project;
+
+                      return (
+                        <tr
+                          key={emp._id || emp.id}
+                          className={`roster-data-row ${isAllocated ? "row-allocated" : "row-bench"} ${
+                            idx % 2 === 0 ? "row-even" : "row-odd"
+                          }`}
+                        >
+                          {/* 1. Employee Name: Soft Slate-Blue Tinted Cell */}
+                          <td className="cell-name-colored">
+                            <div className="roster-user-cell">
+                              <div className="roster-avatar-initial">
+                                {(emp.firstName || emp.name || "E").slice(0, 2).toUpperCase()}
+                              </div>
+                              <span className="roster-emp-fullname">
+                                {emp.firstName ? `${emp.firstName} ${emp.lastName || ""}`.trim() : emp.name}
                               </span>
-                              {emp.sowNumber && (
-                                <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-                                  📄 SOW: {emp.sowNumber}
-                                </span>
-                              )}
                             </div>
-                          ) : (
-                            <span style={{
-                              background: "rgba(245, 158, 11, 0.14)",
-                              color: "#d97706",
-                              padding: "3px 8px",
-                              borderRadius: "8px",
-                              fontSize: "0.74rem",
-                              fontWeight: 700,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}>
-                              COST CENTER • On Bench
+                          </td>
+
+                          {/* 2. Employee Code: Monospace Indigo-Slate Cell */}
+                          <td className="cell-code-colored">
+                            <span className="roster-code-pill">
+                              {emp.employeeCode || emp.code}
                             </span>
-                          )}
-                        </td>
-                        <td>
-                          <span style={{
-                            background: "#dcfce7",
-                            color: "#166534",
-                            padding: "3px 8px",
-                            borderRadius: "10px",
-                            fontSize: "0.74rem",
-                            fontWeight: 700,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px"
-                          }}>
-                            ✓ Present (09:30 AM)
-                          </span>
-                        </td>
-                        <td>
-                          <span className="active-report-badge">
-                            ✓ Direct Report
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+
+                          {/* 3. Designation: Soft Purple Tinted Cell */}
+                          <td className="cell-designation-colored">
+                            <span className="roster-designation-badge">
+                              {emp.employment?.designation || emp.role || "Team Member"}
+                            </span>
+                          </td>
+
+                          {/* 4. Department: Contextual Department-Colored Cell */}
+                          <td className={`cell-dept-colored dept-cell-${deptKey}`}>
+                            <span className={`roster-dept-badge badge-dept-${deptKey}`}>
+                              {dept}
+                            </span>
+                          </td>
+
+                          {/* 5. Resource Allocation: Revenue Center (Emerald) / Cost Center (Amber) Cell */}
+                          <td className={`cell-allocation-colored ${isAllocated ? "alloc-active" : "alloc-bench"}`}>
+                            {isAllocated ? (
+                              <div className="alloc-badge-group">
+                                <span className="alloc-project-badge">
+                                  🚀 {emp.project}
+                                </span>
+                                {emp.sowNumber && (
+                                  <span className="alloc-sow-badge">
+                                    📄 SOW: {emp.sowNumber}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="alloc-bench-badge">
+                                🟡 COST CENTER • On Bench
+                              </span>
+                            )}
+                          </td>
+
+                          {/* 6. Today's Attendance: Mint Green Tinted Cell */}
+                          <td className="cell-attendance-colored">
+                            <span className="roster-attendance-badge">
+                              ✓ Present (09:30 AM)
+                            </span>
+                          </td>
+
+                          {/* 7. Status: Teal-Cyan Tinted Cell */}
+                          <td className="cell-status-colored">
+                            <span className="roster-status-badge">
+                              ● Active Report
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+
+              {/* Direct Reports Pagination (5 records per view) */}
+              {totalRosterPages > 1 && (
+                <div className="roster-pagination-bar">
+                  <div className="roster-pagination-info">
+                    Showing <strong>{(rosterPage - 1) * ROSTER_PAGE_SIZE + 1}</strong> to{" "}
+                    <strong>{Math.min(rosterPage * ROSTER_PAGE_SIZE, sortedTeamMembers.length)}</strong> of{" "}
+                    <strong>{sortedTeamMembers.length}</strong> Direct Reports (Page {rosterPage} of {totalRosterPages})
+                  </div>
+                  <div className="roster-pagination-controls">
+                    <button
+                      className="roster-page-btn"
+                      disabled={rosterPage <= 1}
+                      onClick={() => setRosterPage((p) => Math.max(1, p - 1))}
+                    >
+                      ← Previous
+                    </button>
+                    {Array.from({ length: totalRosterPages }, (_, i) => i + 1).map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        className={`roster-page-num-btn ${rosterPage === pageNum ? "active" : ""}`}
+                        onClick={() => setRosterPage(pageNum)}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+                    <button
+                      className="roster-page-btn"
+                      disabled={rosterPage >= totalRosterPages}
+                      onClick={() => setRosterPage((p) => Math.min(totalRosterPages, p + 1))}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
             )}
           </div>
         )}

@@ -617,13 +617,29 @@
 .roster-table-container {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 310px;
+  max-height: 315px;
   background: #ffffff;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   width: 100%;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.roster-table-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.roster-table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.roster-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .roster-table {
@@ -648,19 +664,317 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+.roster-table th.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.roster-table th.sortable-th:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.roster-table th.sortable-th.active-sort {
+  background: #eff6ff;
+  color: #2563eb;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.roster-sort-icon {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  vertical-align: middle;
+  transition: color 0.15s ease;
+}
+
+.roster-sort-icon.active {
+  color: #2563eb;
+  font-weight: 700;
+}
+
 .roster-table td {
   padding: 0.9rem 1.1rem;
   border-bottom: 1px solid #f1f5f9;
   color: #334155;
   vertical-align: middle;
+  transition: background-color 0.15s ease;
 }
 
 .roster-table tr:last-child td {
   border-bottom: none;
 }
 
-.roster-table tr:hover td {
+/* =====================================================
+   REALISTIC ENTERPRISE ROW COLORING & STYLING
+   ===================================================== */
+.roster-table tr.roster-data-row {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Alternating realistic enterprise rows */
+.roster-table tr.roster-data-row.row-even td {
+  background: #ffffff;
+}
+
+.roster-table tr.roster-data-row.row-odd td {
+  background: #fcfdfd;
+}
+
+/* Contextual row status left accent */
+.roster-table tr.roster-data-row.row-allocated td:first-child {
+  border-left: 4px solid #10b981;
+}
+
+.roster-table tr.roster-data-row.row-bench td:first-child {
+  border-left: 4px solid #f59e0b;
+}
+
+/* Soft ambient row background tints */
+.roster-table tr.roster-data-row.row-allocated td {
+  background: rgba(240, 253, 244, 0.4);
+}
+
+.roster-table tr.roster-data-row.row-bench td {
+  background: rgba(254, 252, 232, 0.45);
+}
+
+/* Unified realistic row hover */
+.roster-table tr.roster-data-row:hover td {
+  background: #eff6ff !important;
+}
+
+.roster-table tr.roster-data-row:hover td:first-child {
+  border-left-color: #2563eb !important;
+}
+
+/* Cells inherit row background smoothly */
+.roster-table td.cell-name-colored,
+.roster-table td.cell-code-colored,
+.roster-table td.cell-designation-colored,
+.roster-table td.cell-dept-colored,
+.roster-table td.cell-allocation-colored,
+.roster-table td.cell-attendance-colored,
+.roster-table td.cell-status-colored {
+  background: transparent;
+}
+
+.roster-emp-fullname {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.roster-code-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.775rem;
+  color: #3b82f6;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  letter-spacing: 0.03em;
+}
+
+.roster-designation-badge {
+  display: inline-block;
+  background: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 0.775rem;
+  font-weight: 600;
+}
+
+.roster-dept-badge {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 0.775rem;
+  font-weight: 700;
+}
+
+.badge-dept-engineering {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+.badge-dept-human-resources {
+  background: #ffe4e6;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}
+.badge-dept-finance {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.badge-dept-product {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+.badge-dept-operations {
+  background: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+.badge-dept-marketing,
+.badge-dept-sales {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.alloc-badge-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.alloc-project-badge {
+  background: #d1fae5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+}
+
+.alloc-sow-badge {
+  font-size: 0.72rem;
+  color: #065f46;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.alloc-bench-badge {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.roster-attendance-badge {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.roster-status-badge {
+  background: #ccfbf1;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* =====================================================
+   ROSTER PAGINATION (5 RECORDS PER VIEW)
+   ===================================================== */
+.roster-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
   background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+}
+
+.roster-pagination-info {
+  font-size: 0.825rem;
+  color: #64748b;
+}
+
+.roster-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.roster-page-btn {
+  padding: 0.4rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.roster-page-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.roster-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.roster-page-num-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.roster-page-num-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.roster-page-num-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
 }
 
 .roster-user-cell {

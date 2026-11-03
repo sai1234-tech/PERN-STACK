@@ -232,74 +232,15 @@ export const provisionEmployeeForUser = async (user) => {
     }
 };
 
-// @desc    Register a new user
+// @desc    Register a new user (Restricted - public self-registration is disabled)
 // @route   POST /api/auth/signup
 export const signup = async (req, res) => {
-    try {
-        const { name, email, password, role = "employee" } = req.body;
-
-        // Validation
-        if (!name || !email || !password) {
-            return res.status(400).json({ message: "Name, email, and password are required." });
-        }
-
-        const trimmedName = name.trim();
-        if (trimmedName.length < 3 || trimmedName.length > 30) {
-            return res.status(400).json({ message: "Name must be between 3 and 30 characters." });
-        }
-
-        if (password.length < 6) {
-            return res.status(400).json({ message: "Password must be at least 6 characters." });
-        }
-
-        if (role && !ALLOWED_ROLES.includes(role)) {
-            return res.status(400).json({ message: `Role must be one of: ${ALLOWED_ROLES.join(", ")}` });
-        }
-
-        // Check if user already exists
-        const existingUser = await findUserByEmail(email);
-        if (existingUser) {
-            return res.status(400).json({ message: "User with this email already exists." });
-        }
-
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
-
-        // Save user to database
-        const user = await createUser({
-            name: trimmedName,
-            email,
-            password: passwordHash,
-            role,
-            isActive: true
-        });
-
-        // Automatically provision employee profile for new user
-        const empRecord = await provisionEmployeeForUser(user);
-
-        // Generate JWT token
-        const token = generateJwt(user.id, user.role);
-
-        res.status(201).json({
-            message: "User registered successfully",
-            token,
-            expiresIn: "8h",
-            maxSessionDurationMs: 8 * 60 * 60 * 1000,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                isActive: user.is_active,
-                created_at: user.created_at
-            },
-            employee: empRecord ? formatEmployeeResponse(empRecord) : null
-        });
-    } catch (error) {
-        console.error("Signup error:", error);
-        res.status(500).json({ message: "Server error during registration", error: error.message });
-    }
+    // In an enterprise HRMS, employee accounts are never manually created via public signup.
+    // Instead, accounts are provisioned exclusively by HR during hiring and onboarding.
+    return res.status(403).json({
+        success: false,
+        message: "Public employee self-registration is disabled. Employee accounts and login credentials must be provisioned directly by Human Resources through the Employee Directory or Onboarding Hub."
+    });
 };
 
 // @desc    Authenticate user & get token

@@ -240,11 +240,8 @@ export async function loadUnifiedResourceMatrix() {
             : "Employee";
 
           let sowNum = val.sowNumber || "";
-          if (
-            (!sowNum || sowNum === "SOW" || sowNum === "SOW to project") &&
-            (rawProj === "HMRS" || String(val.code || "").toUpperCase() === "EMP175" || safeName.includes("Kushangala"))
-          ) {
-            sowNum = "SOW-2026-AI-003";
+          if (sowNum === "SOW" || sowNum === "SOW to project") {
+            sowNum = "";
           }
           if (val.status === "Allocated" && !isLegacyDefaultProj) {
             allocMap[resolvedKey] = {
@@ -322,11 +319,8 @@ export async function loadUnifiedResourceMatrix() {
     const targetKey = matchedEmp ? String(matchedEmp.id) : aEmpId;
 
     let resSowNumber = a.sowNumber || a.sow_number || allocMap[targetKey]?.sowNumber || "";
-    if (
-      (!resSowNumber || resSowNumber === "SOW" || resSowNumber === "SOW to project") &&
-      (rawProj === "HMRS" || String(a.employeeCode || "").toUpperCase() === "EMP175" || (a.employeeName || "").includes("Kushangala"))
-    ) {
-      resSowNumber = "SOW-2026-AI-003";
+    if (resSowNumber === "SOW" || resSowNumber === "SOW to project") {
+      resSowNumber = "";
     }
 
     const safeEmpName =
@@ -378,35 +372,10 @@ export async function loadUnifiedResourceMatrix() {
     };
   });
 
-  // 3. Ensure HR allocation for EMP175 (Kushangala SaiKiran -> HMRS / SOW: SOW-2026-AI-003) is preserved if not explicitly released
+  // 3. Ensure all real employees in the matrix have an allocation record (Bench default if not allocated)
   mergedList.forEach((e) => {
     const key = String(e.id);
-    const isKushangala =
-      String(e.code || "").toUpperCase() === "EMP175" ||
-      String(e.name || "").toLowerCase().includes("kushangala");
-
-    if (isKushangala && (!allocMap[key] || (allocMap[key].status === "Bench" && !allocMap[key].releasedToBench))) {
-      allocMap[key] = {
-        status: "Allocated",
-        project: "HMRS",
-        sowNumber: "SOW-2026-AI-003",
-        name: e.name,
-        code: e.code,
-        department: e.department || "Engineering",
-        role: e.role || "Engineer",
-        releasedToBench: false,
-      };
-      toSyncToBackend.push({
-        emp: e,
-        alloc: allocMap[key],
-      });
-    } else if (
-      isKushangala &&
-      allocMap[key]?.status === "Allocated" &&
-      (!allocMap[key].sowNumber || allocMap[key].sowNumber === "SOW" || allocMap[key].sowNumber === "SOW to project")
-    ) {
-      allocMap[key].sowNumber = "SOW-2026-AI-003";
-    } else if (!allocMap[key]) {
+    if (!allocMap[key]) {
       allocMap[key] = {
         status: "Bench",
         project: null,

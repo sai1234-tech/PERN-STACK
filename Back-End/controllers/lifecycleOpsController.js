@@ -16,9 +16,14 @@ const lc = (v) => String(v || "").toLowerCase();
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const actor = async (req) => {
-  const { rows } = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1", [req.user.userId]);
-  const emp = await pool.query("SELECT id FROM employees WHERE user_id = $1", [req.user.userId]);
-  return { ...(rows[0] || { id: req.user.userId, name: "unknown", role: req.user.role }), employeeId: emp.rows[0]?.id ?? null };
+  const userId = req.user?.userId || req.user?.id;
+  const userEmail = (req.user?.email || "").trim().toLowerCase();
+  const { rows } = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1", [userId]);
+  const emp = await pool.query(
+    "SELECT id FROM employees WHERE user_id = $1 OR ($2 <> '' AND LOWER(email) = LOWER($2)) ORDER BY id ASC LIMIT 1",
+    [userId, userEmail]
+  );
+  return { ...(rows[0] || { id: userId, name: req.user?.name || "unknown", role: req.user?.role }), employeeId: emp.rows[0]?.id ?? null };
 };
 
 const audit = async (a, req, action, entityType, entityId, details) =>
@@ -149,8 +154,10 @@ export const listRegularizations = async (req, res, next) => {
     let where = "";
     if (req.query.status) { params.push(String(req.query.status).toUpperCase()); where = `WHERE r.status = $${params.length}`; }
     if (role === "manager") {
-      params.push(a.employeeId);
-      where += `${where ? " AND" : "WHERE"} e.reports_to = $${params.length}`;
+      if (a.employeeId) {
+        params.push(a.employeeId);
+        where += `${where ? " AND" : "WHERE"} (e.reports_to = $${params.length} OR e.matrix_manager_id = $${params.length})`;
+      }
     }
     const { rows } = await pool.query(
       `SELECT r.*, e.employee_code, e.first_name, e.last_name FROM attendance_regularizations r JOIN employees e ON e.id = r.employee_id ${where} ORDER BY r.id DESC`, params);

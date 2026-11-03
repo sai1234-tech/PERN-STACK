@@ -83,7 +83,7 @@ export const getIntegrationSummary = async (req, res, next) => {
       FROM integration_sync_logs l
       LEFT JOIN integration_connectors c ON l.connector_key = c.connector_key
       ORDER BY l.created_at DESC
-      LIMIT 25;
+      LIMIT 50;
     `);
 
     // Domain Specific Live Counts from PostgreSQL

@@ -246,11 +246,63 @@ export default function EnterpriseIntegrationsHub() {
     }
   };
 
-  // Filtered Logs
-  const filteredLogs = useMemo(() => {
-    if (logFilter === "all") return recentLogs;
-    return recentLogs.filter((log) => log.connector_key === logFilter);
-  }, [recentLogs, logFilter]);
+  // Telemetry Logs Sorting State
+  const [logSortField, setLogSortField] = useState("created_at");
+  const [logSortOrder, setLogSortOrder] = useState("desc");
+
+  // Telemetry Logs Pagination State (5 records per view)
+  const [logPage, setLogPage] = useState(1);
+  const LOGS_PAGE_SIZE = 5;
+
+  const handleLogSort = (field) => {
+    if (logSortField === field) {
+      setLogSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setLogSortField(field);
+      setLogSortOrder("asc");
+    }
+    setLogPage(1);
+  };
+
+  // Filtered & Sorted Logs (5 visible in view, remainder scrollable)
+  const filteredAndSortedLogs = useMemo(() => {
+    const list = logFilter === "all" ? [...recentLogs] : recentLogs.filter((log) => log.connector_key === logFilter);
+    if (!logSortField) return list;
+
+    return list.sort((a, b) => {
+      let valA = a[logSortField];
+      let valB = b[logSortField];
+
+      if (valA === null || valA === undefined) valA = "";
+      if (valB === null || valB === undefined) valB = "";
+
+      if (logSortField === "created_at") {
+        const timeA = new Date(valA).getTime() || 0;
+        const timeB = new Date(valB).getTime() || 0;
+        return logSortOrder === "asc" ? timeA - timeB : timeB - timeA;
+      }
+
+      if (typeof valA === "number" && typeof valB === "number") {
+        return logSortOrder === "asc" ? valA - valB : valB - valA;
+      }
+      if (!isNaN(Number(valA)) && !isNaN(Number(valB)) && valA !== "" && valB !== "") {
+        return logSortOrder === "asc" ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      }
+
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+      if (strA < strB) return logSortOrder === "asc" ? -1 : 1;
+      if (strA > strB) return logSortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [recentLogs, logFilter, logSortField, logSortOrder]);
+
+  const filteredLogs = filteredAndSortedLogs;
+  const totalLogPages = Math.max(1, Math.ceil(filteredLogs.length / LOGS_PAGE_SIZE));
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (logPage - 1) * LOGS_PAGE_SIZE;
+    return filteredLogs.slice(startIndex, startIndex + LOGS_PAGE_SIZE);
+  }, [filteredLogs, logPage]);
 
   return (
     <div className="integrations-hub-container">
@@ -433,107 +485,107 @@ export default function EnterpriseIntegrationsHub() {
           <div className="section-title-row">
             <div>
               <h2 className="section-heading">Active Integration Connectors</h2>
-            <p className="section-subheading">
-              Click any connector to inspect live protocol payloads, SFTP batch logs, raw punch streams, and GL vouchers.
-            </p>
+              <p className="section-subheading">
+                Click any connector to inspect live protocol payloads, SFTP batch logs, raw punch streams, and GL vouchers.
+              </p>
+            </div>
           </div>
-        </div>
 
-        {loading ? (
-          <div className="hub-loading-state">
-            <div className="hub-quantum-spinner"></div>
-            <p>Connecting to PostgreSQL telemetry and verifying 8 external integration handshakes...</p>
-          </div>
-        ) : (
-          <div className="connectors-cards-grid">
-            {connectors.map((connector) => {
-              const meta = CONNECTOR_METADATA[connector.connector_key] || {
-                icon: "🔌",
-                scopeBadge: connector.category,
-                protocolBadge: connector.protocol,
-                accentColor: "#3b82f6",
-                actionLabel: "Sync Now"
-              };
-              const isSyncing = syncingKey === connector.connector_key;
+          {loading ? (
+            <div className="hub-loading-state">
+              <div className="hub-quantum-spinner"></div>
+              <p>Connecting to PostgreSQL telemetry and verifying 8 external integration handshakes...</p>
+            </div>
+          ) : (
+            <div className="connectors-cards-grid">
+              {connectors.map((connector) => {
+                const meta = CONNECTOR_METADATA[connector.connector_key] || {
+                  icon: "🔌",
+                  scopeBadge: connector.category,
+                  protocolBadge: connector.protocol,
+                  accentColor: "#3b82f6",
+                  actionLabel: "Sync Now"
+                };
+                const isSyncing = syncingKey === connector.connector_key;
 
-              return (
-                <article
-                  key={connector.connector_key}
-                  className="connector-card"
-                  onClick={() => fetchConnectorDetail(connector.connector_key)}
-                >
-                  <div className="connector-card-header">
-                    <div className="connector-icon-badge" style={{ backgroundColor: `${meta.accentColor}15`, color: meta.accentColor }}>
-                      <span className="connector-emoji">{meta.icon}</span>
-                    </div>
-                    <div className="connector-status-group">
-                      <span className="connector-health-pill connected">
-                        <span className="status-dot"></span>
-                        {connector.health_status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="connector-card-body">
-                    <h3 className="connector-name">{connector.name}</h3>
-                    <p className="connector-provider">{connector.provider}</p>
-
-                    <div className="connector-meta-pills">
-                      <div className="meta-pill scope-pill" title="Functional Scope">
-                        <span className="pill-dot"></span>
-                        <span>{meta.scopeBadge}</span>
+                return (
+                  <article
+                    key={connector.connector_key}
+                    className="connector-card"
+                    onClick={() => fetchConnectorDetail(connector.connector_key)}
+                  >
+                    <div className="connector-card-header">
+                      <div className="connector-icon-badge" style={{ backgroundColor: `${meta.accentColor}15`, color: meta.accentColor }}>
+                        <span className="connector-emoji">{meta.icon}</span>
                       </div>
-                      <div className="meta-pill protocol-pill" title="Protocol & Transmission Channel">
-                        <span>{meta.protocolBadge}</span>
-                      </div>
-                    </div>
-
-                    <div className="connector-telemetry-row">
-                      <div className="telemetry-item">
-                        <span className="item-label">Live Records</span>
-                        <span className="item-val highlight">{connector.live_record_count ?? 0}</span>
-                      </div>
-                      <div className="telemetry-item">
-                        <span className="item-label">Total Syncs</span>
-                        <span className="item-val">{connector.total_sync_count ?? 0}</span>
-                      </div>
-                      <div className="telemetry-item">
-                        <span className="item-label">Last Sync</span>
-                        <span className="item-val">
-                          {connector.last_sync_at ? connector.last_sync_at.replace("T", " ").substring(0, 16) : "Pending"}
+                      <div className="connector-status-group">
+                        <span className="connector-health-pill connected">
+                          <span className="status-dot"></span>
+                          {connector.health_status}
                         </span>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="connector-card-footer">
-                    <button
-                      className="connector-sync-action-btn"
-                      disabled={isSyncing}
-                      onClick={(e) => handleTriggerSync(connector.connector_key, e)}
-                    >
-                      {isSyncing ? (
-                        <>
-                          <span className="btn-spinner"></span>
-                          <span>Synchronizing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>⚡</span>
-                          <span>{meta.actionLabel}</span>
-                        </>
-                      )}
-                    </button>
-                    <button className="connector-inspect-btn" title="Inspect Telemetry & Logs">
-                      Inspect →
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                    <div className="connector-card-body">
+                      <h3 className="connector-name">{connector.name}</h3>
+                      <p className="connector-provider">{connector.provider}</p>
+
+                      <div className="connector-meta-pills">
+                        <div className="meta-pill scope-pill" title="Functional Scope">
+                          <span className="pill-dot"></span>
+                          <span>{meta.scopeBadge}</span>
+                        </div>
+                        <div className="meta-pill protocol-pill" title="Protocol & Transmission Channel">
+                          <span>{meta.protocolBadge}</span>
+                        </div>
+                      </div>
+
+                      <div className="connector-telemetry-row">
+                        <div className="telemetry-item">
+                          <span className="item-label">Live Records</span>
+                          <span className="item-val highlight">{connector.live_record_count ?? 0}</span>
+                        </div>
+                        <div className="telemetry-item">
+                          <span className="item-label">Total Syncs</span>
+                          <span className="item-val">{connector.total_sync_count ?? 0}</span>
+                        </div>
+                        <div className="telemetry-item">
+                          <span className="item-label">Last Sync</span>
+                          <span className="item-val">
+                            {connector.last_sync_at ? connector.last_sync_at.replace("T", " ").substring(0, 16) : "Pending"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="connector-card-footer">
+                      <button
+                        className="connector-sync-action-btn"
+                        disabled={isSyncing}
+                        onClick={(e) => handleTriggerSync(connector.connector_key, e)}
+                      >
+                        {isSyncing ? (
+                          <>
+                            <span className="btn-spinner"></span>
+                            <span>Synchronizing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>⚡</span>
+                            <span>{meta.actionLabel}</span>
+                          </>
+                        )}
+                      </button>
+                      <button className="connector-inspect-btn" title="Inspect Telemetry & Logs">
+                        Inspect →
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
 
       {/* ── 3. Real-Time Telemetry & Sync Audit Stream Table ── */}
@@ -542,7 +594,7 @@ export default function EnterpriseIntegrationsHub() {
           <div>
             <h2 className="section-heading">Real-Time Sync Telemetry & Audit Stream</h2>
             <p className="section-subheading">
-              PostgreSQL audit log of all inbound and outbound data transfers across the 8 enterprise connectors.
+              PostgreSQL audit log of all inbound and outbound data transfers across the 8 enterprise connectors (5 records in view, scrollable).
             </p>
           </div>
 
@@ -551,10 +603,13 @@ export default function EnterpriseIntegrationsHub() {
             <select
               id="log-connector-filter"
               value={logFilter}
-              onChange={(e) => setLogFilter(e.target.value)}
+              onChange={(e) => {
+                setLogFilter(e.target.value);
+                setLogPage(1);
+              }}
               className="logs-filter-select"
             >
-              <option value="all">All 8 Connectors ({recentLogs.length})</option>
+              <option value="all">All Connectors ({filteredLogs.length} records)</option>
               {connectors.map((c) => (
                 <option key={c.connector_key} value={c.connector_key}>
                   {c.name}
@@ -568,58 +623,166 @@ export default function EnterpriseIntegrationsHub() {
           <table className="sync-logs-table">
             <thead>
               <tr>
-                <th>CONNECTOR</th>
-                <th>JOB TYPE</th>
-                <th>DIRECTION</th>
-                <th>RECORDS</th>
-                <th>LATENCY</th>
-                <th>TRIGGER</th>
+                <th
+                  onClick={() => handleLogSort("connector_name")}
+                  className={`sortable-th ${logSortField === "connector_name" ? "active-sort" : ""}`}
+                  title="Sort by Connector Name"
+                >
+                  CONNECTOR
+                  <span className={`th-sort-icon ${logSortField === "connector_name" ? "active" : ""}`}>
+                    {logSortField === "connector_name" ? (logSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                  </span>
+                </th>
+                <th
+                  onClick={() => handleLogSort("job_type")}
+                  className={`sortable-th ${logSortField === "job_type" ? "active-sort" : ""}`}
+                  title="Sort by Job Type"
+                >
+                  JOB TYPE
+                  <span className={`th-sort-icon ${logSortField === "job_type" ? "active" : ""}`}>
+                    {logSortField === "job_type" ? (logSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                  </span>
+                </th>
+                <th
+                  onClick={() => handleLogSort("direction")}
+                  className={`sortable-th ${logSortField === "direction" ? "active-sort" : ""}`}
+                  title="Sort by Direction"
+                >
+                  DIRECTION
+                  <span className={`th-sort-icon ${logSortField === "direction" ? "active" : ""}`}>
+                    {logSortField === "direction" ? (logSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                  </span>
+                </th>
+                <th
+                  onClick={() => handleLogSort("records_processed")}
+                  className={`sortable-th ${logSortField === "records_processed" ? "active-sort" : ""}`}
+                  title="Sort by Processed Records"
+                >
+                  RECORDS
+                  <span className={`th-sort-icon ${logSortField === "records_processed" ? "active" : ""}`}>
+                    {logSortField === "records_processed" ? (logSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                  </span>
+                </th>
+                <th
+                  onClick={() => handleLogSort("duration_ms")}
+                  className={`sortable-th ${logSortField === "duration_ms" ? "active-sort" : ""}`}
+                  title="Sort by Latency"
+                >
+                  LATENCY
+                  <span className={`th-sort-icon ${logSortField === "duration_ms" ? "active" : ""}`}>
+                    {logSortField === "duration_ms" ? (logSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                  </span>
+                </th>
+                <th
+                  onClick={() => handleLogSort("triggered_by")}
+                  className={`sortable-th ${logSortField === "triggered_by" ? "active-sort" : ""}`}
+                  title="Sort by Trigger Method"
+                >
+                  TRIGGER
+                  <span className={`th-sort-icon ${logSortField === "triggered_by" ? "active" : ""}`}>
+                    {logSortField === "triggered_by" ? (logSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                  </span>
+                </th>
                 <th>PAYLOAD SUMMARY / PROTOCOL LOG</th>
-                <th>TIMESTAMP</th>
+                <th
+                  onClick={() => handleLogSort("created_at")}
+                  className={`sortable-th ${logSortField === "created_at" ? "active-sort" : ""}`}
+                  title="Sort by Timestamp"
+                >
+                  TIMESTAMP
+                  <span className={`th-sort-icon ${logSortField === "created_at" ? "active" : ""}`}>
+                    {logSortField === "created_at" ? (logSortOrder === "asc" ? " ▲" : " ▼") : " ⇅"}
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map((log) => (
-                <tr key={log.id} className="log-row">
-                  <td className="log-connector-name">
-                    <strong>{log.connector_name || log.connector_key}</strong>
-                  </td>
-                  <td>
-                    <code className="job-type-code">{log.job_type}</code>
-                  </td>
-                  <td>
-                    <span
-                      className={`direction-badge ${
-                        log.direction === "INBOUND"
-                          ? "dir-inbound"
-                          : log.direction === "OUTBOUND"
-                          ? "dir-outbound"
-                          : "dir-bidirectional"
-                      }`}
-                    >
-                      {log.direction}
-                    </span>
-                  </td>
-                  <td className="text-center font-bold">
-                    {log.records_processed}
-                  </td>
-                  <td className="font-mono text-muted">
-                    {log.duration_ms} ms
-                  </td>
-                  <td>
-                    <span className="trigger-badge">{log.triggered_by}</span>
-                  </td>
-                  <td className="payload-summary-cell" title={log.payload_summary}>
-                    {log.payload_summary}
-                  </td>
-                  <td className="timestamp-cell">
-                    {log.created_at ? log.created_at.split("T")[0] + " " + log.created_at.split("T")[1]?.substring(0, 8) : "Just now"}
-                  </td>
-                </tr>
-              ))}
+              {paginatedLogs.map((log, idx) => {
+                const latency = Number(log.duration_ms) || 0;
+                const isFast = latency < 150;
+                const isModerate = latency >= 150 && latency < 400;
+                const rowStatusClass = isFast ? "row-latency-good" : isModerate ? "row-latency-warn" : "row-latency-high";
+
+                return (
+                  <tr
+                    key={log.id}
+                    className={`log-row ${rowStatusClass} ${idx % 2 === 0 ? "row-even" : "row-odd"}`}
+                  >
+                    <td className="cell-colored-connector">
+                      <strong className="connector-name-badge">{log.connector_name || log.connector_key}</strong>
+                    </td>
+                    <td className="cell-colored-job">
+                      <code className="job-type-code">{log.job_type}</code>
+                    </td>
+                    <td className="cell-colored-dir">
+                      <span
+                        className={`direction-badge ${log.direction === "INBOUND"
+                            ? "dir-inbound"
+                            : log.direction === "OUTBOUND"
+                              ? "dir-outbound"
+                              : "dir-bidirectional"
+                          }`}
+                      >
+                        {log.direction}
+                      </span>
+                    </td>
+                    <td className="cell-colored-records text-center font-bold">
+                      <span className="records-count-pill">{log.records_processed}</span>
+                    </td>
+                    <td className={`cell-colored-latency font-mono ${isFast ? "latency-fast" : isModerate ? "latency-med" : "latency-slow"}`}>
+                      {log.duration_ms} ms
+                    </td>
+                    <td className="cell-colored-trigger">
+                      <span className="trigger-badge">{log.triggered_by}</span>
+                    </td>
+                    <td className="payload-summary-cell" title={log.payload_summary}>
+                      {log.payload_summary}
+                    </td>
+                    <td className="timestamp-cell">
+                      {log.created_at ? log.created_at.split("T")[0] + " " + log.created_at.split("T")[1]?.substring(0, 8) : "Just now"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+        {/* Telemetry Logs Pagination (5 records per view) */}
+        {totalLogPages > 1 && (
+          <div className="telemetry-pagination-bar">
+            <div className="telemetry-pagination-info">
+              Showing <strong>{(logPage - 1) * LOGS_PAGE_SIZE + 1}</strong> to{" "}
+              <strong>{Math.min(logPage * LOGS_PAGE_SIZE, filteredLogs.length)}</strong> of{" "}
+              <strong>{filteredLogs.length}</strong> Telemetry Events (Page {logPage} of {totalLogPages})
+            </div>
+            <div className="telemetry-pagination-controls">
+              <button
+                className="telemetry-page-btn"
+                disabled={logPage <= 1}
+                onClick={() => setLogPage((p) => Math.max(1, p - 1))}
+              >
+                ← Previous
+              </button>
+              {Array.from({ length: totalLogPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  className={`telemetry-page-num-btn ${logPage === pageNum ? "active" : ""}`}
+                  onClick={() => setLogPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                className="telemetry-page-btn"
+                disabled={logPage >= totalLogPages}
+                onClick={() => setLogPage((p) => Math.min(totalLogPages, p + 1))}
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── 4. Connector Details & Configuration Modal / Drawer ── */}

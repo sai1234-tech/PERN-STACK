@@ -495,7 +495,28 @@
 }
 
 .sync-logs-table-wrapper {
+  max-height: 330px;
+  overflow-y: auto;
   overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.sync-logs-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.sync-logs-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sync-logs-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .sync-logs-table {
@@ -506,14 +527,49 @@
 }
 
 .sync-logs-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   background: #f8fafc;
   color: #475569;
   font-weight: 700;
   font-size: 0.725rem;
   letter-spacing: 0.05em;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 2px solid #e2e8f0;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.sync-logs-table th.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sync-logs-table th.sortable-th:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.sync-logs-table th.sortable-th.active-sort {
+  background: #eff6ff;
+  color: #2563eb;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.th-sort-icon {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  vertical-align: middle;
+  transition: color 0.15s ease;
+}
+
+.th-sort-icon.active {
+  color: #2563eb;
+  font-weight: 800;
 }
 
 .sync-logs-table td {
@@ -521,10 +577,164 @@
   border-bottom: 1px solid #f1f5f9;
   color: #1e293b;
   vertical-align: middle;
+  transition: background-color 0.15s ease;
 }
 
-.sync-logs-table tr:hover {
+/* =====================================================
+   REALISTIC ENTERPRISE ROW STYLES FOR SYNC LOGS
+   ===================================================== */
+.sync-logs-table tr.log-row {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Alternating realistic enterprise rows */
+.sync-logs-table tr.log-row.row-even td {
+  background: #ffffff;
+}
+
+.sync-logs-table tr.log-row.row-odd td {
+  background: #fcfdfd;
+}
+
+/* Latency-based left accents */
+.sync-logs-table tr.log-row.row-latency-good td:first-child {
+  border-left: 4px solid #10b981;
+}
+
+.sync-logs-table tr.log-row.row-latency-warn td:first-child {
+  border-left: 4px solid #f59e0b;
+}
+
+.sync-logs-table tr.log-row.row-latency-high td:first-child {
+  border-left: 4px solid #ef4444;
+}
+
+/* Unified realistic row hover */
+.sync-logs-table tr.log-row:hover td {
+  background: #eff6ff !important;
+}
+
+.sync-logs-table tr.log-row:hover td:first-child {
+  border-left-color: #2563eb !important;
+}
+
+/* Cells inherit row background smoothly */
+.cell-colored-connector,
+.cell-colored-job,
+.cell-colored-dir,
+.cell-colored-records,
+.cell-colored-latency,
+.cell-colored-trigger {
+  background: transparent;
+}
+
+.connector-name-badge {
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.records-count-pill {
+  display: inline-block;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.775rem;
+  font-weight: 800;
+}
+
+.cell-colored-latency.latency-fast {
+  color: #047857;
+  font-weight: 700;
+}
+
+.cell-colored-latency.latency-med {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.cell-colored-latency.latency-slow {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+/* =====================================================
+   TELEMETRY LOGS PAGINATION (5 RECORDS PER VIEW)
+   ===================================================== */
+.telemetry-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
   background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+.telemetry-pagination-info {
+  font-size: 0.825rem;
+  color: #64748b;
+}
+
+.telemetry-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.telemetry-page-btn {
+  padding: 0.4rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.telemetry-page-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.telemetry-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.telemetry-page-num-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.telemetry-page-num-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.telemetry-page-num-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
 }
 
 .job-type-code {

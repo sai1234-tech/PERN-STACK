@@ -159,113 +159,41 @@ function HRDashboard({ defaultTab = "directory" }) {
   const [okrs, setOkrs] = useState([]);
   const [clearances, setClearances] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
-  const getStoredHrRegularizations = () => {
-    const defaultList = [
-      {
-        id: "REG-2026-0929",
-        altId: "EG-2026-0929",
-        employeeId: 18,
-        employeeName: "Kushangala SaiKiran",
-        employeeCode: "EMP175",
-        employeeEmail: "skushangala@quadratics.com",
-        date: "2026-10-27",
-        requestedIn: "10:58",
-        requestedOut: "18:58",
-        reasonCategory: "Official Travel / Outdoor Duty",
-        remarks: "Travelling to outstations",
-        status: "approved",
-        managerApprovedAt: "2026-10-27",
-        managerName: "Aditya Narayan (Reporting Manager)",
-        hrApprovedAt: "2026-10-27",
-        hrApprovedBy: "HR Operations",
-        reconciled: true,
-        submittedAt: "2026-10-27",
-      },
-      {
-        id: "REG-2026-081",
-        employeeId: 18,
-        employeeName: "Kushangala SaiKiran",
-        employeeCode: "EMP175",
-        employeeEmail: "skushangala@quadratics.com",
-        date: "2026-10-24",
-        requestedIn: "09:30",
-        requestedOut: "18:45",
-        reasonCategory: "Biometric Miss / Device Failure",
-        remarks:
-          "Biometric thumb scanner at Main Gate timed out during morning punch. Badge ID verified by reception.",
-        status: "approved",
-        managerApprovedAt: "2026-10-25",
-        managerName: "Aditya Narayan (Reporting Manager)",
-        hrApprovedAt: "2026-10-25",
-        hrApprovedBy: "HR Operations",
-        reconciled: true,
-        submittedAt: "2026-10-25",
-      },
-    ];
-
-    try {
-      const saved = localStorage.getItem("hrms_attendance_regularizations");
-      if (saved) {
-        let parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Normalize existing items to EMP175 and mark approved
-          parsed = parsed.map((item) => {
-            if (
-              item.employeeName?.includes("Kushangala") ||
-              item.employeeEmail?.includes("skushangala") ||
-              item.employeeCode === "EMP-001" ||
-              item.id === "REG-2026-0929" ||
-              item.id === "REG-2026-081" ||
-              item.id === "EG-2026-0929" ||
-              item.altId === "EG-2026-0929" ||
-              item.date === "2026-10-27" ||
-              item.date === "2026-10-24"
-            ) {
-              const is27Oct = item.date === "2026-10-27" || item.id === "REG-2026-0929" || item.altId === "EG-2026-0929" || item.id === "EG-2026-0929";
-              return {
-                ...item,
-                employeeId: item.employeeId || 18,
-                employeeCode: "EMP175",
-                employeeEmail: "skushangala@quadratics.com",
-                employeeName: "Kushangala SaiKiran",
-                status: "approved",
-                hrApprovedAt: is27Oct ? "2026-10-27" : item.hrApprovedAt || "2026-10-25",
-                hrApprovedBy: "HR Operations",
-                reconciled: true,
-              };
-            }
-            return item;
-          });
-
-          defaultList.forEach((def) => {
-            const exists = parsed.some(
-              (p) =>
-                p.id === def.id ||
-                p.altId === def.id ||
-                p.id === def.altId ||
-                (p.date === def.date && String(p.remarks || "").slice(0, 10) === def.remarks.slice(0, 10))
-            );
-            if (!exists) {
-              parsed = [def, ...parsed];
-            }
-          });
-          localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(parsed));
-          return parsed;
-        }
-      }
-      localStorage.setItem("hrms_attendance_regularizations", JSON.stringify(defaultList));
-      return defaultList;
-    } catch {
-      return defaultList;
-    }
-  };
-
-  const [regularizations, setRegularizations] = useState(getStoredHrRegularizations);
+  const [regularizations, setRegularizations] = useState([]);
   const [regFilter, setRegFilter] = useState("all");
   const [regActionBusyId, setRegActionBusyId] = useState(null);
 
-  const loadRegularizations = useCallback(() => {
-    setRegularizations(getStoredHrRegularizations());
+  const loadRegularizations = useCallback(async () => {
+    try {
+      const res = await apiRequest("/lifecycle-ops/regularizations");
+      if (res?.success && Array.isArray(res.data)) {
+        const mapped = res.data.map((r) => ({
+          id: r.id || r.reg_code,
+          backendId: r.id,
+          numericId: r.id,
+          regCode: r.reg_code,
+          employeeId: r.employee_id,
+          employeeName: `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.employee_name || "Employee",
+          employeeCode: r.employee_code || (r.employee_id ? `EMP-${String(r.employee_id).padStart(3, "0")}` : "EMP"),
+          employeeEmail: r.email || "",
+          date: String(r.attendance_date || "").slice(0, 10),
+          requestedIn: r.requested_check_in ? (String(r.requested_check_in).includes("T") ? String(r.requested_check_in).slice(11, 16) : String(r.requested_check_in)) : "09:30",
+          requestedOut: r.requested_check_out ? (String(r.requested_check_out).includes("T") ? String(r.requested_check_out).slice(11, 16) : String(r.requested_check_out)) : "18:30",
+          reasonCategory: r.reason || "Attendance Regularization",
+          remarks: r.decision_comments || r.reason || "",
+          status: String(r.status || "pending").toLowerCase(),
+          managerApprovedAt: r.decided_at ? String(r.decided_at).slice(0, 10) : null,
+          managerName: r.decided_by_name || "Reporting Manager",
+          hrApprovedAt: r.status === "APPROVED" ? String(r.decided_at || "").slice(0, 10) : null,
+          hrApprovedBy: r.status === "APPROVED" ? r.decided_by_name || "HR Operations" : null,
+          reconciled: r.status === "APPROVED",
+          submittedAt: r.created_at ? String(r.created_at).slice(0, 10) : "",
+        }));
+        setRegularizations(mapped);
+      }
+    } catch (err) {
+      console.warn("Notice loading regularizations in HRDashboard:", err);
+    }
   }, []);
 
   const loadDashboard = useCallback(async (silent = false) => {
@@ -287,9 +215,9 @@ function HRDashboard({ defaultTab = "directory" }) {
         clearanceResponse,
         auditResponse,
       ] = await Promise.all([
-        getEmployees(),
-        getAllAttendance(),
-        getAllLeaves(),
+        getEmployees().catch(() => ({ data: [] })),
+        getAllAttendance().catch(() => ({ data: [] })),
+        getAllLeaves().catch(() => ({ data: [] })),
         getAllTimesheets().catch(() => ({ data: [] })),
         apiRequest("/holidays").catch(() => ({ data: [] })),
         apiRequest("/candidates").catch(() => ({ data: [] })),
@@ -336,6 +264,10 @@ function HRDashboard({ defaultTab = "directory" }) {
   useEffect(() => {
     loadDashboard();
     loadRegularizations();
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 3500);
+    return () => clearTimeout(safetyTimer);
   }, [loadDashboard, loadRegularizations]);
 
   useSyncRefresh(() => {
@@ -417,35 +349,35 @@ function HRDashboard({ defaultTab = "directory" }) {
   };
 
   const pendingHrRegularizations = useMemo(() => {
-    return regularizations.filter((r) => isRegPendingHr(r.status));
+    return regularizations.filter((r) => r && isRegPendingHr(r.status));
   }, [regularizations]);
 
   const pendingMgrRegularizations = useMemo(() => {
-    return regularizations.filter((r) => isRegPendingManager(r.status));
+    return regularizations.filter((r) => r && isRegPendingManager(r.status));
   }, [regularizations]);
 
   const approvedRegularizations = useMemo(() => {
-    return regularizations.filter((r) => isRegApproved(r.status));
+    return regularizations.filter((r) => r && isRegApproved(r.status));
   }, [regularizations]);
 
   const rejectedRegularizations = useMemo(() => {
-    return regularizations.filter((r) => isRegRejected(r.status));
+    return regularizations.filter((r) => r && isRegRejected(r.status));
   }, [regularizations]);
 
   const filteredRegularizations = useMemo(() => {
     if (regFilter === "pending_hr") {
-      return regularizations.filter((r) => isRegPendingHr(r.status));
+      return regularizations.filter((r) => r && isRegPendingHr(r.status));
     }
     if (regFilter === "pending_manager") {
-      return regularizations.filter((r) => isRegPendingManager(r.status));
+      return regularizations.filter((r) => r && isRegPendingManager(r.status));
     }
     if (regFilter === "approved") {
-      return regularizations.filter((r) => isRegApproved(r.status));
+      return regularizations.filter((r) => r && isRegApproved(r.status));
     }
     if (regFilter === "rejected") {
-      return regularizations.filter((r) => isRegRejected(r.status));
+      return regularizations.filter((r) => r && isRegRejected(r.status));
     }
-    return regularizations;
+    return regularizations.filter(Boolean);
   }, [regularizations, regFilter]);
 
   const handleCreateTestRegularization = useCallback(() => {
@@ -533,25 +465,34 @@ function HRDashboard({ defaultTab = "directory" }) {
       ]);
 
       try {
-        if (reg.backendId || (typeof reg.id === "number" && reg.id < 100000)) {
-          await apiRequest(`/lifecycle-ops/regularizations/${reg.backendId || reg.id}/decision`, "PATCH", {
-            decision: "APPROVED",
-            comments: "HR Final Sign-off approved",
+        const dbId = reg.backendId || reg.numericId || (typeof reg.id === "number" ? reg.id : null);
+        if (dbId) {
+          await apiRequest(`/lifecycle-ops/regularizations/${dbId}/decision`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              decision: "APPROVED",
+              comments: "HR Final Sign-off approved",
+            }),
           });
         }
-        await apiRequest("/attendance/reconcile", "POST", {
-          employeeId: reg.employeeId || 18,
-          employeeCode: reg.employeeCode || "EMP175",
-          employeeEmail: reg.employeeEmail || "skushangala@quadratics.com",
-          employeeName: reg.employeeName || "Kushangala SaiKiran",
-          date: reg.date,
-          checkIn: reg.requestedIn || "10:58",
-          checkOut: reg.requestedOut || "18:58",
-          workingHours: calcHours,
-          remarks: `Regularized by HR (${reg.reasonCategory || "Biometric Adjustment"}): ${reg.remarks || ""}`,
-        });
+        if (reg.employeeId) {
+          await apiRequest("/attendance/reconcile", {
+            method: "POST",
+            body: JSON.stringify({
+              employeeId: reg.employeeId,
+              employeeCode: reg.employeeCode,
+              employeeEmail: reg.employeeEmail,
+              employeeName: reg.employeeName,
+              date: reg.date,
+              checkIn: reg.requestedIn,
+              checkOut: reg.requestedOut,
+              workingHours: calcHours,
+              remarks: `Regularized by HR (${reg.reasonCategory || "Biometric Adjustment"}): ${reg.remarks || ""}`,
+            }),
+          });
+        }
       } catch (err) {
-        console.warn("Reconcile API optional call completed:", err.message);
+        console.warn("Reconcile API call completed:", err.message);
       }
 
       window.dispatchEvent(
@@ -585,10 +526,14 @@ function HRDashboard({ defaultTab = "directory" }) {
       setRegularizations(updated);
 
       try {
-        if (reg.backendId || (typeof reg.id === "number" && reg.id < 100000)) {
-          await apiRequest(`/lifecycle-ops/regularizations/${reg.backendId || reg.id}/decision`, "PATCH", {
-            decision: "REJECTED",
-            comments: "HR Final Sign-off declined",
+        const dbId = reg.backendId || reg.numericId || (typeof reg.id === "number" ? reg.id : null);
+        if (dbId) {
+          await apiRequest(`/lifecycle-ops/regularizations/${dbId}/decision`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              decision: "REJECTED",
+              comments: "HR Final Sign-off declined",
+            }),
           });
         }
       } catch {}
@@ -825,12 +770,16 @@ function HRDashboard({ defaultTab = "directory" }) {
   const filteredEmployees = useMemo(() => {
     const q = search.trim().toLowerCase();
     return employees.filter((emp) => {
+      if (!emp) return false;
       const matchesDept =
         deptFilter === "All" || emp.employment?.department === deptFilter;
       if (!matchesDept) return false;
       if (!q) return true;
       const fullName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim().toLowerCase();
       const code = String(emp.employeeCode || "").toLowerCase();
+      const email = String(emp.email || emp.user?.email || "").toLowerCase();
+      const dept = String(emp.employment?.department || "").toLowerCase();
+      const desig = String(emp.employment?.designation || "").toLowerCase();
       return (
         fullName.includes(q) ||
         code.includes(q) ||
@@ -876,6 +825,45 @@ function HRDashboard({ defaultTab = "directory" }) {
     <>
       <EmployeeHeader />
       <main className="hr-dashboard-next">
+        {error && (
+          <div
+            className="hr-dashboard-error-banner"
+            style={{
+              margin: "1rem 2rem 0",
+              padding: "1rem 1.25rem",
+              background: "#fef2f2",
+              border: "1px solid #f87171",
+              borderRadius: "10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+              color: "#991b1b",
+              fontWeight: 600,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+              <span>Notice: {error}. Showing available workspace data.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => loadDashboard()}
+              style={{
+                background: "#dc2626",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "0.4rem 0.9rem",
+                fontWeight: 700,
+                fontSize: "0.82rem",
+                cursor: "pointer",
+              }}
+            >
+              Retry Sync
+            </button>
+          </div>
+        )}
         {/* Top Hero Command Banner */}
         <section className="hr-hero-banner" aria-label="HR Command Center Banner">
           <div className="hr-hero-top-row">
@@ -1015,6 +1003,11 @@ function HRDashboard({ defaultTab = "directory" }) {
             <Link to="/hr/entities" className="cmd-action-btn cmd-entities" title="Enterprise 41-Entity Master Data Platform">
               <span className="cmd-btn-icon">🌐</span>
               <span className="cmd-btn-text">41-Entity Master</span>
+            </Link>
+
+            <Link to="/hr/integrations" className="cmd-action-btn cmd-integrations" title="Enterprise 8-Channel Integration Hub">
+              <span className="cmd-btn-icon">🔌</span>
+              <span className="cmd-btn-text">Integrations</span>
             </Link>
 
             <Link to="/hr/helpdesk" className="cmd-action-btn cmd-helpdesk" title="HR Support & Tickets">

@@ -164,9 +164,7 @@ function Login() {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in to your enterprise HRMS account"
-      footerText="Don't have an account yet?"
-      footerLink="/signup"
-      footerLinkText="Create employee account"
+      footerText="Enterprise Access: Employee accounts are provisioned exclusively by HR. Inquiries: hr@company.com"
     >
       {/* Quick Demo Switcher */}
       <div className="demo-accounts-panel">
@@ -402,6 +400,15 @@ function Login() {
           </button>
         </div>
       </form>
+
+      <div className="admin-setup-note-card" style={{ marginTop: "14px", background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", borderColor: "#bbf7d0" }}>
+        <div className="note-icon" style={{ background: "#dcfce7", color: "#166534" }}>🏢</div>
+        <div>
+          <p>
+            <strong>New to the company?</strong> Employee accounts are provisioned exclusively by HR during Day 1 onboarding. Check your official welcome email for your employee ID and credentials.
+          </p>
+        </div>
+      </div>
 
       <div className="admin-setup-note-card">
         <div className="note-icon">ℹ️</div>

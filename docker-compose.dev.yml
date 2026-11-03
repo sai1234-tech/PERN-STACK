@@ -1,0 +1,120 @@
+# =============================================================================
+# PERN HRMS - Developer Workstation Docker Compose (Live Hot-Reloading)
+# =============================================================================
+# Usage:
+#   docker-compose -f docker-compose.dev.yml up --build
+# Features:
+#   - Live code reload on file save (Nodemon for backend, Vite HMR for frontend)
+#   - Anonymous volume protection for /app/node_modules (preserves Linux binaries)
+#   - Healthcheck dependencies and log rotation
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. PostgreSQL Database (Dev)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: pern_hrms_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-199898}
+      POSTGRES_DB: ${DB_NAME:-hrms_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-hrms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - pern_dev_net
+
+  # ---------------------------------------------------------------------------
+  # 2. Node.js Express Backend with Nodemon Hot-Reload
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./Back-End
+      dockerfile: Dockerfile
+      target: development
+    container_name: pern_hrms_backend_dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5005
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-199898}
+      DB_NAME: ${DB_NAME:-hrms_db}
+      JWT_SECRET: ${JWT_SECRET:-pern_hrms_secret_jwt_key_2026!@#}
+      JWT_EXPIRES_IN: 8h
+    ports:
+      - "5005:5005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./Back-End:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - pern_dev_net
+
+  # ---------------------------------------------------------------------------
+  # 3. React Vite Dev Server with HMR (Hot Module Replacement)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./Front-End
+      dockerfile: Dockerfile
+      target: development
+    container_name: pern_hrms_frontend_dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./Front-End:/app
+      - /app/node_modules
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - pern_dev_net
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_dev_data:
+    name: pern_hrms_postgres_dev_data
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  pern_dev_net:
+    name: pern_hrms_dev_network
+    driver: bridge

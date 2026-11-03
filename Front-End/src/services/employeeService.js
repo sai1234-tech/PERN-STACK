@@ -1,11 +1,6 @@
 import { apiRequest } from "./apiClient";
 import { broadcastDataChange } from "../utils/syncManager";
 
-let mockEmployees = [
-  { _id: "e1", firstName: "Aisha", lastName: "Sharma", employment: { status: "Active", department: "Engineering", designation: "Software Engineer" }, email: "aisha@example.com" },
-  { _id: "e2", firstName: "Rohan", lastName: "Das", employment: { status: "Active", department: "Finance", designation: "Analyst" }, email: "rohan@example.com" }
-];
-
 export async function getEmployee() {
   try {
     const res = await apiRequest("/employee/me");

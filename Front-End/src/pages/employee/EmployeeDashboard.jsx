@@ -28,27 +28,6 @@ function EmployeeDashboard() {
   const [uploadNotice, setUploadNotice] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
 
-  // Field 1: General Document Upload states
-  const [docTypeList, setDocTypeList] = useState([
-    { id: "Aadhaar / ID Proof", label: "Aadhaar / ID Proof" },
-    { id: "PAN", label: "PAN" },
-    { id: "Passport & Visa", label: "Passport & Visa" },
-    { id: "Educational Degree Certificate", label: "Educational Degree Certificate" },
-    { id: "Signed Employment Contract", label: "Signed Employment Contract" },
-    { id: "Tax Declaration (W-4 / Form 16)", label: "Tax Declaration (W-4 / Form 16)" },
-    { id: "Direct Deposit Voided Check", label: "Direct Deposit Voided Check" },
-    { id: "Non-Disclosure Agreement (NDA)", label: "Non-Disclosure Agreement (NDA)" },
-    { id: "Health Insurance Beneficiary", label: "Health Insurance Beneficiary" },
-    { id: "General Document", label: "General Document" },
-  ]);
-  const [generalDocType, setGeneralDocType] = useState("Aadhaar / ID Proof");
-  const [generalDocTitle, setGeneralDocTitle] = useState("");
-  const [generalDocFile, setGeneralDocFile] = useState(null);
-  const [generalDocBusy, setGeneralDocBusy] = useState(false);
-
-  // Field 2: HR Document Request Upload states
-  const [hrSelectedFiles, setHrSelectedFiles] = useState({});
-  const [hrUploadingIds, setHrUploadingIds] = useState([]);
   const getStoredDismissedRequests = () => {
     try {
       const session = JSON.parse(sessionStorage.getItem("hrms_dismissed_doc_requests") || "[]");
@@ -162,95 +141,6 @@ function EmployeeDashboard() {
     } finally {
       setUploadBusy(false);
       e.target.value = "";
-    }
-  };
-
-  // Field 1: Handler for General Document Upload
-  const handleGeneralUploadSubmit = async (e) => {
-    e.preventDefault();
-    if (!generalDocFile) {
-      alert("Please select a document file to upload.");
-      return;
-    }
-
-    try {
-      setGeneralDocBusy(true);
-      setUploadNotice("");
-
-      await uploadDocument(generalDocFile, {
-        documentType: generalDocType || "General Document",
-        documentName: generalDocTitle.trim() || generalDocFile.name,
-        description: `Uploaded from Employee Dashboard on ${new Date().toLocaleDateString()}`,
-      });
-
-      setUploadNotice(`✓ Successfully uploaded "${generalDocFile.name}" as ${generalDocType || "General Document"}! Routed to HR for verification.`);
-      setGeneralDocFile(null);
-      setGeneralDocTitle("");
-
-      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
-    } catch (err) {
-      alert(err.message || "Failed to upload document.");
-    } finally {
-      setGeneralDocBusy(false);
-    }
-  };
-
-  // Field 2: Handler for Uploading Document Requested from HR
-  const handleHrRequestUpload = async (reqDoc) => {
-    const docId = String(reqDoc._id || reqDoc.id);
-    const file = hrSelectedFiles[docId];
-    if (!file) {
-      alert(`Please select a file to upload for "${reqDoc.documentType || reqDoc.documentName}".`);
-      return;
-    }
-
-    try {
-      setHrUploadingIds((prev) => [...prev, docId]);
-      setUploadNotice("");
-
-      await uploadDocument(file, {
-        documentType: reqDoc.documentType || "General Document",
-        documentId: docId,
-        requestId: docId,
-        documentName: reqDoc.documentName || reqDoc.documentType || file.name,
-      });
-
-      setUploadNotice(`✓ Successfully uploaded "${file.name}" in response to HR's request! Submitted for verification.`);
-      
-      // Clear this file selection
-      setHrSelectedFiles((prev) => {
-        const copy = { ...prev };
-        delete copy[docId];
-        return copy;
-      });
-
-      window.dispatchEvent(new CustomEvent("hrms:data_changed"));
-
-      // Refresh list
-      const res = await getMyDocuments();
-      const docs = res?.data || res?.documents || res || [];
-      if (Array.isArray(docs)) {
-        const dismissed = getStoredDismissedRequests();
-        setRequestedDocs(
-          docs.filter((d) => {
-            const id = String(d._id || d.id);
-            const status = String(d.status || "").toLowerCase();
-            const rawStatus = String(d.status || "");
-            const isTarget = status === "requested" || status === "rejected";
-            const isDismissed =
-              dismissed.includes(id) ||
-              dismissed.includes(`${id}:${rawStatus}`) ||
-              dismissed.includes(`${id}:${status}`) ||
-              dismissed.includes(`${id}:requested`) ||
-              dismissed.includes(`${id}:rejected`);
-            return isTarget && !isDismissed;
-          })
-        );
-      }
-    } catch (err) {
-      alert(err.message || "Failed to upload requested document.");
-    } finally {
-      setHrUploadingIds((prev) => prev.filter((id) => id !== docId));
     }
   };
 
@@ -659,40 +549,29 @@ function EmployeeDashboard() {
           </div>
         )}
 
-        {/* =====================================================
-            HR DOCUMENT REQUEST ALERT BANNERS
+                {/* =====================================================
+            HR DOCUMENT REQUEST NOTIFICATION (REALISTIC ENTERPRISE ALERT)
+            Only rendered when HR has actively requested compliance documents
         ===================================================== */}
         {uploadNotice && (
-          <div
-            className="doc-request-alert"
-            style={{
-              backgroundColor: "#f0fdf4",
-              borderColor: "#bbf7d0",
-              color: "#166534",
-            }}
-            role="status"
-          >
-            <div className="doc-request-alert-message">
-              <div className="doc-request-alert-icon" style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}>
-                ✓
-              </div>
-              <div className="doc-request-alert-copy">
-                <strong style={{ color: "#15803d" }}>Upload Submitted</strong>
-                <span style={{ color: "#166534" }}>{uploadNotice}</span>
-              </div>
+          <div className="hr-doc-success-banner" role="status">
+            <div className="hr-doc-success-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
             </div>
-            <div className="doc-request-alert-actions">
-              <button
-                type="button"
-                onClick={() => setUploadNotice("")}
-                aria-label="Dismiss upload notification"
-                title="Dismiss alert"
-                className="doc-request-dismiss"
-                style={{ color: "#166534" }}
-              >
-                ×
-              </button>
+            <div className="hr-doc-success-copy">
+              <strong>Document Uploaded</strong>
+              <span>{uploadNotice}</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setUploadNotice("")}
+              className="hr-doc-dismiss-action"
+              aria-label="Dismiss message"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -712,77 +591,129 @@ function EmployeeDashboard() {
 
           if (activeDocs.length === 0) return null;
 
-          // SHOW ONLY ONCE: Single consolidated alert banner in Overview
           const primaryDoc = activeDocs[0];
           const hasMultiple = activeDocs.length > 1;
 
           return (
             <div
-              key={`doc-request-consolidated-${primaryDoc._id || primaryDoc.id}`}
-              className="doc-request-alert doc-dual-alert"
+              key={`hr-doc-notification-${primaryDoc._id || primaryDoc.id}`}
+              className="hr-doc-notification-banner"
               role="alert"
             >
-              {/* Field 1: Details of Document Requested from HR */}
-              <div className="doc-request-alert-message doc-request-field-view">
-                <div className="doc-request-alert-icon" aria-hidden="true">
-                  📨
-                </div>
-                <div className="doc-request-alert-copy">
-                  <div className="doc-alert-tag-row">
-                    <span className="doc-urgent-pill">⚡ Requested from HR</span>
-                    {hasMultiple && <span className="doc-count-pill">{activeDocs.length} Pending Requests</span>}
+              <div className="hr-doc-notif-accent" />
+              <div className="hr-doc-notif-body">
+                <div className="hr-doc-notif-icon-wrap" aria-hidden="true">
+                  <div className="hr-doc-notif-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
                   </div>
-                  <strong className="doc-request-alert-title">
-                    {primaryDoc.documentType || primaryDoc.documentName || "Document"}
-                  </strong>
-                  <span className="doc-request-alert-note">
-                    {hasMultiple
-                      ? `Required: ${activeDocs.map((d) => d.documentType || d.documentName).filter(Boolean).join(", ")}`
-                      : `HR Note: "${primaryDoc.requestNote || primaryDoc.verificationNotes || "Please submit requested compliance file."}"`}
-                  </span>
                 </div>
-              </div>
 
-              {/* Field 2: Uploading Field to Fulfill HR Request */}
-              <div className="doc-request-alert-actions doc-uploading-field-view">
-                <label className="att-btn primary doc-request-upload">
-                  {uploadBusy ? (
-                    <>⏳ Uploading to HR...</>
+                <div className="hr-doc-notif-content">
+                  <div className="hr-doc-notif-topline">
+                    <div className="hr-doc-status-badge">
+                      <span className="hr-doc-pulse-dot" />
+                      <span>Action Required • HR Request</span>
+                    </div>
+                    {hasMultiple && (
+                      <span className="hr-doc-count-badge">
+                        {activeDocs.length} Documents Pending
+                      </span>
+                    )}
+                    {primaryDoc.createdAt && (
+                      <span className="hr-doc-date-badge">
+                        Requested {formatDate(primaryDoc.createdAt)}
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="hr-doc-notif-title">
+                    {primaryDoc.documentType || primaryDoc.documentName || "Compliance Document"}
+                    {primaryDoc.status === "rejected" && (
+                      <span className="hr-doc-resubmit-pill">⚠️ Resubmission Requested</span>
+                    )}
+                  </h3>
+
+                  {(primaryDoc.requestNote || primaryDoc.verificationNotes) ? (
+                    <div className="hr-doc-notif-memo">
+                      <span className="memo-quote-icon">“</span>
+                      <span className="memo-text">{primaryDoc.requestNote || primaryDoc.verificationNotes}</span>
+                    </div>
                   ) : (
-                    <>📤 Select & Upload File</>
+                    <p className="hr-doc-notif-desc">
+                      HR Operations has requested this document for compliance records. Upload the file below or submit via your Document Vault.
+                    </p>
                   )}
-                  <input
-                    type="file"
-                    onChange={(e) => handleDashboardUpload(e, primaryDoc)}
-                    disabled={uploadBusy}
-                    hidden
-                  />
-                </label>
-                <Link
-                  to="/employee/documents"
-                  className="att-btn secondary doc-request-vault"
-                >
-                  📁 View Vault
-                </Link>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dismissAllDocRequests(activeDocs);
-                  }}
-                  aria-label="Dismiss HR document request alert"
-                  title="Dismiss alert"
-                  className="doc-request-dismiss"
-                >
-                  ×
-                </button>
+
+                  {hasMultiple && (
+                    <div className="hr-doc-multi-list">
+                      <span className="multi-label">Pending items:</span>
+                      {activeDocs.map((d, idx) => (
+                        <span key={d._id || d.id || idx} className="multi-pill">
+                          {d.documentType || d.documentName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="hr-doc-notif-actions">
+                  <label className="hr-doc-upload-action">
+                    {uploadBusy ? (
+                      <>
+                        <span className="hr-doc-spinner" />
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Select & Upload File</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      onChange={(e) => handleDashboardUpload(e, primaryDoc)}
+                      disabled={uploadBusy}
+                      hidden
+                    />
+                  </label>
+
+                  <Link to="/employee/documents" className="hr-doc-vault-action">
+                    <span>Document Vault</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dismissAllDocRequests(activeDocs);
+                    }}
+                    className="hr-doc-dismiss-action"
+                    aria-label="Dismiss notification"
+                    title="Dismiss notification"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             </div>
           );
         })()}
 
-        {/* =====================================================
+{/* =====================================================
             DAILY PULSE WELLBEING CHECKLIST & POPUP MODAL
         ===================================================== */}
         <DailyPulseWidget />
@@ -1212,228 +1143,6 @@ function EmployeeDashboard() {
             </div>
           </Link>
         </section>
-
-        {/* =====================================================
-            DOCUMENT COMPLIANCE & UPLOAD HUB (DUAL FIELDS)
-            Field 1: Upload Document (General / Self-service)
-            Field 2: Uploading Document Requested from HR
-        ===================================================== */}
-        {(() => {
-          const activeRequested = requestedDocs.filter((reqDoc) => {
-            const id = String(reqDoc._id || reqDoc.id);
-            const status = String(reqDoc.status || "").toLowerCase();
-            const rawStatus = String(reqDoc.status || "");
-            return (
-              !dismissedDocRequests.includes(id) &&
-              !dismissedDocRequests.includes(`${id}:${rawStatus}`) &&
-              !dismissedDocRequests.includes(`${id}:${status}`) &&
-              !dismissedDocRequests.includes(`${id}:requested`) &&
-              !dismissedDocRequests.includes(`${id}:rejected`)
-            );
-          });
-
-          return (
-            <section className="doc-compliance-hub-section" aria-label="Document Upload and HR Compliance">
-              <div className="section-title-wrap">
-                <div className="title-left">
-                  <div className="hub-badge-pill">
-                    <span className="live-hub-dot" />
-                    <span>Compliance Central</span>
-                  </div>
-                  <h2>📁 Document Upload & HR Request Hub</h2>
-                  <p>Self-service filing in one field, and uploading documents requested by HR in another field</p>
-                </div>
-                <Link to="/employee/documents" className="view-vault-link">
-                  <span>🔐</span> Verified Documents Vault →
-                </Link>
-              </div>
-
-              <div className="doc-dual-grid">
-                {/* FIELD 1: GENERAL UPLOAD DOCUMENT */}
-                <div className="doc-field-card general-upload-card">
-                  <div className="doc-field-head">
-                    <div className="doc-field-title-group">
-                      <span className="doc-field-icon">📄</span>
-                      <div>
-                        <h3>Upload Document</h3>
-                        <span className="doc-field-subtitle">Self-file certificates, tax proofs, or identity records</span>
-                      </div>
-                    </div>
-                    <span className="doc-field-badge badge-self">Self-Service</span>
-                  </div>
-
-                  <form onSubmit={handleGeneralUploadSubmit} className="doc-field-body">
-                    <div className="doc-input-group">
-                      <label htmlFor="general-doc-type">Document Category</label>
-                      <select
-                        id="general-doc-type"
-                        value={generalDocType}
-                        onChange={(e) => setGeneralDocType(e.target.value)}
-                        className="doc-field-select"
-                      >
-                        {docTypeList.map((type) => (
-                          <option key={type.id || type.label || type} value={type.label || type}>
-                            {type.label || type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="doc-input-group">
-                      <label htmlFor="general-doc-title">Document Name / Label (Optional)</label>
-                      <input
-                        id="general-doc-title"
-                        type="text"
-                        placeholder="e.g. Degree Certificate 2024, Aadhaar Front & Back"
-                        value={generalDocTitle}
-                        onChange={(e) => setGeneralDocTitle(e.target.value)}
-                        className="doc-field-input"
-                      />
-                    </div>
-
-                    <div className="doc-input-group">
-                      <label>Select Document File</label>
-                      <div className="doc-file-dropzone">
-                        <input
-                          type="file"
-                          id="general-file-input"
-                          onChange={(e) => setGeneralDocFile(e.target.files?.[0] || null)}
-                          className="doc-hidden-file-input"
-                        />
-                        <label htmlFor="general-file-input" className="doc-dropzone-label">
-                          <span className="drop-icon">📎</span>
-                          <span className="drop-text">
-                            {generalDocFile ? (
-                              <strong>{generalDocFile.name} ({(generalDocFile.size / 1024).toFixed(1)} KB)</strong>
-                            ) : (
-                              "Click to choose file (PDF, PNG, JPG, DOCX up to 10MB)"
-                            )}
-                          </span>
-                          <span className="drop-browse-btn">{generalDocFile ? "Change File" : "Browse"}</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={generalDocBusy || !generalDocFile}
-                      className="doc-submit-btn primary"
-                    >
-                      {generalDocBusy ? (
-                        <>
-                          <span className="doc-btn-spinner" /> Uploading Document...
-                        </>
-                      ) : (
-                        <>📤 Upload Document</>
-                      )}
-                    </button>
-                  </form>
-                </div>
-
-                {/* FIELD 2: UPLOADING DOCUMENT REQUESTED FROM HR */}
-                <div className={`doc-field-card hr-upload-card ${activeRequested.length > 0 ? "has-requests" : "clean-status"}`}>
-                  <div className="doc-field-head">
-                    <div className="doc-field-title-group">
-                      <span className="doc-field-icon">📨</span>
-                      <div>
-                        <h3>Uploading Request from HR</h3>
-                        <span className="doc-field-subtitle">Compliance submissions specifically requested by People Ops</span>
-                      </div>
-                    </div>
-                    {activeRequested.length > 0 ? (
-                      <span className="doc-field-badge badge-urgent">
-                        ⚡ {activeRequested.length} Action Required
-                      </span>
-                    ) : (
-                      <span className="doc-field-badge badge-compliant">✓ All Compliant</span>
-                    )}
-                  </div>
-
-                  <div className="doc-field-body">
-                    {activeRequested.length > 0 ? (
-                      <div className="hr-requests-list">
-                        {activeRequested.map((reqDoc) => {
-                          const docId = String(reqDoc._id || reqDoc.id);
-                          const isUploading = hrUploadingIds.includes(docId);
-                          const selectedFile = hrSelectedFiles[docId];
-
-                          return (
-                            <div key={docId} className="hr-request-item-card">
-                              <div className="request-card-header">
-                                <div className="request-title-area">
-                                  <span className="request-doc-title">
-                                    {reqDoc.documentType || reqDoc.documentName || "Compliance Document"}
-                                  </span>
-                                  <span className="request-status-chip">
-                                    {reqDoc.status === "rejected" ? "⚠️ Resubmission Requested" : "📌 Requested by HR"}
-                                  </span>
-                                </div>
-                                <span className="request-date-tag">
-                                  {reqDoc.createdAt ? formatDate(reqDoc.createdAt) : "Pending"}
-                                </span>
-                              </div>
-
-                              {(reqDoc.requestNote || reqDoc.verificationNotes) && (
-                                <div className="request-hr-note">
-                                  <strong>HR Instructions:</strong> {reqDoc.requestNote || reqDoc.verificationNotes}
-                                </div>
-                              )}
-
-                              <div className="request-upload-controls">
-                                <input
-                                  type="file"
-                                  id={`hr-file-${docId}`}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    setHrSelectedFiles((prev) => ({ ...prev, [docId]: file }));
-                                  }}
-                                  className="doc-hidden-file-input"
-                                  disabled={isUploading}
-                                />
-                                <label htmlFor={`hr-file-${docId}`} className="doc-browse-pill">
-                                  <span>📎</span>
-                                  <span className="pill-text">
-                                    {selectedFile ? selectedFile.name : "Select File to Upload"}
-                                  </span>
-                                </label>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleHrRequestUpload(reqDoc)}
-                                  disabled={isUploading || !selectedFile}
-                                  className="doc-submit-btn urgent"
-                                >
-                                  {isUploading ? (
-                                    <>
-                                      <span className="doc-btn-spinner" /> Uploading to HR...
-                                    </>
-                                  ) : (
-                                    <>📤 Submit to HR</>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="no-hr-requests-state">
-                        <span className="clean-check-icon">🛡️</span>
-                        <h4>No Documents Requested from HR</h4>
-                        <p>
-                          All requested employee filings are in good standing. When HR requests an updated passport, tax form, or credential, it will appear here for one-click uploading.
-                        </p>
-                        <Link to="/employee/documents" className="doc-view-vault-btn">
-                          📁 Open Document Vault
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          );
-        })()}
 
         {/* =====================================================
             DASHBOARD TABS (Added for better organization)

@@ -974,7 +974,7 @@ function EmployeeDashboard() {
               <div className="kpi-icon-pod rose">📋</div>
             </div>
             <div className="kpi-stat-row">
-              <span className="kpi-big-num">
+              <span className="kpi-big-num status-text">
                 {timesheetState.hasUnsubmittedToday ? "Pending" : "Submitted"}
               </span>
               <span className={`kpi-badge-chip ${timesheetState.hasUnsubmittedToday ? "neutral" : "positive"}`}>

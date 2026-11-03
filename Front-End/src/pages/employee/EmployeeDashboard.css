@@ -352,7 +352,7 @@
 
 .emp-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
   gap: 1.25rem;
   margin-bottom: 2rem;
 }
@@ -361,7 +361,7 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
-  padding: 1.35rem 1.5rem;
+  padding: 1.25rem 1.35rem;
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
@@ -428,9 +428,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.45rem;
   margin-bottom: 0.65rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  min-height: 2.1rem;
 }
 
 .kpi-num-unit-group {
@@ -449,6 +450,13 @@
   white-space: nowrap;
 }
 
+.kpi-big-num.status-text,
+.kpi-card-box.rose .kpi-big-num {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
 .kpi-unit-label {
   font-size: 0.88rem;
   font-weight: 700;
@@ -461,10 +469,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.22rem 0.55rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 999px;
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
   line-height: 1.2;
@@ -492,6 +500,30 @@
   background: #fff1f2;
   color: #e11d48;
   border: 1px solid #fecdd3;
+}
+
+[data-theme="dark"] .kpi-badge-chip.positive {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+[data-theme="dark"] .kpi-badge-chip.neutral {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .kpi-badge-chip.indigo {
+  background: rgba(99, 102, 241, 0.18) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+[data-theme="dark"] .kpi-badge-chip.rose {
+  background: rgba(244, 63, 94, 0.18) !important;
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
 }
 
 .kpi-progress-rail {

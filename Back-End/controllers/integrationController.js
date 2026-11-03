@@ -326,7 +326,7 @@ export const triggerConnectorSync = async (req, res, next) => {
       const empsRes = await pool.query(`
         SELECT id, employee_code, first_name, last_name 
         FROM employees 
-        WHERE status = 'active' 
+        WHERE LOWER(COALESCE(status, 'active')) = 'active' 
         ORDER BY id ASC 
         LIMIT 10
       `);

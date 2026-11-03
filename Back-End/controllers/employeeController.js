@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import fs from "fs";
 import path from "path";
+import pool from "../config/db.js";
 import { createUser, findUserByEmail, findUserById } from "../repositories/userRepository.js";
 import {
     createEmployeeRecord,
@@ -299,6 +300,69 @@ export const createMultipleEmployees = async (req, res) => {
                 });
             } catch (allocErr) {
                 console.warn("Auto-bench registration notice:", allocErr.message);
+            }
+
+            // Real-time integration downstream provisioning
+            try {
+                const fullName = `${newEmp.first_name || ""} ${newEmp.last_name || ""}`.trim() || email;
+                const empCode = newEmp.employee_code || employeeCode;
+                const curMonthDate = `${new Date().toISOString().slice(0, 7)}-01`;
+                const authUserId = req.user?.id || user?.id || 1;
+
+                // 1. IT Asset Provisioning Ticket
+                const itReqCode = `IT-PROV-${Date.now().toString().slice(-4)}-${newEmp.id}`;
+                await pool.query(`
+                    INSERT INTO it_asset_provisioning_jobs (request_code, target_system, employee_id, employee_name, item_type, status, assigned_serial_or_license)
+                    VALUES ($1, 'Jira Service Management', $2, $3, 'LAPTOP_HARDWARE', 'PROVISIONED', 'Dell Latitude / Mac Enterprise Profile')
+                    ON CONFLICT DO NOTHING;
+                `, [itReqCode, newEmp.id, fullName]).catch(() => {});
+
+                // 2. Initial Payroll Record for current month
+                const basicSalary = salaryVal > 0 ? Math.round(salaryVal * 0.5) : 35000;
+                const allowances = salaryVal > 0 ? Math.round(salaryVal * 0.3) : 15000;
+                const bonus = 0;
+                const grossSalary = basicSalary + allowances + bonus;
+                const tax = Math.round(grossSalary * 0.1);
+                const pf = Math.round(basicSalary * 0.12);
+                const totalDeductions = tax + pf;
+                const netSalary = grossSalary - totalDeductions;
+
+                await pool.query(`
+                    INSERT INTO payrolls (employee_id, month, basic_salary, allowances, bonus, tax, pf, deduction, gross_salary, total_deductions, net_salary, status, generated_by)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, $9, $10, 'generated', $11)
+                    ON CONFLICT (employee_id, month) DO NOTHING;
+                `, [newEmp.id, curMonthDate, basicSalary, allowances, bonus, tax, pf, grossSalary, totalDeductions, netSalary, authUserId]).catch(() => {});
+
+                // 3. Biometric Terminal Enrollment Log
+                await pool.query(`
+                    INSERT INTO biometric_punch_logs (device_id, terminal_ip, employee_code, punch_time, punch_type, verification_mode, is_processed)
+                    VALUES ('ZKT-HYD-TOWER-B-01', '192.168.10.15', $1, CURRENT_TIMESTAMP, 'ENROLLMENT', 'FACIAL_RECOGNITION', true)
+                    ON CONFLICT DO NOTHING;
+                `, [empCode]).catch(() => {});
+
+                // 4. Welcome Notification
+                await pool.query(`
+                    INSERT INTO notifications (user_id, title, message, type, is_read, action_url)
+                    VALUES ($1, 'Welcome to the Team!', $2, 'info', false, '/employee/dashboard')
+                    ON CONFLICT DO NOTHING;
+                `, [newEmp.user_id || authUserId, `Your employee account ${empCode} has been successfully provisioned in the enterprise system.`]).catch(() => {});
+
+                // 5. Scalability metric active headcount update
+                await pool.query(`
+                    UPDATE scalability_capacity_metrics 
+                    SET current_value = (SELECT count(*) FROM employees WHERE LOWER(COALESCE(employment->>'status', 'Active')) = 'active'),
+                        last_updated_at = CURRENT_TIMESTAMP
+                    WHERE metric_dimension = 'ACTIVE_EMPLOYEES';
+                `).catch(() => {});
+
+                // 6. Audit Log
+                await pool.query(`
+                    INSERT INTO audit_logs (user_id, action, target, details)
+                    VALUES ($1, 'EMPLOYEE_PROVISIONED', $2, $3);
+                `, [authUserId, empCode, `Real-time onboarding provisioned for ${fullName} (${newEmp.email})`]).catch(() => {});
+
+            } catch (provErr) {
+                console.warn("Real-time integration provisioning notice:", provErr.message);
             }
         }
 

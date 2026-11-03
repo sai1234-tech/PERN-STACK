@@ -1017,11 +1017,6 @@ function HRDashboard({ defaultTab = "directory" }) {
               <span className="cmd-btn-text">41-Entity Master</span>
             </Link>
 
-            <Link to="/hr/integrations" className="cmd-action-btn cmd-integrations" title="Enterprise 8-Channel Integration Hub">
-              <span className="cmd-btn-icon">🔌</span>
-              <span className="cmd-btn-text">Integrations</span>
-            </Link>
-
             <Link to="/hr/helpdesk" className="cmd-action-btn cmd-helpdesk" title="HR Support & Tickets">
               <span className="cmd-btn-icon">🎧</span>
               <span className="cmd-btn-text">Helpdesk</span>

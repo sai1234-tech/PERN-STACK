@@ -46,7 +46,6 @@ const AdminDashboard       = lazy(() => import("../pages/admin/AdminDashboard"))
 const OrganizationHierarchy = lazy(() => import("../pages/organization/OrganizationHierarchy"));
 const EmployeeLifecycle    = lazy(() => import("../pages/hr/EmployeeLifecycle"));
 const EnterpriseEntityExplorer = lazy(() => import("../pages/hr/EnterpriseEntityExplorer"));
-const EnterpriseIntegrationsHub = lazy(() => import("../pages/hr/EnterpriseIntegrationsHub"));
 const SecurityGovernanceCenter = lazy(() => import("../pages/admin/SecurityGovernanceCenter"));
 const EnterpriseAutomationsHub = lazy(() => import("../pages/hr/EnterpriseAutomationsHub"));
 const AuditGovernanceCenter = lazy(() => import("../pages/admin/AuditGovernanceCenter"));
@@ -210,9 +209,6 @@ function AppRoutes() {
           <Route path="/hr/entities"           element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseEntityExplorer /></ProtectedRoute>} />
           <Route path="/entities"              element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseEntityExplorer /></ProtectedRoute>} />
           <Route path="/admin/entities"        element={<ProtectedRoute roles={["admin", "leadership"]}><EnterpriseEntityExplorer /></ProtectedRoute>} />
-          <Route path="/hr/integrations"       element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseIntegrationsHub /></ProtectedRoute>} />
-          <Route path="/integrations"          element={<ProtectedRoute roles={ALL_ROLES}><EnterpriseIntegrationsHub /></ProtectedRoute>} />
-          <Route path="/admin/integrations"    element={<ProtectedRoute roles={["admin", "leadership"]}><EnterpriseIntegrationsHub /></ProtectedRoute>} />
           <Route path="/admin/governance"      element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><SecurityGovernanceCenter /></ProtectedRoute>} />
           <Route path="/admin/security"        element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><SecurityGovernanceCenter /></ProtectedRoute>} />
           <Route path="/governance"            element={<ProtectedRoute roles={["admin", "leadership", "auditor", "hr"]}><SecurityGovernanceCenter /></ProtectedRoute>} />

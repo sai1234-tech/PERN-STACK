@@ -77,6 +77,20 @@ export default function EnterpriseIntegrationsHub() {
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [editFormData, setEditFormData] = useState({});
 
+  // Add New Integration Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newConnectorForm, setNewConnectorForm] = useState({
+    name: "",
+    category: "Notifications",
+    provider: "",
+    protocol: "REST API / Webhook",
+    endpoint_url: "",
+    auth_type: "Bearer Token",
+    secret_key: "",
+    sync_interval_mins: 60
+  });
+  const [isSubmittingNew, setIsSubmittingNew] = useState(false);
+
   // Filter logs by connector
   const [logFilter, setLogFilter] = useState("all");
   const [activeViewMode, setActiveViewMode] = useState("matrix"); // "matrix" | "cards"
@@ -198,6 +212,40 @@ export default function EnterpriseIntegrationsHub() {
     }
   };
 
+  // Handle Create New Connector Specification
+  const handleCreateNewConnector = async (e) => {
+    e.preventDefault();
+    if (!newConnectorForm.name || !newConnectorForm.provider) {
+      toast.warning("Please fill in the Integration Name and Configured Provider.");
+      return;
+    }
+    setIsSubmittingNew(true);
+    try {
+      const res = await integrationService.createConnector(newConnectorForm);
+      if (res && res.success) {
+        toast.success(res.message || "New integration specification registered in the Matrix");
+        setIsAddModalOpen(false);
+        setNewConnectorForm({
+          name: "",
+          category: "Notifications",
+          provider: "",
+          protocol: "REST API / Webhook",
+          endpoint_url: "",
+          auth_type: "Bearer Token",
+          secret_key: "",
+          sync_interval_mins: 60
+        });
+        fetchData(true);
+      } else {
+        toast.error(res?.message || "Failed to create integration specification");
+      }
+    } catch (err) {
+      toast.error(`Creation error: ${err.message}`);
+    } finally {
+      setIsSubmittingNew(false);
+    }
+  };
+
   // Filtered Logs
   const filteredLogs = useMemo(() => {
     if (logFilter === "all") return recentLogs;
@@ -292,6 +340,13 @@ export default function EnterpriseIntegrationsHub() {
                 Live external communication channels, operational status, transmission protocols, and real-time database sync.
               </p>
             </div>
+            <button
+              className="hub-add-btn"
+              onClick={() => setIsAddModalOpen(true)}
+              title="Register a new integration channel specification"
+            >
+              + Add Integration Channel
+            </button>
           </div>
 
           <div className="matrix-table-wrapper">
@@ -847,6 +902,144 @@ export default function EnterpriseIntegrationsHub() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. Add New Integration Channel Specification Modal ── */}
+      {isAddModalOpen && (
+        <div className="connector-modal-backdrop" onClick={() => setIsAddModalOpen(false)}>
+          <div
+            className="connector-drawer-card add-connector-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "620px", maxHeight: "90vh", overflowY: "auto" }}
+          >
+            <div className="drawer-header">
+              <div className="drawer-title-block">
+                <span className="drawer-icon">➕</span>
+                <div>
+                  <h2 className="drawer-title">Register Integration Specification</h2>
+                  <span className="drawer-key">Add a new external enterprise communication channel to the Matrix</span>
+                </div>
+              </div>
+              <button
+                className="drawer-close-btn"
+                onClick={() => setIsAddModalOpen(false)}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="drawer-body">
+              <form onSubmit={handleCreateNewConnector} className="config-edit-form">
+                <div className="form-fields-grid">
+                  <div className="form-input-group">
+                    <label>Channel / Integration Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Slack Bot Notifications or Workday HR"
+                      value={newConnectorForm.name}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Category / Purpose Scope *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Team Alerts / Onboarding LMS"
+                      value={newConnectorForm.category}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, category: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Configured Provider *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Slack Enterprise / Coursera / AWS"
+                      value={newConnectorForm.provider}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, provider: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Transmission Protocol / Method</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., REST API / Webhook / SFTP"
+                      value={newConnectorForm.protocol}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, protocol: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Endpoint URL / Gateway Host</label>
+                    <input
+                      type="text"
+                      placeholder="https://hooks.slack.com/services/... or sftp://..."
+                      value={newConnectorForm.endpoint_url}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, endpoint_url: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Authentication Protocol</label>
+                    <select
+                      value={newConnectorForm.auth_type}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, auth_type: e.target.value })}
+                      style={{ padding: "0.65rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                    >
+                      <option value="Bearer Token">Bearer Token</option>
+                      <option value="OAuth2 / OIDC">OAuth2 / OIDC</option>
+                      <option value="API Key">API Key</option>
+                      <option value="Basic Auth">Basic Auth</option>
+                      <option value="Mutual TLS">Mutual TLS</option>
+                    </select>
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Secret Key / API Token</label>
+                    <input
+                      type="password"
+                      placeholder="••••••••••••••••"
+                      value={newConnectorForm.secret_key}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, secret_key: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Sync Interval (Minutes)</label>
+                    <input
+                      type="number"
+                      value={newConnectorForm.sync_interval_mins}
+                      onChange={(e) => setNewConnectorForm({ ...newConnectorForm, sync_interval_mins: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-actions-row" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1.25rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    style={{ padding: "0.65rem 1.25rem", background: "transparent", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="save-config-submit-btn"
+                    disabled={isSubmittingNew}
+                  >
+                    {isSubmittingNew ? "Registering..." : "💾 Register in Specification Matrix"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

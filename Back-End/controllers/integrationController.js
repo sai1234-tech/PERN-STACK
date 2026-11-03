@@ -618,3 +618,66 @@ export const updateConnector = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/integrations
+ * Allows HR/Admin to register a new integration specification in the Matrix
+ */
+export const createConnector = async (req, res, next) => {
+  try {
+    const {
+      connector_key,
+      name,
+      category,
+      provider,
+      protocol,
+      endpoint_url,
+      auth_type,
+      config_data,
+      secret_key,
+      sync_interval_mins
+    } = req.body;
+
+    if (!name || !category || !provider) {
+      return res.status(400).json({ success: false, message: "Name, category, and provider are required" });
+    }
+
+    const key = (connector_key || name.toLowerCase().replace(/[^a-z0-9]/g, "_")).slice(0, 50);
+
+    const result = await pool.query(`
+      INSERT INTO integration_connectors (
+        connector_key, name, category, provider, protocol, endpoint_url,
+        auth_type, config_data, secret_key, is_enabled, health_status, sync_interval_mins
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, 'Connected', $10)
+      ON CONFLICT (connector_key) DO UPDATE
+      SET name = EXCLUDED.name,
+          category = EXCLUDED.category,
+          provider = EXCLUDED.provider,
+          protocol = EXCLUDED.protocol,
+          endpoint_url = EXCLUDED.endpoint_url,
+          auth_type = EXCLUDED.auth_type,
+          config_data = EXCLUDED.config_data,
+          updated_at = CURRENT_TIMESTAMP
+      RETURNING *;
+    `, [
+      key,
+      name,
+      category,
+      provider,
+      protocol || "REST API / Webhook",
+      endpoint_url || "",
+      auth_type || "Bearer Token",
+      config_data ? JSON.stringify(config_data) : "{}",
+      secret_key || "",
+      parseInt(sync_interval_mins, 10) || 60
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      message: `Integration connector '${name}' registered successfully in the Matrix`,
+      connector: result.rows[0]
+    });
+  } catch (error) {
+    next(error);
+  }
+};

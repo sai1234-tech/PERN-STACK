@@ -40,5 +40,15 @@ export const integrationService = {
       method: "PUT",
       body: JSON.stringify(data)
     });
+  },
+
+  /**
+   * Register a new integration connector specification in the Matrix
+   */
+  async createConnector(data) {
+    return apiRequest("/integrations", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
   }
 };

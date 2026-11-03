@@ -4,7 +4,8 @@ import {
   getIntegrationSummary,
   getConnectorDetail,
   triggerConnectorSync,
-  updateConnector
+  updateConnector,
+  createConnector
 } from "../controllers/integrationController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
@@ -40,6 +41,7 @@ const optionalAuth = async (req, res, next) => {
 
 // 1. Integration Connectors Overview & Summary
 router.get("/", optionalAuth, getConnectors);
+router.post("/", optionalAuth, createConnector);
 router.get("/summary", optionalAuth, getIntegrationSummary);
 
 // 2. Specific Connector Detail & Telemetry
